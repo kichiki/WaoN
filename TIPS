@@ -1,0 +1,198 @@
+-------------------------------------------------------------------------------
+          Some Concrete Usages and TIPS, and Details Inside WaoN
+-------------------------------------------------------------------------------
+
+CONTENTS
+--------
+PART I : TIPS
+  1) TIPS
+  2) Detailed descriptions on some options and comments for usage
+PART II : Inside of WaoN
+  1) Policy of Selection of On/Off Event
+    a) off-event
+    b) on-event
+    b-1) if this note is off at last step
+    b-2) if this note is on at last step
+    b-2-1) with and without -k option
+    b-2-2) only with -k option
+  2) Policy of Selection of Note (Frequency)
+    a) without patch
+    b) with patch
+
+-------------------------------------------------------------------------------
+                               PART I : TIPS
+
+1) TIPS
+-------
+
+I think that the default setting (2048 samples for FFT, no window, etc)
+is enough to judge how "waon" works.
+
+Here are some more tips.
+
+Ex.1) if you need more resolution in time, use -s (--shift) option as follows.
+
+  $ ./waon -i waltz4DB.wav -o waltz4.mid -w 3 -n 4096 -s 2048
+
+Ex.2) pipe to timidity to play resultant midi file.
+
+  $ cat dolphineD.wav | ./waon -i - -o - | timidity -id -
+
+Ex.3) if you want to analyse MP3,
+
+  $ mpg123 -m -s reflectD.mp3 \
+    | sox -t raw -r 44100 -s -w - -t wav - \
+    | ./waon -i - 
+
+
+2) Detailed descriptions on some options and comments for usage
+---------------------------------------------------------------
+
+  -p --patch    patch file may help to reduce multiple note containing
+		the original sound.
+
+NOTE SELECTION OPTIONS
+  -c --cutoff   this may be negative number because sound signal is
+		scaled in the range [-1,1], so that power may be
+		less than 1.0.
+		if you give large number, you may remove weak notes.
+
+  -r --relative if you give this option, typically '-r 1',
+		notes whose power is more than the average are selected.
+		this means that only strong notes are selected
+		in a laud part.
+		if you want to pick up background weak notes,
+		try without this option but only -c option.
+
+  -k --peak     if you give this option, note-on event is detected
+		where the power of a note has a peak in time.
+		otherwise, note-on event is detected where its power
+		become larger than on_threshold (at present,
+		this is fixed in source).
+		-k option may help when you want to apply for
+		rapid sounds.
+		but for slower music, this may cause too many
+		on/off in a same tone.
+		for this case, try without -k option.
+                (the range of this option is from 0 to 128.
+                the value 128 is equivelent without -k option
+                because there is no difference bigger than 128.)
+
+READING WAV OPTIONS
+  -n            if you give larger number, you can get lower notes.
+		but resolution in time become broader.
+
+  -s --shift    if you give smaller number than -n option,
+		virtually you get finer resolution in time.
+
+
+-------------------------------------------------------------------------------                          PART II : Inside of WaoN
+
+1) Policy of Selection of On/Off Event
+--------------------------------------
+
+Selection in frequency domain is relatively straightforward,
+but there seems to be no general way of that in time domain.
+
+It is obvious that this determines the quality of this kind of softwares.
+If you have some idea, please let me know!
+
+At present, I'm trying two way to detect on/off event, that is,
+detection of over-threshold (no option -k) and peak detection
+(option -k).
+
+a) off-event: if (i_lsts[i] <= off_threshold)
+     where off_threshold = 0 defined in source.
+     'i_lsts[]' is velocity hopefully scaled in the range [0, 127].
+
+               velocity ^      ..
+                      2 |.     ..
+                      1 |..   ...
+      off_threshold ->0 +--*------> time
+                           ^
+  here is the position where off-event is placed
+
+b) on-event:
+b-1) if this note is off at last step:
+       if (i_lsts[i] > on_threshold)
+
+               velocity ^       
+                     10 |.      .
+                      9 |.     *.
+      on_threshold -> 8 |.     ..
+                        ---------
+                      2 |.     ..
+                      1 |..   ...
+      off_threshold ->0 +--*------> time
+                               ^
+  here is the position where on-event is placed
+
+b-2) if this note is on at last step:
+b-2-1) with and without -k option:
+       if (i_lsts[i] > (*on_lst[i]))
+     where *on_lst[i] is the velocity of this note,
+     velocity is overwritten by i_lsts[i].
+
+               velocity ^       
+                     11 |.        
+                     10 |.      *.
+                      9 |.     *..
+      on_threshold -> 8 |.     ...
+                        ----------
+                      2 |.     ...
+                      1 |..   ....
+      off_threshold ->0 +--*---*---> time
+                                ^ 
+  velocity is overwritten by larger values here.
+
+b-2-2) only with -k option:
+       if (i_lsts[i] >= (*on_lst[i] + peak_threshold))
+     where peak_threshold is given by -k (--peak) option.
+
+               velocity ^       
+                     36 |            *.
+                     35 |            ...
+    peak_threshold-->34 |            ...
+         \           33 |            ...
+           \            ----------------
+             \       11 |.           ...
+               \---->10 |.      *..  ...
+                      9 |.     *...  ...
+      on_threshold -> 8 |.     .........
+                        ----------------
+                      2 |.     .........
+                      1 |..   ..........
+      off_threshold ->0 +--*---*---------> time
+                                     ^
+        off- & on-event is placed here
+
+  RESULTANT MIDI SIGNAL
+    without -k option   |--    O<36>----
+                        |  X
+                        +--*---*-----*---> time
+
+    with -k option      |--    O<10>-O<36>-
+                        |  X         X
+                        +--*---*-----*---> time
+    O : note-on event
+    X : note-off event
+
+2) Policy of Selection of Note (Frequency)
+------------------------------------------
+a) without patch
+
+    1. Search maximum in power spectrum and get the frequency.
+    2. Set 0 into the power spectrum around the maximum.
+       The area subtracting is up to the frequency of the local minimum
+       of power in both sides.
+    3. Search again until there is no peak in power spectrum.
+
+b) with patch
+
+    1. Search maximum in power spectrum and get the frequency.
+    2. Subtract power of patch scaled to the maximum frequency.
+    3. Search again until there is no peak in power spectrum.
+
+
+-------------------------------------------------------------------------------
+Copyright (C) 1998,1999 Kengo ICHIKI (ichiki@geocities.com)

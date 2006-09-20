@@ -1,0 +1,16 @@
+INSTALLATION NOTES
+==================
+
+1)  You need to install FFT library "FFTW, v. 2.0", which is released at
+      http://theory.lcs.mit.edu/~fftw/
+    Please read included documents to compile this library.
+    (Basically, it is straightforward, like ./confiugre;make)
+
+2)  Copy "Makefile.waon" into Makefile and edit
+
+3)  Type "make"
+
+4)  That's it.
+    If no problem during compile, there must be executable "waon".
+    Then, you can play waon with your favorite wav file.
+    See "TIPS" for more detail.

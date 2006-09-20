@@ -1,0 +1,36 @@
+The "TODO" file!
+
+Sun Jan  3 15:11:41 1999  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
+
+	* handling for stereo wav file.
+
+Mon Dec 28 01:13:55 1998  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
+
+	* option -k --peak detect peak as note-on event
+	rather than fill note continuously (default).
+	-- finished on Dec 29.
+
+Sun Dec 20 22:22:03 1998  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
+
+	* adapt for unlimit # of note.
+	-- finished on Dec 26.
+
+	* support stdin as wav file (in order to be able to use sox).
+	-- finished on Dec 20.
+
+Tue Dec 15 1998  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
+
+	* precise estimation of Track data size in SMF
+	in terms of random access of the file.
+	-- finished on Dec 20.
+
+	* analysis along not only the frequency axis but the time axis!
+	-- finished on Dec 27.
+
+Sun Dec 13 02:14:17 1998  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
+
+	* introduce dynamic memory allocation for all matrices
+	-- finished around Dec 19.
+
+	* make sub program for analysing part
+	-- finished around Dec 13.
