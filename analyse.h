@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: analyse.h,v 1.1 2006/09/20 21:26:44 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: analyse.h,v 1.2 2006/09/22 05:14:16 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

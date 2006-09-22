@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: fft.h,v 1.1 2006/09/20 21:26:44 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: fft.h,v 1.2 2006/09/22 05:14:16 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+#ifndef	_FFT_H_
+#define	_FFT_H_
 
 double parzen (int i, int nn);
 double welch (int i, int nn);
@@ -24,6 +26,18 @@ double hamming (int i, int nn);
 double blackman (int i, int nn);
 double steeper (int i, int nn);
 
-void power_spectrum_fftw (int n, double x[], double p[], double den,
-			  char winflg, rfftw_plan plan);
+#ifdef FFTW2
+#include <rfftw.h>
+void
+power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
+		     char winflg,
+		     rfftw_plan plan);
+#else
+power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
+		     char winflg,
+		     fftw_plan plan);
+#endif /* FFTW2 */
+
 double init_den (int n, char winflg);
+
+#endif /* !_FFT_H_ */

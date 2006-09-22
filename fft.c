@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: fft.c,v 1.1 2006/09/20 21:26:44 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: fft.c,v 1.2 2006/09/22 05:14:16 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,13 @@
 #include <math.h>
 #include <stdlib.h> /* realloc()  */
 #include <stdio.h> /* fprintf()  */
-#include <rfftw.h> /* FFTW library  */
+
+/* FFTW library  */
+#ifdef FFTW2
+#include <rfftw.h>
+#else
+#include <fftw3.h>
+#endif /* FFTW2 */
 
 
 /* Reference: "Numerical Recipes in C" 2nd Ed.
@@ -81,32 +87,27 @@ steeper (int i, int nn)
  * INPUT
  *  n : # of data in x
  *  x[] : data
+ *  y[] : for output (you have to allocate before calling)
  *  den : weight of window function; calculated by init_den().
  *  winflg : 0 no window
  *           1 parzen window
  *           2 welch window
  *           3 hanning window
  * OUTPUT
+ *  y[] : output spectrum
  *  p[] : stored only n/2 data
  */
 void
-power_spectrum_fftw (int n, double x[], double p[], double den,
-		     char winflg, rfftw_plan plan)
+power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
+		     char winflg,
+#ifdef FFTW2
+		     rfftw_plan plan)
+#else
+		     fftw_plan plan)
+#endif /* FFTW2 */
 {
   static double maxamp = 2147483647.0; /* 2^32-1  */
-  static fftw_real *out = NULL;
   int i;
-
-  /* allocate work area at the first time  */
-  if (out == NULL)
-    {
-      out = (double *)realloc(out, sizeof(double)*n);
-      if (out == NULL)
-	{
-	  fprintf(stderr, "cannot allocate memory for FFT (%d)\n", n);
-	  exit (1);
-	}
-    }
 
   /* window */
   for (i=0; i<n; i++)
@@ -127,13 +128,18 @@ power_spectrum_fftw (int n, double x[], double p[], double den,
 	x[i] = steeper (i, n) * x[i] / maxamp;
     }
 
-  rfftw_one (plan, x, out);
+/* FFTW library  */
+#ifdef FFTW2
+  rfftw_one (plan, x, y);
+#else
+  fftw_execute (plan);
+#endif /* FFTW2 */
 
-  p[0] = out[0]*out[0]/den;  /* DC component */
+  p[0] = y[0]*y[0]/den;  /* DC component */
   for (i=1; i < (n+1)/2; ++i)  /* (i < n/2 rounded up) */
-    p[i] = (out[i]*out[i] + out[n-i]*out[n-i])/den;
+    p[i] = (y[i]*y[i] + y[n-i]*y[n-i])/den;
   if (n % 2 == 0) /* n is even */
-    p[n/2] = out[n/2]*out[n/2]/den;  /* Nyquist freq. */
+    p[n/2] = y[n/2]*y[n/2]/den;  /* Nyquist freq. */
 }
 
 /* prepare window for FFT

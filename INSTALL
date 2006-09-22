@@ -1,10 +1,7 @@
 INSTALLATION NOTES
 ==================
 
-1)  You need to install FFT library "FFTW, v. 2.0", which is released at
-      http://theory.lcs.mit.edu/~fftw/
-    Please read included documents to compile this library.
-    (Basically, it is straightforward, like ./confiugre;make)
+1)  You need FFTW (http://www.fftw.org/), either version 2 or 3.
 
 2)  Copy "Makefile.waon" into Makefile and edit
 

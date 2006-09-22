@@ -1,7 +1,7 @@
 /* wav handling routines excerpted from sox-12.15 and modefied
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * Copyright notices on original sources are attached below.
- * $Id: sox-wav.c,v 1.1 2006/09/20 21:26:46 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: sox-wav.c,v 1.2 2006/09/22 05:14:16 kichiki Exp $
+ * Copyright notices on original sources from "sox" are attached at the end.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

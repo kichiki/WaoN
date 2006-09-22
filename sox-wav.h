@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: sox-wav.h,v 1.1 2006/09/20 21:26:46 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: sox-wav.h,v 1.2 2006/09/22 05:14:16 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+#ifndef	_SOX_WAV_H_
+#define	_SOX_WAV_H_
 
 #include <stdio.h> /* FILE  */
 
@@ -79,3 +81,5 @@ float rfloat (ft_t ft);
 int st_Alaw_to_linear( unsigned char Alawbyte );
 int st_ulaw_to_linear ( unsigned char ulawbyte );
 char *wav_format_str (unsigned short format_tag);
+
+#endif /* !_SOX_WAV_H_ */

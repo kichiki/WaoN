@@ -1,7 +1,12 @@
-OPTS =-Wall -mpentium -O6 -ffast-math
-CC = gcc $(OPTS)
+CC = gcc
 
-LDFLAGS=-L/usr/local/lib -lfftw -lrfftw -lm
+# with FFTW3
+CFLAGS =-Wall -march=pentium -O3 -ffast-math -I/usr/local/include
+LDFLAGS=-L/usr/local/lib -lfftw3 -lm
+
+# with FFTW2
+#CFLAGS =-Wall -march=pentium -O3 -ffast-math -I/usr/local/include -DFFTW2
+#LDFLAGS=-L/usr/local/lib -lfftw -lrfftw -lm
 
 OBJS =	main.o \
 	sox-wav.o \
@@ -10,18 +15,13 @@ OBJS =	main.o \
 	fft.o
 
 waon: $(OBJS)
-	$(CC) -o waon $(OBJS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o waon $(OBJS) $(LDFLAGS)
 
-main.o:
-	$(CC) -c main.c
-sox-wav.o:
-	$(CC) -c sox-wav.c
-midi.o:
-	$(CC) -c midi.c
-analyse.o:
-	$(CC) -c analyse.c
-fft.o:
-	$(CC) -c fft.c
+main.o: main.c sox-wav.h midi.h fft.h analyse.h
+sox-wav.o: sox-wav.c sox-wav.h
+midi.o: midi.c midi.h
+analyse.o: analyse.c analyse.h sox-wav.h midi.h fft.h
+fft.o: 
 
 clean: 
 	rm -f *.o *~ waon *.core

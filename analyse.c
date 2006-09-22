@@ -1,6 +1,6 @@
 /* routines to analyse power spectrum and output notes
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: analyse.c,v 1.1 2006/09/20 21:26:44 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: analyse.c,v 1.2 2006/09/22 05:14:16 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,13 @@
 #include <sys/stat.h> /* S_IRUSR, S_IWUSR  */
 #include <string.h> /* strncmp()  */
 #include <math.h> /* log10()  */
-#include <rfftw.h> /* FFTW library  */
+
+/* FFTW library  */
+#ifdef FFTW2
+#include <rfftw.h>
+#else
+#include <fftw3.h>
+#endif /* FFTW2 */
 
 #include "sox-wav.h" /* ft_t, wavstartread(), wavread()  */
 #include "midi.h" /* get_note()  */
@@ -301,7 +307,18 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
     }
   p_midi += n_midi;
 
-  dh_midi = p_midi; /* head of data  */
+  /* head of data  */
+  dh_midi = p_midi;
+
+  /* tempo set  */
+  n_midi = smf_tempo (fd, 500000); // 0.5 sec => 120 bpm for 4/4
+  if (n_midi != 7)
+    {
+      fprintf (stderr, "Error duing writing mid! %d (tempo)\n", p_midi);
+      return;
+    }
+  p_midi += n_midi;
+
   /* ch.0 prog. 0  */
   n_midi = smf_prog_change (fd, 0, 0);
   if (n_midi != 3)
@@ -435,9 +452,16 @@ init_patch (char *file_patch, int plen, int nwin)
   extern double p0; /* maximum power  */
   extern double if0; /* freq point of maximum  */
   
-  rfftw_plan plan; /* for FFTW library  */
+/* FFTW library  */
+#ifdef FFTW2
+  rfftw_plan plan;
+#else
+  fftw_plan plan;
+#endif /* FFTW2 */
+
   long *ibuf;
   double *x; /* wave data for FFT  */
+  double *y; /* spectrum data for FFT */ 
   double den;
 
   struct soundstream patformat;
@@ -473,16 +497,26 @@ init_patch (char *file_patch, int plen, int nwin)
       x = (double *)malloc (sizeof (double) * plen);
       if (x == NULL)
 	{
-	  fprintf(stderr, "cannot allocate p[%d]\n", plen);
+	  fprintf(stderr, "cannot allocate x[%d]\n", plen);
 	  patch_flg = 0;
 	  free (ibuf);
 	  return;
 	}
+      y = (double *)malloc (sizeof (double) * plen);
+      if (y == NULL)
+	{
+	  fprintf(stderr, "cannot allocate y[%d]\n", plen);
+	  patch_flg = 0;
+	  free (ibuf);
+	  free (x);
+	  return;
+	}
+
       /* open patch file  */
       ft_pat->fp = fopen (file_patch, "r");
       /* read patch wav  */
       wavstartread (ft_pat);
-      if (wavread (ft_pat, ibuf, plen) == NULL)
+      if (wavread (ft_pat, ibuf, plen) == 0)
 	{
 	  fprintf (stderr, "No Patch Data!\n");
 	  patch_flg = 0;
@@ -495,12 +529,19 @@ init_patch (char *file_patch, int plen, int nwin)
 
       /* calc power of patch  */
       den = init_den (plen, nwin);
+
+#ifdef FFTW2
       plan = rfftw_create_plan (plen, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
-      power_spectrum_fftw (plen, x, pat, den, nwin, plan);
-      rfftw_destroy_plan (plan);
+#else
+      plan = fftw_plan_r2r_1d (plen, x, y, FFTW_R2HC, FFTW_ESTIMATE);
+#endif /* FFTW2 */
+
+      power_spectrum_fftw (plen, x, y, pat, den, nwin, plan);
+      fftw_destroy_plan (plan);
 
       free (ibuf);
       free (x);
+      free (y);
       fclose (ft_pat->fp);
 
       /* search maximum  */
@@ -530,7 +571,7 @@ struct ia_note *
 init_ia_note (void)
 {
   struct ia_note *new;
-  new = malloc (sizeof (struct ia_note));
+  new = (struct ia_note *)malloc (sizeof (struct ia_note));
   if (new == NULL)
     {
       fprintf (stderr, "cannot allocate ia_note\n");
@@ -554,7 +595,7 @@ append_ia_note (struct ia_note *last)
 
   if (last->next == NULL)
     {
-      new = malloc (sizeof (struct ia_note));
+      new = (struct ia_note *)malloc (sizeof (struct ia_note));
       last->next = new;
       if (new == NULL)
 	{
