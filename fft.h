@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.h,v 1.2 2006/09/22 05:14:16 kichiki Exp $
+ * $Id: fft.h,v 1.3 2006/09/22 05:21:15 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
 		     char winflg,
 		     rfftw_plan plan);
 #else
+void
 power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
 		     char winflg,
 		     fftw_plan plan);
