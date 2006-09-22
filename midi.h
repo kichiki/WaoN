@@ -1,6 +1,6 @@
 /* header file for midi.c : subroutines to write standard MIDI file
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: midi.h,v 1.1 2006/09/20 21:26:45 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: midi.h,v 1.2 2006/09/22 05:07:34 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+#ifndef	_MIDI_H_
+#define	_MIDI_H_
 
 /* for estimate pitch shift  */
 extern double adj_pitch;
@@ -32,6 +34,7 @@ int smf_header_fmt (int fd,
 		       unsigned short tracks,
 		       unsigned short divisions);
 int smf_prog_change (int fd, char channel, char prog);
+int smf_tempo (int fd, unsigned long tempo);
 int smf_note_on (int fd, long dtime, char note, char vel, char channel);
 int smf_note_off (int fd, long dtime, char note, char vel, char channel);
 int smf_track_head (int fd, unsigned long size);
@@ -40,3 +43,5 @@ int write_var_len (int fd, long value);
 int read_var_len (int fd, long *value);
 int wblong (int fd, unsigned long ul);
 int wbshort (int fd, unsigned short us);
+
+#endif /* !_MIDI_H_ */

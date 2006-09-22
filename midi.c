@@ -1,6 +1,6 @@
 /* subroutines to write standard MIDI file
- * Copyright (C) 1998 Kengo ICHIKI (ichiki@geocities.com)
- * $Id: midi.c,v 1.1 2006/09/20 21:26:45 kichiki Exp $
+ * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: midi.c,v 1.2 2006/09/22 05:07:34 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,6 +120,25 @@ smf_prog_change (int fd, char channel, char prog)
   data[1] = 0xC0 + channel;
   data[2] = prog;
   return write (fd, data, 3);
+}
+
+/* write tempo
+ *  tempo : microseconds per quarter note
+ *          0x07A120 (or 500,000) microseconds (= 0.5 sec) for 120 bpm
+ */
+int
+smf_tempo (int fd, unsigned long tempo)
+{
+  unsigned char data[7];
+
+  data[0] = 0x00; /* delta time  */
+  data[1] = 0xff; /* meta */
+  data[2] = 0x51; /* tempo */
+  data[3] = 0x03; /* bytes */
+  data[4] = (char) (tempo >> 16) & 0xff;
+  data[5] = (char) (tempo >>  8) & 0xff;
+  data[6] = (char) (tempo      ) & 0xff;
+  return write (fd, data, 7);
 }
 
 /* note on
