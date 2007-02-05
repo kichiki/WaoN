@@ -1,6 +1,6 @@
 /* routines to analyse power spectrum and output notes
- * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.c,v 1.2 2006/09/22 05:14:16 kichiki Exp $
+ * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: analyse.c,v 1.3 2007/02/05 05:37:22 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,9 +28,9 @@
 /* FFTW library  */
 #ifdef FFTW2
 #include <rfftw.h>
-#else
+#else // FFTW3
 #include <fftw3.h>
-#endif /* FFTW2 */
+#endif // FFTW2
 
 #include "sox-wav.h" /* ft_t, wavstartread(), wavread()  */
 #include "midi.h" /* get_note()  */
@@ -51,6 +51,8 @@ int peak_threshold; /* to select peaks in a note  */
  * INPUT
  *  n : number of spectrum frequencies (N/2, N is # of samples in time  )
  *  p[] : power spectrum
+ *  fp[] : frequencies for each bin
+ *         if NULL, we use the center frequencies
  *  cut_ratio : log10 of cutoff ratio to scale velocity
  *  rel_cut_ratio : log10 of cutoff ratio relative to average
  *                  0 means cutoff is equal to average
@@ -60,9 +62,10 @@ int peak_threshold; /* to select peaks in a note  */
  *  intens[] : with 127 elements (# of notes)
  */
 void
-note_intensity (int n, double p[], double cut_ratio, double rel_cut_ratio,
+note_intensity (int n, double *p, double *fp,
+		double cut_ratio, double rel_cut_ratio,
 		int i0, int i1,
-		double t0, char intens[])
+		double t0, char *intens)
 {
   extern int patch_flg; /* flag for using patch file  */
   extern int abs_flg; /* flag for absolute/relative cutoff  */
@@ -110,8 +113,18 @@ note_intensity (int n, double p[], double cut_ratio, double rel_cut_ratio,
 	break;
 
       /* get midi note # from imax (FFT freq index)  */
-      freq = (double)imax/t0; /* freq of maximum  */
+      if (fp == NULL)
+	freq = (double)imax/t0; /* freq of maximum  */
+      else
+	freq = fp [imax];
       in = get_note (freq); /* midi note #  */
+      if (in < 0 || in >= 128) // fail safe
+	{
+	  fprintf (stderr, "imax = %d, freq = %f (%f), in = %d\n",
+		   imax, freq, (double)imax/t0, in);
+	  freq = (double)imax/t0; /* freq of maximum  */
+	  in = get_note (freq); /* midi note #  */
+	}
 
       if (intens[in] == 0) /* if second time on same note, skip  */
 	{
@@ -148,7 +161,10 @@ note_intensity (int n, double p[], double cut_ratio, double rel_cut_ratio,
 	{
 	  for (i=i0; i<i1; i++)
 	    {
-	      f = (double)i/t0; /* freq of maximum  */
+	      if (fp == NULL)
+		f = (double)i/t0; /* freq of maximum  */
+	      else
+		f = fp [i];
 	      p[i] -= max * patch_power (f/freq);
 	      if (p[i] <0)
 		p[i] = 0;
