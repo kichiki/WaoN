@@ -1,3 +1,16 @@
+2007-02-04  Kengo Ichiki  <ichiki@tpr60>
+
+	* main.c: 1.3 2007/02/05 05:38:06 kichiki Exp
+	(usage): correct the midi notes in -t and -b options.
+	(main): add --phase option to correct frequency by phase difference.
+	default hop (former shft) is now len/4 (len before).
+
+	* analyse.c: 1.3 2007/02/05 05:37:22 kichiki Exp
+	(note_intensity): add fp[] for modifief frequencies in the argument.
+
+	* midi.c: 1.3 2007/02/05 05:36:44 kichiki Exp
+	on comments, octave of midi was wrong. (code is fine.)
+
 Mon Jan 11 00:33:39 1999  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
 
 	* TIPS: complete PART II, 2) Policy of Selection of Note

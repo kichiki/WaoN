@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
- * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.2 2006/09/22 05:14:16 kichiki Exp $
+ * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: fft.c,v 1.3 2007/02/05 05:39:31 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,9 @@
 /* FFTW library  */
 #ifdef FFTW2
 #include <rfftw.h>
-#else
+#else // FFTW3
 #include <fftw3.h>
-#endif /* FFTW2 */
+#endif // FFTW2
 
 
 /* Reference: "Numerical Recipes in C" 2nd Ed.
@@ -94,17 +94,18 @@ steeper (int i, int nn)
  *           2 welch window
  *           3 hanning window
  * OUTPUT
- *  y[] : output spectrum
- *  p[] : stored only n/2 data
+ *  y[] : fourier transform of x[]
+ *  p[(n+1)/2] : stored only n/2 data
  */
 void
-power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
+power_spectrum_fftw (int n, double *x, double *y, double *p,
+		     double den,
 		     char winflg,
 #ifdef FFTW2
 		     rfftw_plan plan)
-#else
+#else // FFTW3
 		     fftw_plan plan)
-#endif /* FFTW2 */
+#endif // FFTW2
 {
   static double maxamp = 2147483647.0; /* 2^32-1  */
   int i;
@@ -135,11 +136,11 @@ power_spectrum_fftw (int n, double x[], double y[], double p[], double den,
   fftw_execute (plan);
 #endif /* FFTW2 */
 
-  p[0] = y[0]*y[0]/den;  /* DC component */
-  for (i=1; i < (n+1)/2; ++i)  /* (i < n/2 rounded up) */
+  p[0] = y[0]*y[0]/den;  // DC component
+  for (i=1; i < (n+1)/2; ++i)  // (i < n/2 rounded up)
     p[i] = (y[i]*y[i] + y[n-i]*y[n-i])/den;
-  if (n % 2 == 0) /* n is even */
-    p[n/2] = y[n/2]*y[n/2]/den;  /* Nyquist freq. */
+  if (n % 2 == 0) // n is even
+    p[n/2] = y[n/2]*y[n/2]/den;  // Nyquist freq.
 }
 
 /* prepare window for FFT

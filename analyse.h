@@ -1,6 +1,7 @@
-/*
- * Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.h,v 1.2 2006/09/22 05:14:16 kichiki Exp $
+/* header file for analyse.c --
+ * routines to analyse power spectrum and output notes
+ * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: analyse.h,v 1.3 2007/02/05 05:39:31 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +17,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+#ifndef	_ANALYSE_H_
+#define	_ANALYSE_H_
 
 struct note_sig {
   int	step;		/* present time  */
@@ -42,9 +45,10 @@ extern double if0; /* freq point of maximum  */
 extern int peak_threashold; /* to select peaks in a note  */
 
 void
-note_intensity (int n, double p[], double cut_ratio, double rel_cut_ratio,
+note_intensity (int n, double *p, double *fp,
+		double cut_ratio, double rel_cut_ratio,
 		int i0, int i1,
-		double t0, char intens[]);
+		double t0, char *intens);
 struct ia_note *
 chk_note_on_off (int icnt, char i_lsts[], char * on_lst[],
 		 struct ia_note *notes, int *num, int *nmidi);
@@ -57,3 +61,6 @@ void init_patch (char *file_patch, int plen, int nwin);
 struct ia_note * init_ia_note (void);
 struct ia_note * append_ia_note (struct ia_note *last);
 struct ia_note * incr_ia_note (struct ia_note *last, int *num);
+
+
+#endif /* !_ANALYSE_H_ */
