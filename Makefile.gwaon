@@ -1,0 +1,40 @@
+# Makefile for gWaoN
+# Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
+# $Id: Makefile.gwaon,v 1.1 2007/02/09 23:03:59 kichiki Exp $
+
+LIBS    =\
+ `pkg-config --libs gtk+-2.0`\
+ -lfftw3 \
+ -lsndfile \
+ -lm
+
+CFLAGS  =\
+ -Wall -O3\
+ `pkg-config --cflags gtk+-2.0`
+
+LDFLAGS      = 
+
+CC           = cc
+LD           = $(CC)
+RM           = rm -f
+
+
+all:	gwaon
+
+OBJ = gwaon.o \
+	gwaon-menu.o \
+	gwaon-about.o \
+	gwaon-wav.o \
+	gtk-color.o \
+	snd.o \
+	hc.o \
+	fft.o
+
+gwaon:	$(OBJ)
+	$(LD) $(LDFLAGS) -o gwaon $(OBJ) $(LIBS)
+
+clean:
+	$(RM) *.o
+
+distclean:
+	$(RM) gwaon *.o

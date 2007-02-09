@@ -1,3 +1,16 @@
+2007-02-09  Kengo Ichiki  <ichiki@tpr60>
+
+	* gtk-color.h: 
+	* gtk-color.c: 
+	* gwaon-wav.h: 
+	* gwaon-wav.c: 
+	* gwaon-about.h: 
+	* gwaon-about.c: 
+	* gwaon-menu.h: 
+	* gwaon-menu.c: 
+	* gwaon.c: 
+	imported from working directory.
+
 2007-02-08  Kengo Ichiki  <ichiki@tpr60>
 
 	* main.c: 1.4 2007/02/09 06:03:18 kichiki Exp
