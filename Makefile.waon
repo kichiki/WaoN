@@ -1,18 +1,32 @@
 CC = gcc
 
 # with FFTW3
-CFLAGS =-Wall -march=pentium -O3 -ffast-math -I/usr/local/include
-LDFLAGS=-L/usr/local/lib -lfftw3 -lm
+CFLAGS = \
+	-Wall -march=pentium -O3 -ffast-math \
+	-I/usr/local/include
+LDFLAGS= \
+	-L/usr/local/lib \
+	-lfftw3 \
+	-lsndfile \
+	-lm
 
 # with FFTW2
-#CFLAGS =-Wall -march=pentium -O3 -ffast-math -I/usr/local/include -DFFTW2
-#LDFLAGS=-L/usr/local/lib -lfftw -lrfftw -lm
+#CFLAGS = \
+#	-Wall -march=pentium -O3 -ffast-math \
+#	-I/usr/local/include -DFFTW2
+#LDFLAGS= \
+#	-L/usr/local/lib \
+#	-lfftw -lrfftw \
+#	-lsndfile \
+#	-lm
 
 OBJS =	main.o \
 	sox-wav.o \
 	midi.o \
 	analyse.o \
-	fft.o
+	fft.o \
+	hc.o \
+	snd.o
 
 waon: $(OBJS)
 	$(CC) $(CFLAGS) -o waon $(OBJS) $(LDFLAGS)

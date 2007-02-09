@@ -1,3 +1,20 @@
+2007-02-08  Kengo Ichiki  <ichiki@tpr60>
+
+	* main.c: 1.4 2007/02/09 06:03:18 kichiki Exp
+	use libsndfile to handle input file.
+
+	* fft.h: 1.5 2007/02/09 06:01:04 kichiki Exp
+	* fft.c: 1.4 2007/02/09 06:00:23 kichiki Exp
+	(windowing): added.
+	(fprint_window_name): added.
+	(FFTW2): use HC_to_amp2() in hc.c.
+
+	* snd.h: 1.1 2007/02/09 05:58:38 kichiki Exp
+	* snd.c: 1.1 2007/02/09 05:58:14 kichiki Exp
+	* hc.h: 1.1 2007/02/09 05:56:32 kichiki Exp
+	* hc.c: 1.1 2007/02/09 05:56:08 kichiki Exp
+	imported from phase vocoder project.
+
 2007-02-04  Kengo Ichiki  <ichiki@tpr60>
 
 	* main.c: 1.3 2007/02/05 05:38:06 kichiki Exp

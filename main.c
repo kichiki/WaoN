@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.3 2007/02/05 05:38:06 kichiki Exp $
+ * $Id: main.c,v 1.4 2007/02/09 06:03:18 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,9 +30,14 @@
 #include <fftw3.h>
 #endif // FFTW2
 
-#include "sox-wav.h" /* wavstartread(), wavread()  */
+#include "fft.h" // FFT utility functions
+#include "hc.h" // HC array manipulation routines
+
+// libsndfile
+#include <sndfile.h>
+#include "snd.h"
+
 #include "midi.h" /* smf_...(), mid2freq[], get_note()  */
-#include "fft.h" /* four1()  */
 #include "analyse.h" /* note_intensity(), note_on_off(), output_midi()  */
 
 #include "VERSION.h"
@@ -42,7 +47,7 @@ void usage (char * argv0)
 {
   fprintf (stderr, "WaoN - a Wave-to-Notes transcriber, version %s\n",
 	   WAON_VERSION);
-  fprintf (stderr, "Copyright (C) 1998-2006 Kengo Ichiki "
+  fprintf (stderr, "Copyright (C) 1998-2007 Kengo Ichiki "
 	   "<kichiki@users.sourceforge.net>\n\n");
   fprintf (stderr, "Usage: %s [option ...]\n", argv0);
   fprintf (stderr, "  -h --help\tprint this help.\n");
@@ -102,10 +107,6 @@ int main (int argc, char** argv)
   extern double pitch_shift;
   extern int n_pitch;
 
-  /* for wav file : soundstream & ft_t is defined in sox-wav.h  */
-  struct soundstream informat;
-  ft_t ft;
-
   int show_help;
 
   char *file_midi = NULL;
@@ -120,26 +121,14 @@ int main (int argc, char** argv)
   double rel_cut_ratio; /* log10 of cutoff ratio relative to average  */
   double den; /* weight of window function for FFT  */
   double t0; /* time-period for FFT (inverse of smallest frequency)  */
-  long *ibuf;
-  long *ibuf_shft;
+
   double *x; /* wave data for FFT  */
   double *y; /* spectrum data for FFT */ 
   double *p; /* power spectrum  */
   long hop, len, div;
   int num, nmidi;
 
-  long *wavbuf;
-  long *wavbuf_shft;
-  long wavlen, wavshft;
-
   int flag_phase;
-
-  /* for FFTW library  */
-#ifdef FFTW2
-  rfftw_plan plan;
-#else // FFTW3
-  fftw_plan plan;
-#endif // FFTW2
 
   struct ia_note *note_top; /* top of infinite array of note_sig  */
   struct ia_note *notes; /* infinite array of note_sig  */
@@ -360,9 +349,6 @@ int main (int argc, char** argv)
     }
 
 
-  /* init pointer  */
-  ft = &informat;
-
   /* malloc for note_on_off buffer  */
   note_top = init_ia_note ();
   if (note_top == NULL)
@@ -380,19 +366,22 @@ int main (int argc, char** argv)
       i_lsts[i] = 0;
     }
 
-  /* allocate buffers  */
-  ibuf = (long *)malloc (sizeof (long) * len);
-  if (ibuf == NULL)
+  // allocate buffers
+  double *left = NULL;
+  double *right = NULL;
+  left  = (double *)malloc (sizeof (double) * len);
+  right = (double *)malloc (sizeof (double) * len);
+  if (left == NULL)
     {
-      fprintf(stderr, "cannot allocate ibuf[%ld]\n", len);
+      fprintf(stderr, "cannot allocate left[%ld]\n", len);
       exit (1);
     }
-  ibuf_shft = (long *)malloc (sizeof (long) * hop);
-  if (ibuf_shft == NULL)
+  if (right == NULL)
     {
-      fprintf(stderr, "cannot allocate ibuf_shft[%ld]\n", hop);
+      fprintf(stderr, "cannot allocate right[%ld]\n", len);
       exit (1);
     }
+
 #ifdef FFTW2
   x = (double *)malloc (sizeof (double) * len);
   y = (double *)malloc (sizeof (double) * len);
@@ -410,12 +399,14 @@ int main (int argc, char** argv)
       fprintf(stderr, "cannot allocate y[%ld]\n", len);
       exit (1);
     }
+
   p = (double *)malloc (sizeof (double) * (len / 2 + 1));
   if (p == NULL)
     {
       fprintf (stderr, "cannot allocate p[%ld]\n", (len/2+1));
       exit (1);
     }
+
   double *f = NULL;
   if (flag_phase != 0)
     {
@@ -442,67 +433,43 @@ int main (int argc, char** argv)
       exit (1);
     }
 
-  /* MIDI output  */
+  // MIDI output
   if (file_midi == NULL)
     {
       file_midi = (char *)malloc (sizeof (char) * (strlen("output.mid") + 1));
       strcpy (file_midi, "output.mid");
     }
 
-  /* open input wav file */
-  if (file_wav == NULL
-      || strncmp (file_wav, "-", strlen (file_wav)) == 0)
+  // open input wav file
+  SNDFILE *sf = NULL;
+  SF_INFO sfinfo;
+  if (file_wav == NULL)
     {
-      ft->fp = stdin;
+      file_wav = (char *) malloc (sizeof (char) * 2);
+      file_wav [0] = '-';
     }
-  else
-    {
-      ft->fp = fopen (file_wav, "r");
-    }
-  if (ft->fp == NULL)
+  sf = sf_open (file_wav, SFM_READ, &sfinfo);
+  if (sf == NULL)
     {
       fprintf (stderr, "Can't open input file %s : %s\n",
 	       file_wav, strerror (errno));
       exit (1);
     }
-  /* read header of wav file */
-  wavstartread (ft);
-  /* check stereo */
-  if (ft->channels == 2)
+  sndfile_print_info (&sfinfo);
+
+
+  // check stereo or mono
+  if (sfinfo.channels != 2 && sfinfo.channels != 1)
     {
-      /* allocate buffers for wavread() */
-      wavlen = len * ft->channels;
-      wavbuf = (long *)malloc (sizeof (long) * wavlen);
-      if (wavbuf == NULL)
-	{
-	  fprintf(stderr, "cannot allocate wavbuf[%ld]\n", wavlen);
-	  exit (1);
-	}
-      wavshft = hop * ft->channels;
-      wavbuf_shft = (long *)malloc (sizeof (long) * wavshft);
-      if (wavbuf_shft == NULL)
-	{
-	  fprintf(stderr, "cannot allocate wavbuf_shft[%ld]\n", wavshft);
-	  exit (1);
-	}
-    }
-  else if (ft->channels != 1)
-    {
-      fprintf (stderr, "WaoN Error: only for mono or stereo (%d)\n",
-	       ft->channels);
+      fprintf (stderr, "only mono and stereo inputs are supported.\n");
       exit (1);
     }
-  else
-    {
-      wavlen = len;
-      wavshft = hop;
-      wavbuf      = ibuf;
-      wavbuf_shft = ibuf_shft;
-    }
 
-  /* time period of FFT  */
-  t0 = (double)len/(double)(ft->rate);
-  /* window factor for FFT  */
+
+  // time period of FFT
+  t0 = (double)len/(double)sfinfo.samplerate;
+
+  // window factor for FFT
   den = init_den (len, nwin);
 
   /* set range to analyse (search notes) */
@@ -518,37 +485,30 @@ int main (int argc, char** argv)
       i1 = len/2 - 1;
     }
 
-  /* init patch  */
+  // init patch
   init_patch (file_patch, len, nwin);
   /*                      ^^^ len could be given by option separately  */
 
-  /* initialization plan for FFTW  */
+  // initialization plan for FFTW
 #ifdef FFTW2
+  rfftw_plan plan;
   plan = rfftw_create_plan (len, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
-#else
+#else // FFTW3
+  fftw_plan plan;
   plan = fftw_plan_r2r_1d (len, x, y, FFTW_R2HC, FFTW_ESTIMATE);
-#endif /* FFTW2 */
+#endif
 
-  /* for first step */
+  // for first step
   if (hop != len)
     {
-      if (wavread (ft,
-		   wavbuf + wavshft,
-		   ft->channels * (len - hop))
-	  != ft->channels * (len - hop))
+      if (sndfile_read (sf, sfinfo,
+			left + hop,
+			right + hop,
+			(len - hop))
+	  != (len - hop))
 	{
 	  fprintf (stderr, "No Wav Data!\n");
 	  exit(0);
-	}
-      /* for stereo input */
-      if (ft->channels == 2)
-	{
-	  for (i = len - hop; i < len; i ++)
-	    {
-	      ibuf [i] = (long)(0.5 *
-				((double) wavbuf [i*2 + 0] +
-				 (double) wavbuf [i*2 + 1]));
-	    }
 	}
     }
 
@@ -558,108 +518,62 @@ int main (int argc, char** argv)
   n_pitch = 0;
   for (icnt=0; ; icnt++)
     {
-      /* read from wav */
-      if (wavread (ft, wavbuf_shft, wavshft) != wavshft)
+      // shift
+      for (i = 0; i < len - hop; i ++)
+	{
+	  if (sfinfo.channels == 2) // stereo
+	    {
+	      left  [i] = left  [i + hop];
+	      right [i] = right [i + hop];
+	    }
+	  else // mono
+	    {
+	      left  [i] = left  [i + len - hop];
+	    }
+	}
+      // read from wav
+      if (sndfile_read (sf, sfinfo,
+			left  + (len - hop),
+			right + (len - hop),
+			hop)
+	  != hop)
 	{
 	  fprintf (stderr, "WaoN : end of file.\n");
 	  break;
 	}
-      /* for stereo input */
-      if (ft->channels == 2)
+
+      // set double table x[] for FFT
+      for (i = 0; i < len; i ++)
 	{
-	  for (i = 0; i < hop; i ++)
+	  if (sfinfo.channels == 2) // stereo
 	    {
-	      ibuf_shft [i] = (long)(0.5 *
-				     ((double) wavbuf_shft [i*2 + 0] +
-				      (double) wavbuf_shft [i*2 + 1]));
+	      x [i] = 0.5 * (left [i] + right [i]);
+	    }
+	  else // mono
+	    {
+	      x [i] = left [i];
 	    }
 	}
 
-      /* shift */
-      for (i = 0; i < len - hop; i++)
-	{
-	  ibuf[i] = ibuf[i + hop];
-	}
-      for (i = len - hop; i < len; i++)
-	{
-	  ibuf[i] = ibuf_shft[i - (len - hop)];
-	}
-      /* set double table x[] for FFT */
-      for (i = 0; i < len; i++)
-	{
-	  x[i] = (double)ibuf[i];
-	}
+      // calc power spectrum
+      windowing (len, x, nwin, 1.0, x);
 
-      /* calc power spectrum  */
-      /*
-      power_spectrum_fftw (len, x, y, p, den, nwin, plan);
-      */
-      double maxamp = 2147483647.0; /* 2^32-1  */
-      double twopi = 2.0 * M_PI;
-      for (i = 0; i < len; i++)
-	{
-	  x[i] /= maxamp;
-	}
-      /* window */
-      for (i = 0; i < len; i++)
-	{
-	  if (nwin == 1) /* Parzen window  */
-	    x[i] = parzen (i, len) * x[i];
-	  else if (nwin == 2) /* Welch window  */
-	    x[i] = welch (i, len) * x[i];
-	  else if (nwin == 3) /* Hanning window  */
-	    x[i] = hanning (i, len) * x[i];
-	  else if (nwin == 4) /* Hamming window  */
-	    x[i] = hamming (i, len) * x[i];
-	  else if (nwin == 5) /* Blackman window  */
-	    x[i] = blackman (i, len) * x[i];
-	  else if (nwin == 6) /* steeper window  */
-	    x[i] = steeper (i, len) * x[i];
-	}
       /* FFTW library  */
 #ifdef FFTW2
       rfftw_one (plan, x, y);
 #else // FFTW3
-      fftw_execute (plan);
-#endif // FFTW2
+      fftw_execute (plan); // x[] -> y[]
+#endif
 
+
+      double twopi = 2.0 * M_PI;
       if (flag_phase == 0)
 	{
-	  // calc power (amp^2 / den)
-	  p[0] = y[0] * y[0] / den; // DC component
-	  for (i = 1; i < (len+1)/2; ++i)  // (i < n/2 rounded up)
-	    {
-	      p[i] = (y[i] * y[i] + y[len-i] * y[len-i]) / den;
-	    }
-	  if (len % 2 == 0) // n is even
-	    {
-	      p[len/2] = y[len/2] * y[len/2] / den;  // Nyquist freq.
-	    }
+	  HC_to_amp2 (len, y, den, p);
 	}
       else
 	{
-	  // obtain the phase and power (amp^2 / den)
-	  ph1 [0] = 0.0;
-	  p [0] = y [0] * y [0] / den;
-	  for (i = 1; i < (len+1)/2; i ++)
-	    {
-	      double rl = y [i];
-	      double im = y [len - i];
-	      p [i] = (rl * rl + im * im) / den;
-	      if (p [i] > 0.0) 
-		{
-		  ph1 [i] = atan2 (im, rl);
-		}
-	      else
-		{
-		  ph1 [i] = 0.0;
-		}
-	    }
-	  if (len%2 == 0)
-	    {
-	      ph1 [len/2] = 0.0;
-	      p [len/2] = y [len/2] * y [len/2] / den;
-	    }
+	  HC_to_polar2 (len, y, 0, den, p, ph1);
 
 	  if (icnt == 0) // first step, so no ph0[] yet
 	    {
@@ -691,7 +605,7 @@ int main (int argc, char** argv)
 		    }
 
 		  // corrected frequency
-		  f[i] = (double)i / t0 + dphi * (double)(ft->rate);
+		  f[i] = (double)i / t0 + dphi * (double)sfinfo.samplerate;
 
 		  // backup the phase for the next step
 		  ph0 [i] = ph1 [i];
@@ -714,7 +628,8 @@ int main (int argc, char** argv)
   /* div is the divisions for one beat (quater-note).
    * here we assume 120 BPM, that is, 1 beat is 0.5 sec.
    * note: (hop / ft->rate) = duration for 1 step (sec) */
-  div = (long)(0.5 * (double) (ft->rate) / (double) hop);
+  //div = (long)(0.5 * (double) (ft->rate) / (double) hop);
+  div = (long)(0.5 * (double)sfinfo.samplerate / (double) hop);
   fprintf (stderr, "division = %ld\n", div);
   fprintf (stderr, "WaoN : # of notes = %d\n",nmidi);
 
@@ -727,8 +642,8 @@ int main (int argc, char** argv)
 #endif /* FFTW2 */
 
 
-  free (ibuf);
-  free (ibuf_shft);
+  free (left);
+  free (right);
   free (x);
   free (y);
   free (p);
@@ -738,11 +653,8 @@ int main (int argc, char** argv)
 
   if (file_wav != NULL) free (file_wav);
   free (file_midi);
-  if (ft->channels == 2)
-    {
-      free (wavbuf);
-      free (wavbuf_shft);
-    }
+
+  sf_close (sf);
 
   return 0;
 }
