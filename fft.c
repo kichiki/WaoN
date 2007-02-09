@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.3 2007/02/05 05:39:31 kichiki Exp $
+ * $Id: fft.c,v 1.4 2007/02/09 06:00:23 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
 #else // FFTW3
 #include <fftw3.h>
 #endif // FFTW2
+
+#include "hc.h" // HC_to_amp2()
 
 
 /* Reference: "Numerical Recipes in C" 2nd Ed.
@@ -83,16 +85,172 @@ steeper (int i, int nn)
 	  + 0.125 * cos (4.0*M_PI*(double)i/(double)(nn-1)) );
 }
 
+/* apply window function to data[]
+ * INPUT
+ *  flag_window : 0 : no-window (default -- that is, other than 1 ~ 6)
+ *                1 : parzen window
+ *                2 : welch window
+ *                3 : hanning window
+ *                4 : hamming window
+ *                5 : blackman window
+ *                6 : steeper 30-dB/octave rolloff window
+ */
+void
+windowing (int n, const double *data, int flag_window, double scale,
+	   double *out)
+{
+  int i;
+  for (i = 0; i < n; i ++)
+    {
+      switch (flag_window)
+	{
+	case 1: // parzen window
+	  out [i] = data [i] * parzen (i, n) / scale;
+	  break;
+
+	case 2: // welch window
+	  out [i] = data [i] * welch (i, n) / scale;
+	  break;
+
+	case 3: // hanning window
+	  out [i] = data [i] * hanning (i, n) / scale;
+	  break;
+
+	case 4: // hamming window
+	  out [i] = data [i] * hamming (i, n) / scale;
+	  break;
+
+	case 5: // blackman window
+	  out [i] = data [i] * blackman (i, n) / scale;
+	  break;
+
+	case 6: // steeper 30-dB/octave rolloff window
+	  out [i] = data [i] * steeper (i, n) / scale;
+	  break;
+
+	default:
+	  fprintf (stderr, "invalid flag_window\n");
+	case 0: // square (no window)
+	  out [i] = data [i] / scale;
+	  break;
+	}
+    }
+}
+
+void
+fprint_window_name (FILE *out, int flag_window)
+{
+  switch (flag_window)
+    {
+    case 0: // square (no window)
+      fprintf (stdout, "no window\n");
+      break;
+
+    case 1: // parzen window
+      fprintf (stdout, "parzen window\n");
+      break;
+
+    case 2: // welch window
+      fprintf (stdout, "welch window\n");
+      break;
+
+    case 3: // hanning window
+      fprintf (stdout, "hanning window\n");
+      break;
+
+    case 4: // hamming window
+      fprintf (stdout, "hamming window\n");
+      break;
+
+    case 5: // blackman window
+      fprintf (stdout, "blackman window\n");
+      break;
+
+    case 6: // steeper 30-dB/octave rolloff window
+      fprintf (stdout, "steeper 30-dB/octave rolloff window\n");
+      break;
+
+    default:
+      fprintf (stdout, "invalid window\n");
+      break;
+    }
+}
+
+/* prepare window for FFT
+ * INPUT
+ *  n : # of samples for FFT
+ *  flag_window : 0 : no-window (default -- that is, other than 1 ~ 6)
+ *                1 : parzen window
+ *                2 : welch window
+ *                3 : hanning window
+ *                4 : hamming window
+ *                5 : blackman window
+ *                6 : steeper 30-dB/octave rolloff window
+ * OUTPUT
+ *  density factor as RETURN VALUE
+ */
+double
+init_den (int n, char flag_window)
+{
+  double den;
+  int i;
+
+  den = 0.0;
+  for (i = 0; i < n; i ++)
+    {
+      switch (flag_window)
+	{
+	case 1: // parzen window
+	  den += parzen (i, n) * parzen (i, n);
+	  break;
+
+	case 2: // welch window
+	  den += welch (i, n) * welch (i, n);
+	  break;
+
+	case 3: // hanning window
+	  den += hanning (i, n) * hanning (i, n);
+	  break;
+
+	case 4: // hamming window
+	  den += hamming (i, n) * hamming (i, n);
+	  break;
+
+	case 5: // blackman window
+	  den += blackman (i, n) * blackman (i, n);
+	  break;
+
+	case 6: // steeper 30-dB/octave rolloff window
+	  den += steeper (i, n) * steeper (i, n);
+	  break;
+
+	default:
+	  fprintf (stderr, "invalid flag_window\n");
+	case 0: // square (no window)
+	  den += 1.0;
+	  break;
+	}
+    }
+
+  den *= (double)n;
+
+  return den;
+}
+
+
 /* calc power spectrum of real data x[n]
  * INPUT
  *  n : # of data in x
  *  x[] : data
  *  y[] : for output (you have to allocate before calling)
  *  den : weight of window function; calculated by init_den().
- *  winflg : 0 no window
- *           1 parzen window
- *           2 welch window
- *           3 hanning window
+ *  flag_window : 0 : no-window (default -- that is, other than 1 ~ 6)
+ *                1 : parzen window
+ *                2 : welch window
+ *                3 : hanning window
+ *                4 : hamming window
+ *                5 : blackman window
+ *                6 : steeper 30-dB/octave rolloff window
  * OUTPUT
  *  y[] : fourier transform of x[]
  *  p[(n+1)/2] : stored only n/2 data
@@ -100,7 +258,7 @@ steeper (int i, int nn)
 void
 power_spectrum_fftw (int n, double *x, double *y, double *p,
 		     double den,
-		     char winflg,
+		     char flag_window,
 #ifdef FFTW2
 		     rfftw_plan plan)
 #else // FFTW3
@@ -108,73 +266,17 @@ power_spectrum_fftw (int n, double *x, double *y, double *p,
 #endif // FFTW2
 {
   static double maxamp = 2147483647.0; /* 2^32-1  */
-  int i;
 
   /* window */
-  for (i=0; i<n; i++)
-    {
-      if (winflg == 0) /* square window  */
-	x[i] = x[i] / maxamp;
-      else if (winflg == 1) /* Parzen window  */
-	x[i] = parzen (i, n) * x[i] / maxamp;
-      else if (winflg == 2) /* Welch window  */
-	x[i] = welch (i, n) * x[i] / maxamp;
-      else if (winflg == 3) /* Hanning window  */
-	x[i] = hanning (i, n) * x[i] / maxamp;
-      else if (winflg == 4) /* Hamming window  */
-	x[i] = hamming (i, n) * x[i] / maxamp;
-      else if (winflg == 5) /* Blackman window  */
-	x[i] = blackman (i, n) * x[i] / maxamp;
-      else if (winflg == 6) /* steeper window  */
-	x[i] = steeper (i, n) * x[i] / maxamp;
-    }
+  windowing (n, x, flag_window, maxamp, x);
 
 /* FFTW library  */
 #ifdef FFTW2
   rfftw_one (plan, x, y);
-#else
-  fftw_execute (plan);
-#endif /* FFTW2 */
+#else // FFTW3
+  fftw_execute (plan); // x[] -> y[]
+#endif
 
-  p[0] = y[0]*y[0]/den;  // DC component
-  for (i=1; i < (n+1)/2; ++i)  // (i < n/2 rounded up)
-    p[i] = (y[i]*y[i] + y[n-i]*y[n-i])/den;
-  if (n % 2 == 0) // n is even
-    p[n/2] = y[n/2]*y[n/2]/den;  // Nyquist freq.
+  HC_to_amp2 (n, y, den, p);
 }
 
-/* prepare window for FFT
- * INPUT
- *  n : # of samples for FFT
- *  winflg : flag for window function (see above)
- * OUTPUT
- *  density factor as RETURN VALUE
- */
-double
-init_den (int n, char winflg)
-{
-  double den;
-  int i;
-
-  den = 0.0;
-  for (i=0; i<n; i++)
-    {
-      if (winflg==0)
-	den += 1.0;
-      else if (winflg == 1)
-	den += parzen (i, n) * parzen (i, n);
-      else if (winflg == 2)
-	den += welch (i, n) * welch (i, n);
-      else if (winflg == 3)
-	den += hanning (i, n) * hanning (i, n);
-      else if (winflg == 4)
-	den += hamming (i, n) * hamming (i, n);
-      else if (winflg == 5)
-	den += blackman (i, n) * blackman (i, n);
-      else if (winflg == 6)
-	den += steeper (i, n) * steeper (i, n);
-    }
-  den *= (double)n;
-
-  return den;
-}
