@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.2 2007/02/11 02:23:33 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.3 2007/02/11 23:51:30 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include <fftw3.h>
 #include "hc.h"
 #include "fft.h" // hanning()
+#include "midi.h" // midi_to_freq(), etc.
 
 #include "gtk-color.h" /* get_color() */
 
@@ -202,24 +203,6 @@ draw_wav_frame (GtkWidget *widget,
   gdk_gc_set_function (gc, backup_gc_values.function);
 }
 
-static double
-midi_to_freq (int midi)
-{
-  double f;
-
-  f = exp (log (440.0) + (double)(midi - 69) * log (2.0) / 12.0);
-  return (f);
-}
-
-static int
-freq_to_midi (double f)
-{
-  int midi;
-
-  midi = (int)(0.5 + 69.0 + 12.0 / log (2.0) * (log (f) - log (440.0)));
-  return (midi);
-}
-
 /*
  * OUTPUT (returnd value)
  *  ix : ranges from 0 to resolution for x = lofg_min to logf_max
@@ -256,8 +239,10 @@ midi_to_display_bottom (int midi, int res)
 {
   extern double logf_min, logf_max;
   int ix0, ix1;
-  ix0 = logf_to_display (log (midi_to_freq (midi-1)), res);
-  ix1 = logf_to_display (log (midi_to_freq (midi)),   res);
+  //ix0 = logf_to_display (log (midi_to_freq (midi-1)), res);
+  //ix1 = logf_to_display (log (midi_to_freq (midi)),   res);
+  ix0 = logf_to_display (midi_to_logf (midi-1), res);
+  ix1 = logf_to_display (midi_to_logf (midi),   res);
   return ((ix1 + ix0) / 2);
 }
 /* return the top position on the display for the midi note
@@ -339,7 +324,7 @@ draw_keyboard (GtkWidget *widget,
 
       // on the black key of C#
       j = 1;
-      x = log (midi_to_freq ((i+1)*12+j));
+      x = midi_to_logf ((i+1)*12+j);
       ix = bottom
 	- (int)((double)height * (x - logf_min) / (logf_max - logf_min));
       gdk_draw_line (wav_pixmap, gc,
@@ -347,7 +332,7 @@ draw_keyboard (GtkWidget *widget,
 		     9, ix);
       // on the black key of D#
       j = 3;
-      x = log (midi_to_freq ((i+1)*12+j));
+      x = midi_to_logf ((i+1)*12+j);
       ix = bottom
 	- (int)((double)height * (x - logf_min) / (logf_max - logf_min));
       gdk_draw_line (wav_pixmap, gc,
@@ -355,7 +340,7 @@ draw_keyboard (GtkWidget *widget,
 		     9, ix);
       // on the black key of F#
       j = 6;
-      x = log (midi_to_freq ((i+1)*12+j));
+      x = midi_to_logf ((i+1)*12+j);
       ix = bottom
 	- (int)((double)height * (x - logf_min) / (logf_max - logf_min));
       gdk_draw_line (wav_pixmap, gc,
@@ -363,7 +348,7 @@ draw_keyboard (GtkWidget *widget,
 		     9, ix);
       // on the black key of G#
       j = 8;
-      x = log (midi_to_freq ((i+1)*12+j));
+      x = midi_to_logf ((i+1)*12+j);
       ix = bottom
 	- (int)((double)height * (x - logf_min) / (logf_max - logf_min));
       gdk_draw_line (wav_pixmap, gc,
@@ -371,7 +356,7 @@ draw_keyboard (GtkWidget *widget,
 		     9, ix);
       // on the black key of A#
       j = 10;
-      x = log (midi_to_freq ((i+1)*12+j));
+      x = midi_to_logf ((i+1)*12+j);
       ix = bottom
 	- (int)((double)height * (x - logf_min) / (logf_max - logf_min));
       gdk_draw_line (wav_pixmap, gc,
@@ -692,6 +677,7 @@ average_PV_FFT (int resolution,
 }
 
 
+
 static void
 update_win_wav (GtkWidget *widget)
 {
@@ -709,7 +695,7 @@ update_win_wav (GtkWidget *widget)
   int i, j, k;
   int iy;
 
-  if (sf == NULL) return;
+  //if (sf == NULL) return;
 
   // first, create a GC to draw on
   gc = gdk_gc_new (widget->window);
@@ -745,27 +731,16 @@ update_win_wav (GtkWidget *widget)
 		      0, 0, 
 		      WIN_wav_width, WIN_wav_height);
 
-  // notes
   int ix, ix0;
   double x;
 
-  // horizontal line
-  get_color (widget, 0, 0, 255, gc); // blue
-  // center of the phase (zero)
-  gdk_draw_line (wav_pixmap, gc,
-		 0, bottom_phase - height_phase/2,
-		 WIN_wav_width, bottom_phase - height_phase/2);
+  int ic;
+  double y;
 
-  // draw lines C3, C4, C5, because the range is (C2, C6)
-  // i is the midi octave
-  for (i = oct_min + 1; i < oct_max; i ++)
+
+  // the following is the dynamic
+  if (sf != NULL)
     {
-      ix = logf_to_display (log (midi_to_freq ((i+1)*12)),
-			    WIN_wav_width);
-      gdk_draw_line (wav_pixmap, gc,
-		     ix, 0,
-		     ix, bottom_phase);
-    }
 
 
   // WAV window
@@ -796,9 +771,6 @@ update_win_wav (GtkWidget *widget)
   ph_min = - M_PI;
   ph_max = + M_PI;
   int rad;
-
-  int ic;
-  double y;
 
 
   // Spectrum window
@@ -949,23 +921,6 @@ update_win_wav (GtkWidget *widget)
 
   // recover GC's function
   gdk_gc_set_function (gc, backup_gc_values.function);
-
-  // put scale
-  for (i = 0; i < height_spec; i ++)
-    {
-      y = amp2_min + ((double)i + .5) * (amp2_max - amp2_min) / height_spec;
-      ic = (int)(256.0 * (y - amp2_min) / (amp2_max - amp2_min));
-      if (ic < 0)    ic = 0;
-      if (ic >= 256) ic = 255;
-      get_color (widget,
-		 colormap_power_r[ic],
-		 colormap_power_g[ic],
-		 colormap_power_b[ic],
-		 gc);
-      gdk_draw_line (wav_pixmap, gc,
-		     0, bottom_spec - i,
-		     9, bottom_spec - i);
-    }
 
   // spectrogram
   extern gint colormap_power_r[256];
@@ -1164,8 +1119,7 @@ update_win_wav (GtkWidget *widget)
 	      for (k = 0; k < height_spg; k ++)
 		{
 		  // current midi note for display position k
-		  midi = freq_to_midi (exp 
-				       (display_to_logf (k, height_spg)));
+		  midi = logf_to_midi (display_to_logf (k, height_spg));
 		  if (midi != midi0)
 		    {
 		      if (ny > 0)
@@ -1234,39 +1188,76 @@ update_win_wav (GtkWidget *widget)
   if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
     free (ave);
 
+    }
+  // the following is the static
 
-  get_color (widget, 255, 255, 255, gc); // white
+  // center of the phase (zero)
+  get_color (widget, 0, 0, 255, gc); // blue
+  gdk_draw_line (wav_pixmap, gc,
+		 0, bottom_phase - height_phase/2,
+		 WIN_wav_width, bottom_phase - height_phase/2);
+
+  // draw lines separating octaves for spectrum and phase panels
+  // i is the midi octave
+  for (i = oct_min + 1; i < oct_max; i ++)
+    {
+      ix = logf_to_display (midi_to_logf ((i+1)*12),
+			    WIN_wav_width);
+      gdk_draw_line (wav_pixmap, gc,
+		     ix, 0,
+		     ix, bottom_phase);
+    }
+
+
+  // put scale (colormap) for power spectrum
+  for (i = 0; i < height_spec; i ++)
+    {
+      y = amp2_min + ((double)i + .5) * (amp2_max - amp2_min) / height_spec;
+      ic = (int)(256.0 * (y - amp2_min) / (amp2_max - amp2_min));
+      if (ic < 0)    ic = 0;
+      if (ic >= 256) ic = 255;
+      get_color (widget,
+		 colormap_power_r[ic],
+		 colormap_power_g[ic],
+		 colormap_power_b[ic],
+		 gc);
+      gdk_draw_line (wav_pixmap, gc,
+		     0, bottom_spec - i,
+		     9, bottom_spec - i);
+    }
+
   // cref lines
+  get_color (widget, 255, 255, 255, gc); // white
   // G2 (midi 43)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (43)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (43), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // B2 (midi 47)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (47)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (47), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // D3 (midi 50)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (50)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (50), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // F3 (midi 53)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (53)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (53), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // A3 (midi 57)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (57)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (57), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
 
   // E4 (midi 64)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (64)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (64), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // G4 (midi 67)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (67)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (67), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // B4 (midi 71)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (71)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (71), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // D5 (midi 74)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (74)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (74), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
   // F5 (midi 77)
-  ix = bottom_spg - logf_to_display (log (midi_to_freq (77)), height_spg);
+  ix = bottom_spg - logf_to_display (midi_to_logf (77), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
 
 
@@ -1488,48 +1479,44 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
     case GDK_o:
       oct_max ++;
       if (oct_max > 9) oct_max = 9;
-      logf_max = log (midi_to_freq ((oct_max+1)*12));
+      logf_max = midi_to_logf ((oct_max+1)*12);
       update_win_wav (widget);
       break;
     case GDK_O:
       oct_max --;
       if (oct_max <= oct_min) oct_max = oct_min + 1; 
-      logf_max = log (midi_to_freq ((oct_max+1)*12));
+      logf_max = midi_to_logf ((oct_max+1)*12);
       update_win_wav (widget);
       break;
 
     case GDK_L:
       oct_min ++;
       if (oct_min >= oct_max) oct_min = oct_max - 1;
-      logf_min = log (midi_to_freq ((oct_min+1)*12));
+      logf_min = midi_to_logf ((oct_min+1)*12);
       update_win_wav (widget);
       break;
     case GDK_l:
       oct_min --;
       if (oct_min <= -1) oct_min = -1;
-      logf_min = log (midi_to_freq ((oct_min+1)*12));
+      logf_min = midi_to_logf ((oct_min+1)*12);
       update_win_wav (widget);
       break;
 
     case GDK_Up:
       amp2_max += 1.0;
-      //fprintf (stdout, "amp2_max = %f\n", amp2_max);
       update_win_wav (widget);
       break;
     case GDK_Down:
       amp2_max -= 1.0;
-      //fprintf (stdout, "amp2_max = %f\n", amp2_max);
       update_win_wav (widget);
       break;
 
     case GDK_Page_Up:
       amp2_min += 1.0;
-      //fprintf (stdout, "amp2_min = %f\n", amp2_min);
       update_win_wav (widget);
       break;
     case GDK_Page_Down:
       amp2_min -= 1.0;
-      //fprintf (stdout, "amp2_min = %f\n", amp2_min);
       update_win_wav (widget);
       break;
 
@@ -1763,11 +1750,11 @@ create_wav (void)
   extern double logf_min, logf_max;
   oct_min = 2; // C2 is the lowest note
   oct_max = 6; // C6 is the highest note (precisely, B5 is)
-  logf_min = log (midi_to_freq ((oct_min+1)*12));
-  logf_max = log (midi_to_freq ((oct_max+1)*12));
+  logf_min = midi_to_logf ((oct_min+1)*12);
+  logf_max = midi_to_logf ((oct_max+1)*12);
 
 
-  /* non-scrolled (plain) window */
+  // non-scrolled (plain) window
   extern gint WIN_wav_width;
   extern gint WIN_wav_height;
   WIN_wav_width = 800;
@@ -1789,7 +1776,7 @@ create_wav (void)
   gtk_widget_show (vbox);
 
 
-  /** WAV window **/
+  // WAV window
   GtkWidget *wav_win;
   wav_win = gtk_drawing_area_new ();
   gtk_widget_set_size_request (GTK_WIDGET (wav_win), -1, -1);
