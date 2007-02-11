@@ -1,7 +1,7 @@
 /* header file for midi.c --
  * subroutines to write standard MIDI file
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.h,v 1.3 2007/02/05 05:39:31 kichiki Exp $
+ * $Id: midi.h,v 1.4 2007/02/11 23:37:33 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,9 @@
 #ifndef	_MIDI_H_
 #define	_MIDI_H_
 
+#include "analyse.h" // struct ia_note
+
+
 /* for estimate pitch shift  */
 extern double adj_pitch;
 extern double pitch_shift;
@@ -28,6 +31,20 @@ extern int n_pitch;
 extern double mid2freq[128];
 
 
+/** general midi-frequency stuff **/
+double
+midi_to_freq (int midi);
+int
+freq_to_midi (double f);
+double
+midi_to_logf (int midi);
+int
+logf_to_midi (double logf);
+
+/* get std MIDI note from frequency
+ * taken into account (global) adj_pitch
+ * collecting information for (global) pitch_shift
+ */
 int get_note (double freq);
 
 int smf_header_fmt (int fd,
@@ -44,5 +61,16 @@ int write_var_len (int fd, long value);
 int read_var_len (int fd, long *value);
 int wblong (int fd, unsigned long ul);
 int wbshort (int fd, unsigned short us);
+
+/* MIDI output of data note_on_off[]
+ * INPUT
+ *  num : # of event (on/off)
+ *  *note_on_off : struct of note signal
+ *  div : divisioin
+ *  filename : filename of output midi file
+ */
+void
+output_midi (int nmidi, struct ia_note *notes, double div, char *filename);
+
 
 #endif /* !_MIDI_H_ */
