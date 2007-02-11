@@ -1,6 +1,6 @@
 /* routines to analyse power spectrum and output notes
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.c,v 1.3 2007/02/05 05:37:22 kichiki Exp $
+ * $Id: analyse.c,v 1.4 2007/02/11 23:46:15 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,10 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdio.h> /* fprintf()  */
-#include <stdlib.h> /* malloc()  */
-#include <fcntl.h> /* open()  */
-#include <unistd.h> /* lseek()  */
-#include <sys/stat.h> /* S_IRUSR, S_IWUSR  */
-#include <string.h> /* strncmp()  */
-#include <math.h> /* log10()  */
+#include <stdio.h> // fprintf()
+#include <stdlib.h> // malloc()
+#include <string.h> // memset()
+#include <math.h> // log10()
 
 /* FFTW library  */
 #ifdef FFTW2
@@ -37,6 +34,7 @@
 #include "fft.h" /* init_den(), power_spectrum_fftw() */
 #include "analyse.h"
 
+
 /* global variables  */
 int abs_flg; /* flag for absolute/relative cutoff  */
 int patch_flg; /* flag for using patch file  */
@@ -47,22 +45,24 @@ double if0; /* freq point of maximum  */
 int peak_threshold; /* to select peaks in a note  */
 
 
+/** for stage 2 : note selection process **/
+
 /* get intensity of notes from power spectrum
  * INPUT
- *  n : number of spectrum frequencies (N/2, N is # of samples in time  )
- *  p[] : power spectrum
- *  fp[] : frequencies for each bin
- *         if NULL, we use the center frequencies
- *  cut_ratio : log10 of cutoff ratio to scale velocity
- *  rel_cut_ratio : log10 of cutoff ratio relative to average
- *                  0 means cutoff is equal to average
- *  i0, i1 : considering frequency range
- *  pat[] : power spectrum of patch
+ *  p[]              : power spectrum
+ *  fp[]             : frequencies for each bin
+ *                     if NULL, we use the center frequencies
+ *  cut_ratio        : log10 of cutoff ratio to scale velocity
+ *  rel_cut_ratio    : log10 of cutoff ratio relative to average
+ *                     0 means cutoff is equal to average
+ *  (global)abs_flg  : 0 for relative, 1 for absolute
+ *  i0, i1           : considering frequency range
+ *  (global)patch_flg: whether patch is used or not.
  * OUTPUT
- *  intens[] : with 127 elements (# of notes)
+ *  intens[128]      : intensity [0,128) for each midi note
  */
 void
-note_intensity (int n, double *p, double *fp,
+note_intensity (double *p, double *fp,
 		double cut_ratio, double rel_cut_ratio,
 		int i0, int i1,
 		double t0, char *intens)
@@ -79,29 +79,42 @@ note_intensity (int n, double *p, double *fp,
   int in;
   double av;
 
-  for (i=0; i<128; i++)
-    intens[i] = 0;
+  // clear
+  for (i = 0; i < 128; i++)
+    {
+      intens[i] = 0;
+    }
 
-  /* calc average power  */
+  // calc average power
   if (abs_flg == 0)
     {
       av = 0.0;
-      for (i=i0; i<i1; i++)
-	av += p[i];
+      for (i = i0; i < i1; i++)
+	{
+	  av += p[i];
+	}
       av /= (double)(i1 - i0);
     }
   else
-    av = 1.0;
+    {
+      av = 1.0;
+    }
 
   for (;;)
     {
-      /* search max  */
+      // search peak
+      // set the threshold to the average
       if (abs_flg == 0)
-	max = av * pow (10.0, rel_cut_ratio);
+	{
+	  max = av * pow (10.0, rel_cut_ratio);
+	}
       else
-	max = pow (10.0, cut_ratio);
+	{
+	  max = pow (10.0, cut_ratio);
+	}
+
       imax = -1;
-      for (i=i0; i<i1; i++)
+      for (i = i0; i < i1; i++)
 	{
 	  if (p[i] > max)
 	    {
@@ -109,69 +122,266 @@ note_intensity (int n, double *p, double *fp,
 	      imax = i;
 	    }
 	}
-      if (imax == -1) /* no maximum  */
+
+      if (imax == -1) // no peak found
 	break;
 
-      /* get midi note # from imax (FFT freq index)  */
+      // get midi note # from imax (FFT freq index)
       if (fp == NULL)
-	freq = (double)imax/t0; /* freq of maximum  */
+	{
+	  freq = (double)imax / t0;
+	}
       else
-	freq = fp [imax];
-      in = get_note (freq); /* midi note #  */
+	{
+	  freq = fp [imax];
+	}
+      in = get_note (freq); // midi note #
       if (in < 0 || in >= 128) // fail safe
 	{
+	  continue;
+	  /* I don't know why I am writing those... so just comment out
 	  fprintf (stderr, "imax = %d, freq = %f (%f), in = %d\n",
 		   imax, freq, (double)imax/t0, in);
-	  freq = (double)imax/t0; /* freq of maximum  */
-	  in = get_note (freq); /* midi note #  */
+	  freq = (double)imax/t0; // freq of maximum
+	  in = get_note (freq); // midi note #
+	  */
 	}
 
-      if (intens[in] == 0) /* if second time on same note, skip  */
+      // if second time on same note, skip
+      if (intens[in] == 0)
 	{
-	  /* scale intensity (velocity) of the peak  */
-	  /* power range from 10^cut_ratio to 10^0 is scaled  */
-	  x = 127.0/(double)(-cut_ratio)
+	  /* scale intensity (velocity) of the peak
+	   * power range from 10^cut_ratio to 10^0 is scaled  */
+	  x = 127.0 / (double)(-cut_ratio)
 	    * (log10 (p[imax]) - (double) cut_ratio);
 	  if (x >= 128.0)
-	    intens[in] = 127;
+	    {
+	      intens[in] = 127;
+	    }
 	  else if (x > 0)
-	    intens[in] = (int)x;
+	    {
+	      intens[in] = (int)x;
+	    }
 	}
 
-      /* subtract peak upto minimum in both sides  */
+      // subtract peak upto minimum in both sides
       if (patch_flg == 0)
 	{
 	  p[imax] = 0.0;
-	  /* right side  */
-	  for (i=imax+1;
-	      p[i] != 0.0 && i<(i1-1) && p[i]>=p[i+1];
+	  // right side
+	  for (i = imax+1;
+	      p[i] != 0.0 && i < (i1-1) && p[i] >= p[i+1];
 	      i++)
 	    p[i] = 0.0;
 	  if (i == i1-1)
 	    p[i] = 0.0;
-	  /* left side  */
-	  for (i=imax-1;
-	      p[i] != 0.0 && i>i0 && p[i-1]<=p[i];
-	      i--)
+	  // left side
+	  for (i = imax-1;
+	       p[i] != 0.0 && i > i0 && p[i-1] <= p[i];
+	       i--)
 	    p[i] = 0.0;
 	  if (i == i0)
 	    p[i] = 0.0;
 	}
       else
 	{
-	  for (i=i0; i<i1; i++)
+	  for (i = i0; i < i1; i++)
 	    {
 	      if (fp == NULL)
-		f = (double)i/t0; /* freq of maximum  */
+		{
+		  f = (double)i / t0;
+		}
 	      else
-		f = fp [i];
+		{
+		  f = fp [i];
+		}
 	      p[i] -= max * patch_power (f/freq);
 	      if (p[i] <0)
-		p[i] = 0;
+		{
+		  p[i] = 0;
+		}
 	    }
 	}
     }
 }
+
+
+/*
+ * INPUT
+ *  amp2 [(len/2)+1] : power spectrum (amp^2)
+ *  dphi [(len/2)+1] : PV freq correction factor defined by
+ *                     (1/2pi hop)principal(phi - phi0 - Omega),
+ *                     therefore, the corrected freq is
+ *                     (k/len + dphi[k])*samplerate [Hz].
+ *                     give NULL for plain FFT power spectrum.
+ * OUTPUT
+ *  ave2 [128] : averaged amp2 for each midi note
+ */
+void
+average_FFT_into_midi (int len, double samplerate,
+		       const double *amp2, const double *dphi,
+		       double *ave2)
+{
+  int k;
+  int midi;
+  double f;
+  int *n = NULL;
+  n = (int *) malloc (sizeof (int) * 128);
+
+  for (midi = 0; midi < 128; midi ++)
+    {
+      ave2 [midi] = 0.0;
+      n [midi] = 0;
+    }
+
+  for (k = 1; k < (len+1)/2; k ++)
+    {
+      // corrected frequency
+      if (dphi == NULL)
+	{
+	  f = (double)k / (double)len * samplerate;
+	}
+      else
+	{
+	  f = ((double)k / (double)len + dphi [k]) * samplerate;
+	}
+
+      midi = freq_to_midi (f);
+      if (midi >= 0 && midi < 128)
+	{
+	  ave2 [midi] += sqrt (amp2 [k]);
+	  n [midi] ++;
+	}
+    }
+
+  // average and square
+  for (midi = 0; midi < 128; midi ++)
+    {
+      if (n [midi] > 0)
+	{
+	  ave2 [midi] = ave2 [midi] / (double)n [midi]; // average
+	  ave2 [midi] = ave2 [midi] * ave2 [midi]; // square
+	}
+    }
+
+  free (n);
+}
+
+/* pickup notes and its power from a table of power for each midi note
+ * INPUT
+ *  amp2midi [128]  : amp^2 for each midi note
+ *  cut_ratio       : log10 of cutoff ratio to scale velocity
+ *  rel_cut_ratio   : log10 of cutoff ratio relative to average
+ *                    0 means cutoff is equal to average
+ *  i0, i1          : considering midi note range (NOT FREQUENCY INDEX!!)
+ *  (global)abs_flg : 0 for relative, 1 for absolute
+ * OUTPUT
+ *  intens[]        : with 127 elements (# of notes)
+ */
+void
+pickup_notes (double *amp2midi,
+	      double cut_ratio, double rel_cut_ratio,
+	      int i0, int i1,
+	      char *intens)
+{
+  extern int abs_flg; /* flag for absolute/relative cutoff  */
+
+  //double oct_fac = 0.5; // octave harmonics factor
+  double oct_fac = 0.0;
+
+  int i;
+  int imax;
+  double max;
+  double x;
+  int in;
+  double av;
+
+  // clear
+  for (i = 0; i < 128; i++)
+    {
+      intens[i] = 0;
+    }
+
+  // calc average power
+  if (abs_flg == 0)
+    {
+      av = 0.0;
+      for (i = i0; i < i1; i++)
+	{
+	  av += amp2midi[i];
+	}
+      av /= (double)(i1 - i0);
+    }
+  else
+    {
+      av = 1.0;
+    }
+
+  for (;;)
+    {
+      // search peak
+      // set the threshold to the average
+      if (abs_flg == 0)
+	{
+	  max = av * pow (10.0, rel_cut_ratio);
+	}
+      else
+	{
+	  max = pow (10.0, cut_ratio);
+	}
+
+      imax = -1;
+      for (i = i0; i < i1; i++)
+	{
+	  if (amp2midi[i] > max)
+	    {
+	      max = amp2midi[i];
+	      imax = i;
+	    }
+	}
+
+      if (imax == -1) // no peak found
+	break;
+
+      // so that imax is THE midi note
+      in = imax;
+
+      // if second time on same note, skip
+      if (intens[in] == 0)
+	{
+	  /* scale intensity (velocity) of the peak  */
+	  /* power range from 10^cut_ratio to 10^0 is scaled  */
+	  x = 127.0 / (double)(-cut_ratio)
+	    * (log10 (amp2midi[in]) - (double) cut_ratio);
+	  if (x >= 128.0)
+	    {
+	      intens[in] = 127;
+	    }
+	  else if (x > 0)
+	    {
+	      intens[in] = (int)x;
+	    }
+
+	  // octave harmonics reduction
+	  if (oct_fac > 0.0)
+	    {
+	      for (i = in + 12; in < 128; in += 12)
+		{
+		  amp2midi[i] = sqrt (amp2midi[i])
+		    - oct_fac * sqrt (amp2midi[i-12]);
+		  if (amp2midi[i] < 0.0) amp2midi[i] = 0.0;
+		  else amp2midi[i] = amp2midi[i] * amp2midi[i];
+		}
+	    }
+	}
+
+      // subtract the peak bin
+      amp2midi[imax] = 0.0;
+    }
+}
+
+
+/** for stage 3 : time-difference check for note-on/off **/
 
 /* check note on and off comparing intens[] now and last times
  * INPUT
@@ -264,162 +474,6 @@ chk_note_on_off (int icnt, char i_lsts[], char * on_lst[],
   return notes;
 }
 
-/* MIDI output of data note_on_off[]
- * INPUT
- *  num : # of event (on/off)
- *  *note_on_off : struct of note signal
- *  div : divisioin
- *  filename : filename of output midi file
- */
-void
-output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
-{
-  int fd; /* file descriptor of output midi file  */
-  char stdout_flg;
-  int i;
-  int idt;
-  int p_midi;
-  int n_midi;
-  int h_midi; /* pointer of track header  */
-  int dh_midi; /* pointer of data head  */
-  int num; /* index of ia_note within a segment  */
-
-  struct ia_note *next;
-  struct note_sig *cur_note;
-  int last_step;
-
-  /* file open */
-  if (strncmp (filename, "-", strlen (filename)) == 0)
-    {
-      fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
-      stdout_flg = 1;
-    }
-  else
-    {
-      fd = open (filename, O_RDWR| O_CREAT| O_TRUNC, S_IRUSR| S_IWUSR);
-      stdout_flg = 0;
-    }
-  if (fd < 0)
-    {
-      fprintf (stderr, "cannot open %s\n", filename);
-      exit (1);
-    }
-  /* MIDI header */
-  p_midi = 0;
-  n_midi = smf_header_fmt (fd, 0, 1, div);
-  if (n_midi != 14)
-    {
-      fprintf (stderr, "Error duing writing mid! %d (header)\n", p_midi);
-      return;
-    }
-  p_midi += n_midi;
-
-  h_midi = p_midi; /* pointer of track-head  */
-  n_midi = smf_track_head (fd, (7+4*nmidi));
-  if (n_midi != 8)
-    {
-      fprintf (stderr, "Error duing writing mid! %d (track header)\n", p_midi);
-      return;
-    }
-  p_midi += n_midi;
-
-  /* head of data  */
-  dh_midi = p_midi;
-
-  /* tempo set  */
-  n_midi = smf_tempo (fd, 500000); // 0.5 sec => 120 bpm for 4/4
-  if (n_midi != 7)
-    {
-      fprintf (stderr, "Error duing writing mid! %d (tempo)\n", p_midi);
-      return;
-    }
-  p_midi += n_midi;
-
-  /* ch.0 prog. 0  */
-  n_midi = smf_prog_change (fd, 0, 0);
-  if (n_midi != 3)
-    {
-      fprintf (stderr, "Error duing writing mid! %d (prog change)\n", p_midi);
-      return;
-    }
-  p_midi += n_midi;
-
-  last_step=0; /* delta time  */
-  for (i=0, num=0; i<nmidi; i++, num++)
-    {
-      if (num >= BLOCK_SIZE)
-	{
-	  next = notes->next;
-	  if (next == NULL)
-	    {
-	      fprintf (stderr, "i=%d / %d - %d\n", i, nmidi, num);
-	      fprintf (stderr, "EOF\n");
-	      goto midi_end;
-	    }
-	  notes = next;
-	  num = 0;
-	}
-      cur_note = &(notes->note[num]);
-
-      /* calc delta time  */
-      if (i==0)
-	idt = 0;
-      else
-	idt = cur_note->step - last_step;
-      last_step = cur_note->step;
-
-      if (cur_note->sig == 1) /* start note  */
-	n_midi = smf_note_on (fd, idt,
-			      cur_note->note,
-			      cur_note->intensity,
-			      0);
-      else /* stop note */
-	n_midi = smf_note_off (fd, idt,
-			       cur_note->note,
-			       64, /* default  */
-			       0);
-      if (n_midi != 4)
-	{
-	  fprintf (stderr, "Error duing writing mid! %d (note)\n",
-		   p_midi);
-	  /*return;*/
-	}
-      p_midi += n_midi;
-    }
-
- midi_end:
-  n_midi = smf_track_end (fd);
-  if (n_midi != 4)
-    {
-      fprintf (stderr, "Error duing writing mid! %d (track end)\n",
-	       p_midi);
-      return;
-    }
-  p_midi += n_midi;
-
-  if (stdout_flg == 0) /* random-accessible file  */
-    {
-      /* re-calculate # of data in track  */
-      if (lseek (fd, h_midi, SEEK_SET) < 0)
-	{
-	  fprintf (stderr, "Error duing lseek %d (re-calc)\n", h_midi);
-	  return;
-	}
-      n_midi = smf_track_head (fd, (p_midi - dh_midi));
-      if (n_midi != 8)
-	{
-	  fprintf (stderr, "Error duing write %d (re-calc)\n", p_midi);
-	  return;
-	}
-    }
-  else /* stdout  */
-    {
-      if ((7 + 4 * nmidi) != (p_midi - dh_midi))
-	fprintf(stderr, "WaoN warning : data size seems to be different.\n");
-    }
-
-  close (fd);
-}
 
 /* return power of patch relative to its maximum
  * at the freqency where the ratio to the maximum is 'freq_ratio'
