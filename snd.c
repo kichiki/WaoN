@@ -1,6 +1,6 @@
 /* some wrapper for libsndfile
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: snd.c,v 1.1 2007/02/09 05:58:14 kichiki Exp $
+ * $Id: snd.c,v 1.2 2007/02/11 02:21:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -59,6 +59,10 @@ long sndfile_read_at (SNDFILE *sf, SF_INFO sfinfo,
 		      int len)
 {
   sf_count_t status;
+
+  // check the range
+  if (start < 0) return 0;
+  else if (start >= sfinfo.frames) return 0;
 
   // seek the point start
   status = sf_seek  (sf, (sf_count_t)start, SEEK_SET);
