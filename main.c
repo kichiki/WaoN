@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.4 2007/02/09 06:03:18 kichiki Exp $
+ * $Id: main.c,v 1.5 2007/02/11 23:49:46 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -122,9 +122,6 @@ int main (int argc, char** argv)
   double den; /* weight of window function for FFT  */
   double t0; /* time-period for FFT (inverse of smallest frequency)  */
 
-  double *x; /* wave data for FFT  */
-  double *y; /* spectrum data for FFT */ 
-  double *p; /* power spectrum  */
   long hop, len, div;
   int num, nmidi;
 
@@ -382,6 +379,8 @@ int main (int argc, char** argv)
       exit (1);
     }
 
+  double *x = NULL; /* wave data for FFT  */
+  double *y = NULL; /* spectrum data for FFT */ 
 #ifdef FFTW2
   x = (double *)malloc (sizeof (double) * len);
   y = (double *)malloc (sizeof (double) * len);
@@ -400,6 +399,7 @@ int main (int argc, char** argv)
       exit (1);
     }
 
+  double *p = NULL; /* power spectrum  */
   p = (double *)malloc (sizeof (double) * (len / 2 + 1));
   if (p == NULL)
     {
@@ -407,31 +407,48 @@ int main (int argc, char** argv)
       exit (1);
     }
 
-  double *f = NULL;
+  double *p0 = NULL;
+  double *dphi = NULL;
+  double *ph0 = NULL;
+  double *ph1 = NULL;
   if (flag_phase != 0)
     {
-      f = (double *)malloc (sizeof (double) * (len / 2 + 1));
-      if (f == NULL)
+      p0 = (double *)malloc (sizeof (double) * (len / 2 + 1));
+      if (p0 == NULL)
 	{
-	  fprintf (stderr, "cannot allocate f[%ld]\n", (len/2+1));
+	  fprintf (stderr, "cannot allocate p0[%ld]\n", (len/2+1));
+	  exit (1);
+	}
+
+      dphi = (double *)malloc (sizeof (double) * (len / 2 + 1));
+      if (dphi == NULL)
+	{
+	  fprintf (stderr, "cannot allocate dphi[%ld]\n", (len/2+1));
+	  exit (1);
+	}
+
+      ph0 = (double *)malloc (sizeof (double) * (len/2+1));
+      ph1 = (double *)malloc (sizeof (double) * (len/2+1));
+      if (ph0 == NULL)
+	{
+	  fprintf (stderr, "cannot allocate ph0[%ld]\n", (len/2+1));
+	  exit (1);
+	}
+      if (ph1 == NULL)
+	{
+	  fprintf (stderr, "cannot allocate ph1[%ld]\n", (len/2+1));
 	  exit (1);
 	}
     }
 
-  double *ph0 = NULL;
-  double *ph1 = NULL;
-  ph0 = (double *)malloc (sizeof (double) * (len/2+1));
-  ph1 = (double *)malloc (sizeof (double) * (len/2+1));
-  if (ph0 == NULL)
+  double *pmidi = NULL;
+  pmidi = (double *)malloc (sizeof (double) * 128);
+  if (pmidi == NULL)
     {
-      fprintf (stderr, "cannot allocate ph0[%ld]\n", (len/2+1));
+      fprintf (stderr, "cannot allocate pmidi[%d]\n", 128);
       exit (1);
     }
-  if (ph1 == NULL)
-    {
-      fprintf (stderr, "cannot allocate ph1[%ld]\n", (len/2+1));
-      exit (1);
-    }
+
 
   // MIDI output
   if (file_midi == NULL)
@@ -555,7 +572,8 @@ int main (int argc, char** argv)
 	    }
 	}
 
-      // calc power spectrum
+
+      // stage 1: calc power spectrum
       windowing (len, x, nwin, 1.0, x);
 
       /* FFTW library  */
@@ -565,8 +583,6 @@ int main (int argc, char** argv)
       fftw_execute (plan); // x[] -> y[]
 #endif
 
-
-      double twopi = 2.0 * M_PI;
       if (flag_phase == 0)
 	{
 	  HC_to_amp2 (len, y, den, p);
@@ -577,44 +593,83 @@ int main (int argc, char** argv)
 
 	  if (icnt == 0) // first step, so no ph0[] yet
 	    {
-	      for (i=0; i < (len/2+1); ++i) // full span
+	      for (i = 0; i < (len/2+1); ++i) // full span
 		{
 		  // no correction
-		  f[i] = (double)i / t0;
+		  dphi[i] = 0.0;
 
 		  // backup the phase for the next step
+		  p0  [i] = p   [i];
 		  ph0 [i] = ph1 [i];
 		}	  
 	    }
-	  if (icnt > 0)
+	  else // icnt > 0
 	    {
 	      // freq correction by phase difference
-	      for (i=0; i < (len/2+1); ++i) // full span
+	      for (i = 0; i < (len/2+1); ++i) // full span
 		{
-		  double dphi;
-		  dphi = ph1[i] - ph0[i]
+		  double twopi = 2.0 * M_PI;
+		  //double dphi;
+		  dphi[i] = ph1[i] - ph0[i]
 		    - twopi * (double)i / (double)len * (double)hop;
-		  for (; dphi >= M_PI; dphi -= twopi);
-		  for (; dphi < -M_PI; dphi += twopi);
+		  for (; dphi[i] >= M_PI; dphi[i] -= twopi);
+		  for (; dphi[i] < -M_PI; dphi[i] += twopi);
 
-		  dphi = dphi / twopi / (double)hop;
-		  if (fabs (dphi / ((double)i/(double)len)) > 0.5)
-		    {
-		      // too much difference
-		      dphi = 0.0;
-		    }
-
-		  // corrected frequency
-		  f[i] = (double)i / t0 + dphi * (double)sfinfo.samplerate;
+		  // frequency correction
+		  // NOTE: freq is (i / len + dphi) * samplerate [Hz]
+		  dphi[i] = dphi[i] / twopi / (double)hop;
 
 		  // backup the phase for the next step
+		  p0  [i] = p   [i];
 		  ph0 [i] = ph1 [i];
+
+		  // then, average the power for the analysis
+		  p[i] = 0.5 *(sqrt (p[i]) + sqrt (p0[i]));
+		  p[i] = p[i] * p[i];
 		}
 	    }
 	}
 
-      note_intensity (len/2, p, f,
-		      cut_ratio, rel_cut_ratio, i0, i1, t0, i_lsts);
+      // stage 2: pickup notes
+      /* new code
+      if (flag_phase == 0)
+	{
+	  average_FFT_into_midi (len, (double)sfinfo.samplerate,
+				 p, NULL,
+				 pmidi);
+	}
+      else
+	{
+	  average_FFT_into_midi (len, (double)sfinfo.samplerate,
+				 p, dphi,
+				 pmidi);
+	}
+      pickup_notes (pmidi,
+		    cut_ratio, rel_cut_ratio,
+		    notelow, notetop,
+		    i_lsts);
+      */
+
+      /* old code */
+      if (flag_phase == 0)
+	{
+	  note_intensity (p, NULL,
+			  cut_ratio, rel_cut_ratio, i0, i1, t0, i_lsts);
+	}
+      else
+	{
+	  // make corrected frequency (i / len + dphi) * samplerate [Hz]
+	  for (i = 0; i < (len/2+1); ++i) // full span
+	    {
+	      dphi[i] = ((double)i / (double)len + dphi[i])
+		* (double)sfinfo.samplerate;
+	    }
+	  note_intensity (p, dphi,
+			  cut_ratio, rel_cut_ratio, i0, i1, t0, i_lsts);
+	}
+
+
+      // stage 3: check previous time for note-on/off
       notes = chk_note_on_off (icnt, i_lsts, on_lst,
 			       notes, &n_notes, &num);
       nmidi += num;
@@ -647,7 +702,9 @@ int main (int argc, char** argv)
   free (x);
   free (y);
   free (p);
-  if (f != NULL) free (f);
+  if (p0 != NULL) free (p0);
+  if (dphi != NULL) free (dphi);
+  if (pmidi != NULL) free (pmidi);
   if (ph0 != NULL) free (ph0);
   if (ph1 != NULL) free (ph1);
 
