@@ -1,6 +1,6 @@
 /* half-complex format routines
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.c,v 1.1 2007/02/09 05:56:08 kichiki Exp $
+ * $Id: hc.c,v 1.2 2007/02/14 03:33:15 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,6 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include <math.h>
+#include <stdlib.h> // malloc()
 
 
 /* return angle (arg) of the complex number (freq(k),freq(len-k));
@@ -177,6 +178,47 @@ void polar_to_HC (long len, const double * amp, const double * phs,
     }
 }
 
+/* convert polar to HC with the scaling in freq domain
+ * INPUT
+ *  len           : N
+ *  amp [len/2+1] :
+ *  phs [len/2+1] :
+ *  scale         : integer scale factor
+ *                  bin k in the input is placed in scale*k in the output
+ *                  except for k=0 and k=len/2 for even len.
+ * OUTPUT
+ *  freq [len*scale] :
+ */
+void polar_to_HC_scale (long len, const double * amp, const double * phs,
+			int conj, int scale,
+			double * freq)
+{
+  int i;
+  double rl, im;
+
+  // zero clear
+  for (i = 0; i < len*scale; i ++)
+    {
+      freq [i] = 0.0;
+    }
+
+  /* calc phase and amplitude (power) */
+  freq [0] = amp [0];
+  for (i = 1; i < (len+1)/2; i ++)
+    {
+      rl = + amp [i] * cos (phs [i]);
+      if (conj == 0) im = + amp [i] * sin (phs [i]);
+      else           im = - amp [i] * sin (phs [i]);
+
+      freq [i*scale] = rl;
+      freq [len*scale - i*scale] = im;
+    }
+  if (len%2 == 0)
+    {
+      freq [len] = amp [len/2];
+    }
+}
+
 /* Z = X * Y, that is,
  * (rz + i iz) = (rx + i ix) * (ry + i iy)
  *             = (rx * ry - ix * iy) + i (rx * iy + ix * ry)
@@ -284,3 +326,36 @@ void HC_puckette_lock (long len, const double *y,
     }
 }
 
+/* Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+ * Reference: M.Puckette (1995)
+ * INPUT
+ *  f_out_old[] : Y[u_{i-1}], synthesis-FFT at (i-1) step
+ *  fs[]        : X[s_i], analysis-FFT at starting time of i step
+ *  ft[]        : X[t_i], analysis-FFT at terminal time of i step
+ *                Note: t_i - s_i = u_i - u_{i-1} = hop_out
+ * OUTPUT
+ *  f_out[]     : Y[u_i], synthesis-FFT at i step
+ */
+void
+HC_complex_phase_vocoder (int len, const double *fs, const double *ft,
+			  const double *f_out_old, 
+			  double *f_out)
+{
+  double *tmp1 = NULL;
+  double *tmp2 = NULL;
+  tmp1 = (double *)malloc (sizeof (double) * len);
+  tmp2 = (double *)malloc (sizeof (double) * len);
+
+  // tmp1 = Y[u_{i-1}]/X[s(i)]
+  HC_div (len, f_out_old, fs, tmp1);
+  HC_abs (len, tmp1, tmp2);
+
+  // tmp1 = (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+  HC_div (len, tmp1, tmp2, tmp1);
+
+  // f_out = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+  HC_mul (len, ft, tmp1, f_out);
+
+  free (tmp1);
+  free (tmp2);
+}

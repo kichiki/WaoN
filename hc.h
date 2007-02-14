@@ -1,7 +1,7 @@
 /* header file for hc.c --
  * half-complex format routines
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.h,v 1.1 2007/02/09 05:56:32 kichiki Exp $
+ * $Id: hc.h,v 1.2 2007/02/14 03:33:53 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -90,6 +90,21 @@ void polar_to_HC (long len, const double * amp, const double * phs,
 		  int conj,
 		  double * freq);
 
+/* convert polar to HC with the scaling in freq domain
+ * INPUT
+ *  len           : N
+ *  amp [len/2+1] :
+ *  phs [len/2+1] :
+ *  scale         : integer scale factor
+ *                  bin k in the input is placed in scale*k in the output
+ *                  except for k=0 and k=len/2 for even len.
+ * OUTPUT
+ *  freq [len*2] :
+ */
+void polar_to_HC_scale (long len, const double * amp, const double * phs,
+			int conj, int scale,
+			double * freq);
+
 /* Z = X * Y, that is,
  * (rz + i iz) = (rx + i ix) * (ry + i iy)
  *             = (rx * ry - ix * iy) + i (rx * iy + ix * ry)
@@ -110,6 +125,21 @@ void HC_abs (long len, const double *x,
 
 void HC_puckette_lock (long len, const double *y,
 		       double *z);
+
+/* Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+ * Reference: M.Puckette (1995)
+ * INPUT
+ *  f_out_old[] : Y[u_{i-1}], synthesis-FFT at (i-1) step
+ *  fs[]        : X[s_i], analysis-FFT at starting time of i step
+ *  ft[]        : X[t_i], analysis-FFT at terminal time of i step
+ *                Note: t_i - s_i = u_i - u_{i-1} = hop_out
+ * OUTPUT
+ *  f_out[]     : Y[u_i], synthesis-FFT at i step
+ */
+void
+HC_complex_phase_vocoder (int len, const double *fs, const double *ft,
+			  const double *f_out_old, 
+			  double *f_out);
 
 
 #endif /* !_HC_H_ */
