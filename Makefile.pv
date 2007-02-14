@@ -1,0 +1,45 @@
+# Makefile for pv
+# Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
+# $Id: Makefile.pv,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+
+
+LIBS    =\
+ `esd-config --libs`\
+ -lfftw3 \
+ -lsndfile \
+ -lm
+
+CFLAGS  =\
+ -Wall -O3\
+ `esd-config --cflags`\
+
+LDFLAGS      = 
+
+CC           = cc
+LD           = $(CC)
+RM           = rm -f
+
+
+all:	pv
+
+OBJ = \
+	pv.o \
+	pv-complex.o \
+	pv-conventional.o \
+	pv-ellis.o \
+	pv-freq.o \
+	pv-loose-lock-complex.o \
+	pv-loose-lock.o \
+	hc.o \
+	fft.o \
+	snd.o \
+	esd-wrapper.o
+
+pv:	$(OBJ)
+	$(LD) $(LDFLAGS) -o pv $(OBJ) $(LIBS)
+
+clean:
+	$(RM) *.o
+
+distclean:
+	$(RM) pv *.o
