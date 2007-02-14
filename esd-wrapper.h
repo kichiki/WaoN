@@ -1,6 +1,7 @@
-/* some wrapper for esound
+/* header file for esd-wrapper.c --
+ * some wrapper for esound
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: esd-wrapper.h,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+ * $Id: esd-wrapper.h,v 1.2 2007/02/14 04:01:43 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

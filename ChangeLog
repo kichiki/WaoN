@@ -1,3 +1,31 @@
+2007-02-13  Kengo Ichiki  <ichiki@tpr60>
+
+	* esd-wrapper.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* esd-wrapper.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-loose-lock-complex.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-loose-lock-complex.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-loose-lock.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-loose-lock.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-freq.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-freq.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-ellis.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-ellis.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-complex.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-complex.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-conventional.h: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv-conventional.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	* pv.c: 1.1 2007/02/14 03:46:11 kichiki Exp
+	imported from working directory.
+
+	* hc.h: 1.2 2007/02/14 03:33:53 kichiki Exp
+	* hc.c: 1.2 2007/02/14 03:33:15 kichiki Exp
+	(polar_to_HC_scale): added for pv_freq().
+	(HC_complex_phase_vocoder): added.
+
+	* fft.h: 1.6 2007/02/14 03:31:10 kichiki Exp
+	* fft.c: 1.5 2007/02/14 03:30:13 kichiki Exp
+	(apply_FFT): added.
+
 2007-02-11  Kengo Ichiki  <ichiki@tpr60>
 
 	* gwaon-wav.c: 1.3 2007/02/11 23:51:30 kichiki Exp
@@ -46,6 +74,8 @@
 
 2007-02-08  Kengo Ichiki  <ichiki@tpr60>
 
+	* Release 0.3.
+
 	* main.c: 1.4 2007/02/09 06:03:18 kichiki Exp
 	use libsndfile to handle input file.
 
@@ -73,6 +103,10 @@
 
 	* midi.c: 1.3 2007/02/05 05:36:44 kichiki Exp
 	on comments, octave of midi was wrong. (code is fine.)
+
+2006-09-22  Kengo Ichiki  <ichiki@tpr60>
+
+	* Release 0.2.
 
 Mon Jan 11 00:33:39 1999  Kengo ICHIKI  <ichiki@konakia.che.caltech.edu>
 

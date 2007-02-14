@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.3 2007/02/11 23:51:30 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.4 2007/02/14 04:01:43 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1692,6 +1692,21 @@ make_color_map (void)
   colormap_power_b[255] = 0;
 }
 
+
+static gboolean
+wav_delete (GtkWidget *widget,
+	    GdkEvent *event,
+	    gpointer data)
+{
+  /* If you return FALSE in the "delete_event" signal handler,
+   * GTK will emit the "destroy" signal. Returning TRUE means
+   * you don't want the window to be destroyed.
+   * This is useful for popping up 'are you sure you want to quit?'
+   * type dialogs. */
+
+  return FALSE;
+}
+
 /** **/
 void
 create_wav (void)
@@ -1762,12 +1777,14 @@ create_wav (void)
 
   GtkWidget *window;
   window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  gtk_signal_connect (GTK_OBJECT (window), "destroy",
-		      GTK_SIGNAL_FUNC (gtk_widget_destroy),
-		      GTK_OBJECT (window));
   gtk_widget_set_name (window, "gWaoN");
   gtk_widget_set_size_request (GTK_WIDGET (window),
 			       WIN_wav_width, WIN_wav_height);
+  gtk_signal_connect (GTK_OBJECT (window), "destroy",
+		      GTK_SIGNAL_FUNC (gtk_widget_destroy),
+		      GTK_OBJECT (window));
+  gtk_signal_connect (GTK_OBJECT (window), "delete_event",
+		      GTK_SIGNAL_FUNC (wav_delete), NULL);
 
   GtkWidget *vbox;
   vbox = gtk_vbox_new (FALSE, 0);
