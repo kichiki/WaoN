@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.4 2007/02/09 06:00:23 kichiki Exp $
+ * $Id: fft.c,v 1.5 2007/02/14 03:30:13 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -175,6 +175,38 @@ fprint_window_name (FILE *out, int flag_window)
       break;
     }
 }
+
+/* apply FFT with the window and return amplitude and phase
+ * this is a wrapper mainly for phase vocoder process
+ * INPUT
+ *  len : FFT length
+ *  data[len] : data to analyze
+ *  flag_window : window type
+ *  plan, in[len], out[len] : for FFTW3
+ *  scale : amplitude scale factor
+ * OUTPUT
+ *  amp[len/2+1] : amplitude multiplied by the factor "scale" above
+ *  phs[len/2+1] : phase
+ */
+void
+apply_FFT (int len, const double *data, int flag_window,
+	   fftw_plan plan, double *in, double *out,
+	   double scale,
+	   double *amp, double *phs)
+{
+  int i;
+
+  windowing (len, data, flag_window, 1.0, in);
+  fftw_execute (plan); // FFT: in[] -> out[]
+  HC_to_polar (len, out, 0, amp, phs); // freq[] -> (amp, phs)
+
+  // some scaling
+  for (i = 0; i < (len/2)+1; i ++)
+    {
+      amp [i] *= scale;
+    }
+}
+
 
 /* prepare window for FFT
  * INPUT
