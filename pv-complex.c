@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-complex.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+ * $Id: pv-complex.c,v 1.2 2007/02/16 06:29:14 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -51,7 +51,6 @@ void pv_complex (const char *file, const char *outfile,
   int i;
 
   // open wav file
-  int samplerate;
   long read_status;
   // libsndfile version
   SNDFILE *sf = NULL;
@@ -64,7 +63,6 @@ void pv_complex (const char *file, const char *outfile,
       exit (1);
     }
   sndfile_print_info (&sfinfo);
-  samplerate = sfinfo.samplerate;
 
 
   /* allocate buffers  */
@@ -76,29 +74,18 @@ void pv_complex (const char *file, const char *outfile,
 
   // esd sound device
   int status;
-  int out_bits     = ESD_BITS16;
-  int out_channels = ESD_STEREO;
-  int out_mode     = ESD_STREAM;
-  int out_func     = ESD_PLAY;
-  int out_format;
-  out_format = out_bits | out_channels | out_mode | out_func;
-
   int esd = 0; // for compiler warning...
   SNDFILE *sfout = NULL;
   SF_INFO sfout_info;
   if (outfile == NULL)
     {
-      esd = esd_play_stream_fallback (out_format,
-				      samplerate, // 44100
-				      NULL, // host
-				      "fs-test" //name
-				      );
+      esd = esd_init_16_stereo_strem_play (sfinfo.samplerate);
     }
   else
     {
       sfout = sndfile_open_for_write (&sfout_info,
 				      outfile,
-				      samplerate,
+				      sfinfo.samplerate,
 				      sfinfo.channels);
       if (sfout == NULL)
 	{
@@ -140,12 +127,6 @@ void pv_complex (const char *file, const char *outfile,
   l_ft = (double *)malloc (len * sizeof (double));
   r_ft = (double *)malloc (len * sizeof (double));
 
-  double *HC_tmp = NULL;
-  double *HC_scl = NULL;
-  HC_tmp = (double *)malloc (len * sizeof (double));
-  HC_scl = (double *)malloc (len * sizeof (double));
-
-
   double *l_out = NULL;
   double *r_out = NULL;
   l_out = (double *) malloc ((hop_out + len) * sizeof(double));
@@ -156,26 +137,12 @@ void pv_complex (const char *file, const char *outfile,
       r_out [i] = 0.0;
     }
 
-  long in_0;
-  long out_0;
   int n;
   for (n = 0;; n++)
     {
-      // set initial frames for in and out
-      if (hop_in < hop_out) // expanding
-	{
-	  out_0 = 0;
-	  in_0 = hop_out - hop_in;
-	}
-      else // shrinking
-	{
-	  out_0 = hop_in - hop_out;
-	  in_0 = 0;
-	}
-
-      // read the starting frame (hop_in_0 + n * hop_in)
+      // read the starting frame (n * hop_in)
       read_status = sndfile_read_at (sf, sfinfo,
-				     in_0 + n * hop_in,
+				     n * hop_in,
 				     left, right, len);
       if (read_status != len)
 	{
@@ -197,9 +164,9 @@ void pv_complex (const char *file, const char *outfile,
 	}
 
 
-      // read the terminal frame (in_0 + n * hop_in + hop_out)
+      // read the terminal frame (n * hop_in + hop_out)
       read_status = sndfile_read_at (sf, sfinfo,
-				     in_0 + n * hop_in + hop_out,
+				     n * hop_in + hop_out,
 				     left, right, len);
       if (read_status != len)
 	{
@@ -220,59 +187,31 @@ void pv_complex (const char *file, const char *outfile,
 	  r_ft [i] = freq [i];
 	}
 
+      // set [lr]_f_out_old [] by [lr]_fs at the initial step (n == 0)
       if (n == 0)
 	{
-	  if (hop_in == hop_out)
+	  for (i = 0; i < len; i ++)
 	    {
-	      // then, f_out_old = fs
-	      // that is, "u_{i-1} = s_i"
-	      for (i = 0; i < len; i ++)
-		{
-		  l_f_out_old [i] = l_fs [i];
-		  r_f_out_old [i] = r_fs [i];
-		}
-	    }
-	  else
-	    {
-	      // read the old_out frame (out_0)
-	      read_status = sndfile_read_at (sf, sfinfo,
-					     out_0,
-					     left, right, len);
-	      if (read_status != len)
-		{
-		  // most likely, it is EOF.
-		  break;
-		}
-	      // FFT for "u_{i-1}"
-	      windowing (len, left, flag_window, 1.0, time);
-	      fftw_execute (plan); // FFT: time[] -> freq[]
-	      for (i = 0; i < len; i ++)
-		{
-		  l_f_out_old [i] = freq [i];
-		}
-	      windowing (len, right, flag_window, 1.0, time);
-	      fftw_execute (plan); // FFT: time[] -> freq[]
-	      for (i = 0; i < len; i ++)
-		{
-		  r_f_out_old [i] = freq [i];
-		}
+	      l_f_out_old [i] = l_fs [i];
+	      r_f_out_old [i] = r_fs [i];
 	    }
 	}
 
 
       // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
+      // Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+      HC_complex_phase_vocoder (len, l_fs, l_ft, l_f_out_old,
+				l_f_out_old);
+      HC_complex_phase_vocoder (len, r_fs, r_ft, r_f_out_old,
+				r_f_out_old);
+      // already backed up for the next step in [lr]_f_out_old[]
 
-      // f_out = Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
-      HC_complex_phase_vocoder (len, l_fs, l_ft, l_f_out_old, f_out);
-      // for the next step
+
+      // synthesis
+      // left
       for (i = 0; i < len; i ++)
 	{
-	  l_f_out_old [i] = f_out [i];
-	}
-      // scale
-      for (i = 0; i < len; i ++)
-	{
-	  f_out [i] *= 0.5;
+	  f_out [i] = 0.5 * l_f_out_old [i]; // 0.5 for scaling
 	}
       fftw_execute (plan_inv); // iFFT: f_out[] -> t_out[]
       // scale by len and windowing
@@ -283,17 +222,10 @@ void pv_complex (const char *file, const char *outfile,
 	  l_out [hop_out + i] += t_out [i];
 	}
 
-      // f_out = Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
-      HC_complex_phase_vocoder (len, r_fs, r_ft, r_f_out_old, f_out);
-      // for the next step
+      // right
       for (i = 0; i < len; i ++)
 	{
-	  r_f_out_old [i] = f_out [i];
-	}
-      // scale
-      for (i = 0; i < len; i ++)
-	{
-	  f_out [i] *= 0.5;
+	  f_out [i] = 0.5 * r_f_out_old [i]; // 0.5 for scaling
 	}
       fftw_execute (plan_inv); // iFFT: f_out[] -> t_out[]
       // scale by len and windowing
@@ -345,8 +277,6 @@ void pv_complex (const char *file, const char *outfile,
   free (r_fs);
   free (l_ft);
   free (r_ft);
-  free (HC_tmp);
-  free (HC_scl);
 
   free (l_out);
   free (r_out);

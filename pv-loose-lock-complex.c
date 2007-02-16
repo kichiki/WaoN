@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-loose-lock-complex.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-loose-lock-complex.c,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+ * $Id: pv-loose-lock-complex.c,v 1.2 2007/02/16 06:29:55 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -52,7 +52,6 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
   int i;
 
   // open wav file
-  int samplerate;
   long read_status;
   // libsndfile version
   SNDFILE *sf = NULL;
@@ -65,7 +64,6 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
       exit (1);
     }
   sndfile_print_info (&sfinfo);
-  samplerate = sfinfo.samplerate;
 
 
   /* allocate buffers  */
@@ -77,29 +75,18 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
 
   // esd sound device
   int status;
-  int out_bits     = ESD_BITS16;
-  int out_channels = ESD_STEREO;
-  int out_mode     = ESD_STREAM;
-  int out_func     = ESD_PLAY;
-  int out_format;
-  out_format = out_bits | out_channels | out_mode | out_func;
-
   int esd = 0; // for compiler warning...
   SNDFILE *sfout = NULL;
   SF_INFO sfout_info;
   if (outfile == NULL)
     {
-      esd = esd_play_stream_fallback (out_format,
-				      samplerate, // 44100
-				      NULL, // host
-				      "fs-test" //name
-				      );
+      esd = esd_init_16_stereo_strem_play (sfinfo.samplerate);
     }
   else
     {
       sfout = sndfile_open_for_write (&sfout_info,
 				      outfile,
-				      samplerate,
+				      sfinfo.samplerate,
 				      sfinfo.channels);
       if (sfout == NULL)
 	{
@@ -152,35 +139,19 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
       r_out [i] = 0.0;
     }
 
-
-  long in_0;
-  long out_0;
   int n;
   for (n = 0;; n++)
     {
-      // set initial frames for in and out
-      if (hop_in < hop_out) // expanding
-	{
-	  out_0 = 0;
-	  in_0 = hop_out - hop_in;
-	}
-      else // shrinking
-	{
-	  out_0 = hop_in - hop_out;
-	  in_0 = 0;
-	}
-
-      // read the starting frame (in_0 + n * hop_in)
+      // read the starting frame (n * hop_in)
       read_status = sndfile_read_at (sf, sfinfo,
-				     in_0 + n * hop_in,
+				     n * hop_in,
 				     left, right, len);
       if (read_status != len)
 	{
 	  // most likely, it is EOF.
 	  break;
 	}
-
-      // FFT for starting time
+      // FFT for "s_i"
       windowing (len, left, flag_window, 1.0, time);
       fftw_execute (plan); // FFT: time[] -> freq[]
       for (i = 0; i < len; i ++)
@@ -195,17 +166,16 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
 	}
 
 
-      // read the terminal frame (in_0 + n * hop_in + hop_out)
+      // read the terminal frame (n * hop_in + hop_out)
       read_status = sndfile_read_at (sf, sfinfo,
-				     in_0 + n * hop_in + hop_out,
+				     n * hop_in + hop_out,
 				     left, right, len);
       if (read_status != len)
 	{
 	  // most likely, it is EOF.
 	  break;
 	}
-
-      // FFT for terminal time
+      // FFT for "t_i"
       windowing (len, left, flag_window, 1.0, time);
       fftw_execute (plan); // FFT: time[] -> freq[]
       for (i = 0; i < len; i ++)
@@ -219,46 +189,21 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
 	  r_ft [i] = freq [i];
 	}
 
+      // set [lr]_f_out_old [] by [lr]_fs at the initial step (n == 0)
       if (n == 0)
 	{
-	  if (hop_in == hop_out)
-	    {
-	      // then, f_out_old = fs
-	      for (i = 0; i < len; i ++)
-		{
-		  l_f_out_old [i] = l_fs [i];
-		  r_f_out_old [i] = r_fs [i];
-		}
-	    }
-	  else
-	    {
-	      // make f_out_old[] at the frame (out_0)
-	      read_status = sndfile_read_at (sf, sfinfo,
-					     out_0,
-					     left, right, len);
-	      if (read_status != len)
-		{
-		  exit (1);
-		}
-
-	      // left channel
-	      windowing (len, left, flag_window, 1.0, time);
-	      fftw_execute (plan); // FFT: time[] -> freq[]
-	      // loose phase lock scheme
-	      HC_puckette_lock (len, freq, l_f_out_old);
-
-	      // right channel
-	      windowing (len, right, flag_window, 1.0, time);
-	      fftw_execute (plan); // FFT: time[] -> freq[]
-	      // loose phase lock scheme
-	      HC_puckette_lock (len, freq, r_f_out_old);
-	    }
+	  // locked coefficients for the next step
+	  HC_puckette_lock (len, l_fs, l_f_out_old);
+	  HC_puckette_lock (len, r_fs, r_f_out_old);
 	}
 
-      // left channel
-      // f_out = X[t] (Y[u(i-1)]/X[x(i)]) / |Y[u(i-1)]/X[x(i)]|
-      HC_complex_phase_vocoder (len, l_fs, l_ft, l_f_out_old, f_out);
 
+      // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
+      // Y[u_i] = X[t_i] (Z[u_{i-1}]/X[s_i]) / |Z[u_{i-1}]/X[s_i]|
+      // where Z is the loose phase locked coef by HC_puckette_lock()
+
+      // left channel
+      HC_complex_phase_vocoder (len, l_fs, l_ft, l_f_out_old, f_out);
       // locked coefficients for the next step
       HC_puckette_lock (len, f_out, l_f_out_old);
 
@@ -277,9 +222,7 @@ void pv_loose_lock_complex (const char *file, const char *outfile,
 	}
 
       // right channel
-      // f_out = X[t] (Y[u(i-1)]/X[x(i)]) / |Y[u(i-1)]/X[x(i)]|
       HC_complex_phase_vocoder (len, r_fs, r_ft, r_f_out_old, f_out);
-
       // locked coefficients for the next step
       HC_puckette_lock (len, f_out, r_f_out_old);
 
