@@ -1,6 +1,6 @@
 # Makefile for pv
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.pv,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+# $Id: Makefile.pv,v 1.2 2007/02/16 06:31:14 kichiki Exp $
 
 
 LIBS    =\
@@ -11,7 +11,7 @@ LIBS    =\
 
 CFLAGS  =\
  -Wall -O3\
- `esd-config --cflags`\
+ `esd-config --cflags`
 
 LDFLAGS      = 
 
