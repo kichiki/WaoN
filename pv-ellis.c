@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.c,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+ * $Id: pv-ellis.c,v 1.2 2007/02/16 06:25:50 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -57,7 +57,6 @@ void pv_ellis (const char *file, const char *outfile,
 
 
   // open wav file
-  int samplerate;
   long read_status;
   // libsndfile version
   SNDFILE *sf = NULL;
@@ -70,7 +69,6 @@ void pv_ellis (const char *file, const char *outfile,
       exit (1);
     }
   sndfile_print_info (&sfinfo);
-  samplerate = sfinfo.samplerate;
 
 
   /* allocate buffers  */
@@ -81,29 +79,18 @@ void pv_ellis (const char *file, const char *outfile,
 
   /* open sound device */
   int status;
-  int out_bits     = ESD_BITS16;
-  int out_channels = ESD_STEREO;
-  int out_mode     = ESD_STREAM;
-  int out_func     = ESD_PLAY;
-  int out_format;
-  out_format = out_bits | out_channels | out_mode | out_func;
-
   int esd = 0; // for compiler warning...
   SNDFILE *sfout = NULL;
   SF_INFO sfout_info;
   if (outfile == NULL)
     {
-      esd = esd_play_stream_fallback (out_format,
-				      samplerate,
-				      NULL, // host
-				      "fs-test" //name
-				      );
+      esd = esd_init_16_stereo_strem_play (sfinfo.samplerate);
     }
   else
     {
       sfout = sndfile_open_for_write (&sfout_info,
 				      outfile,
-				      samplerate,
+				      sfinfo.samplerate,
 				      sfinfo.channels);
       if (sfout == NULL)
 	{
