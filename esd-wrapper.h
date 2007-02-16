@@ -1,7 +1,7 @@
 /* header file for esd-wrapper.c --
  * some wrapper for esound
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: esd-wrapper.h,v 1.2 2007/02/14 04:01:43 kichiki Exp $
+ * $Id: esd-wrapper.h,v 1.3 2007/02/16 06:23:19 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,6 +19,13 @@
  */
 #ifndef	_ESD_WRAPPER_H_
 #define	_ESD_WRAPPER_H_
+
+
+/* open esd device
+ * the mode is 16-bits, stereo, stream, play.
+ */
+int
+esd_init_16_stereo_strem_play (int samplerate);
 
 
 long esd_write (int esd, double *left, double *right, int len);

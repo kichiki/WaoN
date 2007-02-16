@@ -1,6 +1,6 @@
 /* some wrapper for esound
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: esd-wrapper.c,v 1.2 2007/02/14 04:01:43 kichiki Exp $
+ * $Id: esd-wrapper.c,v 1.3 2007/02/16 06:23:40 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,6 +22,32 @@
 
 // esd sound device
 #include <esd.h>
+
+
+/* open esd device
+ * the mode is 16-bits, stereo, stream, play.
+ */
+int
+esd_init_16_stereo_strem_play (int samplerate)
+{
+  int esd;
+
+  int out_format;
+  out_format =
+    ESD_BITS16 | // bits
+    ESD_STEREO | // channels
+    ESD_STREAM | // mode
+    ESD_PLAY;    // func
+
+  esd = esd_play_stream_fallback (out_format,
+				  samplerate,
+				  NULL, // host
+				  NULL //name
+				  );
+
+  return (esd);
+}
+
 
 
 long esd_write (int esd, double *left, double *right, int len)
