@@ -1,7 +1,7 @@
 /* header file for hc.c --
  * half-complex format routines
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.h,v 1.2 2007/02/14 03:33:53 kichiki Exp $
+ * $Id: hc.h,v 1.3 2007/02/16 06:21:54 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -123,6 +123,8 @@ void HC_div (long len, const double *x, const double *y,
 void HC_abs (long len, const double *x,
 	     double *z);
 
+/* NOTE: y cannot be z!
+ */
 void HC_puckette_lock (long len, const double *y,
 		       double *z);
 
@@ -135,6 +137,7 @@ void HC_puckette_lock (long len, const double *y,
  *                Note: t_i - s_i = u_i - u_{i-1} = hop_out
  * OUTPUT
  *  f_out[]     : Y[u_i], synthesis-FFT at i step
+ *                you can use the same point f_out_old[] for this.
  */
 void
 HC_complex_phase_vocoder (int len, const double *fs, const double *ft,
