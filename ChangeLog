@@ -1,4 +1,58 @@
+2007-02-16  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv-loose-lock-complex.h: 1.2 2007/02/17 05:37:37 kichiki Exp
+	* pv-loose-lock-complex.c: 1.3 2007/02/17 05:36:58 kichiki Exp
+	* pv-loose-lock.h: 1.2 2007/02/17 05:36:29 kichiki Exp
+	* pv-loose-lock.c: 1.3 2007/02/17 05:36:03 kichiki Exp
+	* pv-freq.h: 1.2 2007/02/17 05:35:09 kichiki Exp
+	* pv-freq.c: 1.3 2007/02/17 05:34:41 kichiki Exp
+	* pv-complex.h: 1.2 2007/02/17 05:33:53 kichiki Exp
+	* pv-complex.c: 1.3 2007/02/17 05:33:27 kichiki Exp
+	* pv-conventional.h: 1.2 2007/02/17 05:32:37 kichiki Exp
+	* pv-conventional.c: 1.3 2007/02/17 05:31:49 kichiki Exp
+	* pv.c: 1.2 2007/02/17 05:31:06 kichiki Exp
+	change the meaning of rate in the opposite way, that is,
+	larger is faster right now (same as in gwaon).
+
+	* Makefile.gwaon: 1.3 2007/02/17 04:59:50 kichiki Exp
+	* gwaon-pv.h: 1.1 2007/02/17 04:58:36 kichiki Exp
+	* gwaon-pv.c: 1.1 2007/02/17 04:58:09 kichiki Exp
+	* gwaon-esd.h: 1.1 2007/02/17 04:57:37 kichiki Exp
+	* gwaon-esd.c: 1.1 2007/02/17 04:56:59 kichiki Exp
+	added for play-back function with phase vocoder tempo-change function.
+
+	* gwaon-wav.c: 1.5 2007/02/17 04:55:25 kichiki Exp
+	(wav_key_press_event): add play-back function.
+	(wav_pv_rate): add tempo-change function.
+	(create_wav): add vscale for tempo-change function.
+
+2007-02-15  Kengo Ichiki  <ichiki@tpr60>
+
+	* Makefile.pv: 1.2 2007/02/16 06:31:14 kichiki Exp
+	meaningless '\' is removed.
+
+	* pv-loose-lock-complex.c: 1.2 2007/02/16 06:29:55 kichiki Exp
+	* pv-complex.c: 1.2 2007/02/16 06:29:14 kichiki Exp
+	use esd_init_16_stereo_strem_play().
+	bug fixed on the handling at the initial step.
+
+	* pv-loose-lock.c: 1.2 2007/02/16 06:27:28 kichiki Exp
+	* pv-conventional.c: 1.2 2007/02/16 06:26:28 kichiki Exp
+	* pv-ellis.c: 1.2 2007/02/16 06:25:50 kichiki Exp
+	* pv-freq.c: 1.2 2007/02/16 06:25:09 kichiki Exp
+	use esd_init_16_stereo_strem_play().
+
+	* esd-wrapper.h: 1.3 2007/02/16 06:23:19 kichiki Exp
+	* esd-wrapper.c: 1.3 2007/02/16 06:23:40 kichiki Exp
+	(esd_init_16_stereo_strem_play): added.
+
+	* hc.h: 1.3 2007/02/16 06:21:54 kichiki Exp
+	* hc.c: 1.3 2007/02/16 06:22:17 kichiki Exp
+	add some comments on usage.
+
 2007-02-13  Kengo Ichiki  <ichiki@tpr60>
+
+	* Release 0.4.
 
 	* esd-wrapper.h: 1.1 2007/02/14 03:46:11 kichiki Exp
 	* esd-wrapper.c: 1.1 2007/02/14 03:46:11 kichiki Exp
