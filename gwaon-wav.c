@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.4 2007/02/14 04:01:43 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.5 2007/02/17 04:55:25 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,10 +33,16 @@
 #include "fft.h" // hanning()
 #include "midi.h" // midi_to_freq(), etc.
 
+// esd sound device
+#include <esd.h>
+#include "esd-wrapper.h"
+#include "gwaon-esd.h" // play_esd()
+#include "gwaon-pv.h" // pv_complex_init()
+
 #include "gtk-color.h" /* get_color() */
 
 
-/** global variables **/
+// global variables
 gint WIN_wav_width;
 gint WIN_wav_height;
 
@@ -48,6 +54,7 @@ int WIN_wav_mark;
 GdkPixmap * wav_pixmap = NULL;
 GtkObject * adj_cur;
 GtkObject * adj_scale;
+GtkObject * adj_pv_rate;
 
 
 int WIN_spec_n;
@@ -1384,6 +1391,9 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
   extern int oct_min, oct_max;
   extern double logf_min, logf_max;
 
+  extern int flag_play;
+  extern gint tag_play;
+
 
   //fprintf (stderr, "key_press_event\n");
   if (wav_pixmap == NULL)
@@ -1520,6 +1530,24 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       update_win_wav (widget);
       break;
 
+    case GDK_space:
+      flag_play ++;
+      if (flag_play > 1)
+	{
+	  fprintf (stderr, "# STOP\n");
+	  flag_play = 0;
+	  // gtk_timeout_remove is deprecated
+	  g_source_remove (tag_play);
+	}
+      else
+	{
+	  fprintf (stderr, "# PLAY\n");
+	  // gtk_timeout_add is deprecated
+	  tag_play = g_timeout_add (100, // miliseconds
+				    play_esd, NULL);
+	}
+      break;
+
     default:
       return FALSE; /* propogate event */ 
     }
@@ -1642,6 +1670,16 @@ wav_adj_scale (GtkAdjustment *get, GtkAdjustment *set)
   update_win_wav (GTK_WIDGET (set));
 }
 
+static void
+wav_pv_rate (GtkAdjustment *get, GtkAdjustment *set)
+{
+  extern double pv_rate;
+
+  pv_rate = get->value;
+
+  //update_win_wav (GTK_WIDGET (set));
+}
+
 
 static void
 make_color_map (void)
@@ -1704,6 +1742,15 @@ wav_delete (GtkWidget *widget,
    * This is useful for popping up 'are you sure you want to quit?'
    * type dialogs. */
 
+  // sndfile device
+  extern SNDFILE *sf;
+  sf_close (sf);
+
+  // esd device
+  extern int esd;
+  esd_close (esd);
+
+
   return FALSE;
 }
 
@@ -1711,6 +1758,7 @@ wav_delete (GtkWidget *widget,
 void
 create_wav (void)
 {
+  extern SNDFILE *sf;
   extern SF_INFO sfinfo;
 
   extern GtkObject * adj_cur;
@@ -1727,6 +1775,11 @@ create_wav (void)
   WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
   extern int WIN_spec_mode;
   WIN_spec_mode = 0;
+
+  extern struct pv_complex_data *pv;
+  pv = pv_complex_init (WIN_spec_n, WIN_spec_hop, 3 /* hanning */);
+  pv_complex_set_input (pv, sf, &sfinfo);
+
 
   extern double *spec_in;
   extern double *spec_out;
@@ -1769,7 +1822,18 @@ create_wav (void)
   logf_max = midi_to_logf ((oct_max+1)*12);
 
 
-  // non-scrolled (plain) window
+  // esd device
+  extern int esd;
+  esd = esd_init_16_stereo_strem_play (sfinfo.samplerate);
+  pv_complex_set_output_esd (pv, esd);
+
+  extern long play_cur;
+  extern int flag_play;
+  play_cur = 0;
+  flag_play = 0;
+
+
+  // make main window
   extern gint WIN_wav_width;
   extern gint WIN_wav_height;
   WIN_wav_width = 800;
@@ -1786,10 +1850,18 @@ create_wav (void)
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
 		      GTK_SIGNAL_FUNC (wav_delete), NULL);
 
+  GtkWidget *hbox;
+  hbox = gtk_hbox_new (FALSE, 0);
+  gtk_container_set_border_width (GTK_CONTAINER (hbox), 10);
+  gtk_container_add (GTK_CONTAINER (window), hbox);
+  gtk_widget_show (hbox);
+
+
   GtkWidget *vbox;
   vbox = gtk_vbox_new (FALSE, 0);
   gtk_container_set_border_width (GTK_CONTAINER (vbox), 10);
-  gtk_container_add (GTK_CONTAINER (window), vbox);
+  //gtk_container_add (GTK_CONTAINER (window), vbox);
+  gtk_box_pack_start (GTK_BOX (hbox), vbox, TRUE, TRUE, 0);
   gtk_widget_show (vbox);
 
 
@@ -1866,6 +1938,29 @@ create_wav (void)
 			       GTK_UPDATE_CONTINUOUS);
   gtk_box_pack_start (GTK_BOX (vbox), scale, FALSE, FALSE, 0);
   gtk_widget_show (scale);
+
+
+
+  // add scale for phase vocoder
+  extern double pv_rate;
+  pv_rate = 1.0; // initial value
+  adj_pv_rate = gtk_adjustment_new
+    (1.0, // value
+     -2.0, // lower
+     2.0, // upper
+     0.01, // step increment
+     0.01, // page increment
+     0.0); // page size
+  g_signal_connect (G_OBJECT (adj_pv_rate), "value_changed",
+		    G_CALLBACK (wav_pv_rate), GTK_OBJECT (wav_win));
+
+  GtkWidget *scale2;
+  scale2 = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_rate));
+  gtk_range_set_update_policy (GTK_RANGE (scale2),
+			       GTK_UPDATE_CONTINUOUS);
+  gtk_box_pack_start (GTK_BOX (hbox), scale2, FALSE, FALSE, 0);
+  gtk_range_set_inverted (GTK_RANGE (scale2), TRUE);
+  gtk_widget_show (scale2);
 
   // everything is done
   gtk_widget_show (window);
