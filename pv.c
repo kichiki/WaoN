@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+ * $Id: pv.c,v 1.2 2007/02/17 05:31:06 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -42,7 +42,8 @@ void usage (char * argv0)
   fprintf (stderr, "  -o, --output\toutput file (default: esd)\n");
   fprintf (stderr, "  -n         \tFFT data number (default: 1024)\n");
   fprintf (stderr, "  -hop       \thop number (default: 256)\n");
-  fprintf (stderr, "  -rate      \tsynthesize rate (default: 1.0)\n");
+  fprintf (stderr, "  -rate      \tsynthesize rate; larger is faster"
+	   " (default: 1.0)\n");
   fprintf (stderr, "  -scheme    \tgive the number for PV scheme\n");
   fprintf (stderr, "\t\t0 : conventional PV (default)\n");
   fprintf (stderr, "\t\t1 : Puckette's loose-locking PV\n");

@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.c,v 1.2 2007/02/16 06:26:28 kichiki Exp $
+ * $Id: pv-conventional.c,v 1.3 2007/02/17 05:31:49 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -39,11 +39,11 @@
  * Ref: J.Laroche and M.Dolson (1999)
  */
 void pv (const char *file, const char *outfile,
-	 double rate, long len, long hop_in,
+	 double rate, long len, long hop_out,
 	 int flag_window)
 {
-  long hop_out;
-  hop_out = rate * hop_in;
+  long hop_in;
+  hop_in = (long)((double)hop_out * rate);
 
 
   double twopi = 2.0 * M_PI;

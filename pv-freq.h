@@ -1,7 +1,7 @@
 /* header file for pv-freq.c --
  * PV - phase vocoder : pv-freq.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-freq.h,v 1.1 2007/02/14 03:46:11 kichiki Exp $
+ * $Id: pv-freq.h,v 1.2 2007/02/17 05:35:09 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,9 +23,10 @@
 
 /* phase vocoder by frequency domain
  * only integer rate is working
+ * (hop_out is not used.)
  */
 void pv_freq (const char *file, const char *outfile,
-	      double rate, long len, long hop_in,
+	      double rate, long len, long hop_out,
 	      int flag_window);
 
 

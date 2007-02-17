@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-complex.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.2 2007/02/16 06:29:14 kichiki Exp $
+ * $Id: pv-complex.c,v 1.3 2007/02/17 05:33:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,17 +35,17 @@
 
 
 /* phase vocoder by complex arithmetics with fixed hops.
- *   t_i - s_i = u_i - u_{i-1} = hop
+ *   t_i - s_i = u_i - u_{i-1} = hop_out
  *   where s_i and t_i are the times for two analysis FFT
  *   and u_i is the time for the synthesis FFT at step i
  * Reference: M.Puckette (1995)
  */
 void pv_complex (const char *file, const char *outfile,
-		 double rate, long len, long hop_in,
+		 double rate, long len, long hop_out,
 		 int flag_window)
 {
-  long hop_out;
-  hop_out = rate * hop_in;
+  long hop_in;
+  hop_in = (long)((double)hop_out * rate);
 
 
   int i;
