@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.5 2007/02/17 04:55:25 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.6 2007/02/20 05:00:19 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,10 +33,11 @@
 #include "fft.h" // hanning()
 #include "midi.h" // midi_to_freq(), etc.
 
-// esd sound device
-#include <esd.h>
-#include "esd-wrapper.h"
 #include "gwaon-esd.h" // play_esd()
+// ao device
+#include <ao/ao.h>
+#include "ao-wrapper.h"
+
 #include "gwaon-pv.h" // pv_complex_init()
 
 #include "gtk-color.h" /* get_color() */
@@ -1746,9 +1747,9 @@ wav_delete (GtkWidget *widget,
   extern SNDFILE *sf;
   sf_close (sf);
 
-  // esd device
-  extern int esd;
-  esd_close (esd);
+  // ao device
+  extern ao_device *ao;
+  ao_close (ao);
 
 
   return FALSE;
@@ -1822,10 +1823,16 @@ create_wav (void)
   logf_max = midi_to_logf ((oct_max+1)*12);
 
 
-  // esd device
-  extern int esd;
-  esd = esd_init_16_stereo_strem_play (sfinfo.samplerate);
-  pv_complex_set_output_esd (pv, esd);
+  // ao device
+  fprintf (stderr, "# check ao device\n");
+  ao_initialize ();
+  print_ao_driver_info_list ();
+  ao_shutdown ();
+
+  extern ao_device *ao;
+  ao = ao_init_16_stereo (sfinfo.samplerate);
+  pv_complex_set_output_ao (pv, ao);
+
 
   extern long play_cur;
   extern int flag_play;

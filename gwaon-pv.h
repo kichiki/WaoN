@@ -1,7 +1,7 @@
 /* header file for gwaon-pv.c --
  * gWaoN -- gtk+ Spectra Analyzer : pv
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-pv.h,v 1.1 2007/02/17 04:58:36 kichiki Exp $
+ * $Id: gwaon-pv.h,v 1.2 2007/02/20 04:59:50 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,8 +30,11 @@ struct pv_complex_data {
   SF_INFO *sfinfo;
 
   // output (just reference purpose only)
-  int flag_out; // 0 = esd, 1 = sf
-  int esd;
+  int flag_out; // 0 = ao, 1 = sf
+
+  //int esd;
+  ao_device *ao;
+
   SNDFILE *sfout;
   SF_INFO *sfout_info;
 
@@ -65,11 +68,11 @@ void
 pv_complex_set_input (struct pv_complex_data *pv,
 		      SNDFILE *sf, SF_INFO *sfinfo);
 void
-pv_complex_set_output_esd (struct pv_complex_data *pv,
-			   int esd);
-void
 pv_complex_set_output_sf (struct pv_complex_data *pv,
 			  SNDFILE *sf, SF_INFO *sfinfo);
+void
+pv_complex_set_output_ao (struct pv_complex_data *pv,
+			  ao_device *ao);
 
 void
 pv_complex_free (struct pv_complex_data *pv);

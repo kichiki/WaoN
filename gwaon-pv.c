@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : pv
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-pv.c,v 1.1 2007/02/17 04:58:09 kichiki Exp $
+ * $Id: gwaon-pv.c,v 1.2 2007/02/20 04:59:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,10 +30,9 @@
 #include <sndfile.h>
 #include "snd.h" // sndfile_read_at()
 
-// esd sound device
-#include <esd.h>
-#include "esd-wrapper.h"
-
+// ao device
+#include <ao/ao.h>
+#include "ao-wrapper.h"
 
 #include "gwaon-pv.h"
 
@@ -92,11 +91,11 @@ pv_complex_set_input (struct pv_complex_data *pv,
 }
 
 void
-pv_complex_set_output_esd (struct pv_complex_data *pv,
-			   int esd)
+pv_complex_set_output_ao (struct pv_complex_data *pv,
+			  ao_device *ao)
 {
   pv->flag_out = 0;
-  pv->esd = esd;
+  pv->ao = ao;
 }
 
 void
@@ -283,13 +282,17 @@ long pv_complex_play_step (struct pv_complex_data *pv,
   // output
   if (pv->flag_out == 0)
     {
-      status = esd_write (pv->esd, pv->l_out, pv->r_out, pv->hop_out);
+      status = ao_write (pv->ao, pv->l_out, pv->r_out, pv->hop_out);
       status /= 4; // 2 bytes for 2 channels
     }
-  else
+  else if (pv->flag_out == 1)
     {
       status = sndfile_write (pv->sfout, *(pv->sfout_info),
 			      pv->l_out, pv->r_out, pv->hop_out);
+    }
+  else
+    {
+      fprintf (stderr, "invalid output device\n");
     }
 
   /* shift acc_out by hop_out */
