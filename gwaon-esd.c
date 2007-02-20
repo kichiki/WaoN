@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : esd
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-esd.c,v 1.1 2007/02/17 04:56:59 kichiki Exp $
+ * $Id: gwaon-esd.c,v 1.2 2007/02/20 05:00:41 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,15 +24,14 @@
 #include <sndfile.h>
 #include "snd.h" // sndfile_read_at()
 
-// esd sound device
-#include <esd.h>
-#include "esd-wrapper.h"
+// ao sound device
+#include <ao/ao.h>
 
 #include "gwaon-pv.h"
 
 
 // global variables
-int esd;
+ao_device *ao;
 
 long play_cur; // current frame to play
 int flag_play; // status: 0 = not playing, 1 = playing
@@ -94,13 +93,9 @@ play_esd (gpointer data)
       if (play_cur < frame0 ||
 	  play_cur + pv->hop_out >= frame1)
 	{
-	  flag_play = 0; // stop playing
 	  // rewind
 	  if (pv_rate >= 0) play_cur = frame0;
 	  else              play_cur = frame1;
-
-	  // if FAIL is returned, this timeout is removed
-	  return FALSE;
 	}
     }
   return TRUE;
