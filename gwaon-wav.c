@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.6 2007/02/20 05:00:19 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.7 2007/02/23 02:15:36 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  */
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <stdio.h> /* for check */
 #include <stdlib.h> /* free() */
 #include <string.h> // strcpy()
@@ -33,12 +34,12 @@
 #include "fft.h" // hanning()
 #include "midi.h" // midi_to_freq(), etc.
 
-#include "gwaon-esd.h" // play_esd()
+#include "gwaon-play.h" // play_1msec()
 // ao device
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
-#include "gwaon-pv.h" // pv_complex_init()
+#include "pv-complex.h" // struct pv_complex_data, pv_complex_play_step()
 
 #include "gtk-color.h" /* get_color() */
 
@@ -52,10 +53,12 @@ int WIN_wav_scale;
 int WIN_wav_mark;
 
 
-GdkPixmap * wav_pixmap = NULL;
-GtkObject * adj_cur;
-GtkObject * adj_scale;
-GtkObject * adj_pv_rate;
+GdkPixmap *wav_pixmap = NULL;
+GtkObject *adj_cur;
+GtkObject *adj_scale;
+GtkObject *adj_pv_rate;
+
+GdkPixbuf *wav_pixbuf = NULL;
 
 
 int WIN_spec_n;
@@ -81,17 +84,26 @@ gint colormap_power_b[256];
 
 
 
-/** WAV window **/
+/* draw wave panel
+ * INPUT
+ *  i0, i1 : the range to draw in the display (pixel)
+ */
 static void
 draw_wav_frame (GtkWidget *widget,
 		GdkGC *gc,
-		int bottom_wav, int height_wav)
+		int bottom_wav, int height_wav,
+		int i0, int i1)
 {
-  extern GdkPixmap * wav_pixmap;
-  extern gint WIN_wav_width;
+  extern GdkPixmap *wav_pixmap;
 
   int i, j, k;
 
+
+  // clear image first
+  get_color (widget, 0, 0, 0, gc);
+  gdk_draw_rectangle (wav_pixmap, gc, TRUE /* fill */,
+		      i0, bottom_wav - height_wav, 
+		      i1, height_wav);
 
   // backup GdkFunction
   GdkGCValues backup_gc_values;
@@ -101,77 +113,59 @@ draw_wav_frame (GtkWidget *widget,
   gdk_gc_set_function (gc, GDK_XOR);
 
 
+  // clear image first
+  get_color (widget, 0, 0, 0, gc);
+  gdk_draw_rectangle (wav_pixmap, gc, TRUE, // fill
+		      i0, bottom_wav - height_wav, 
+		      i1, height_wav);
+
   // center lines
   get_color (widget, 0, 0, 128, gc); // blue
   gdk_draw_line (wav_pixmap, gc,
-		 0, bottom_wav - height_wav/2,
-		 WIN_wav_width, bottom_wav - height_wav/2);
-
-  int len = 10000;
-  double *left = NULL;
-  double *right = NULL;
-  left  = (double *)malloc (sizeof (double) * len);
-  right = (double *)malloc (sizeof (double) * len);
-
+		 i0, bottom_wav - height_wav/2,
+		 i1, bottom_wav - height_wav/2);
 
   extern int WIN_wav_cur;
   extern SNDFILE *sf;
   extern SF_INFO sfinfo;
 
-  int cur_read = WIN_wav_cur;
-  for (i = 0; i < len; i ++)
+
+  // the following is the dynamic
+  if (sf != NULL)
     {
-      left [i] = right [i] = 0.0;
-    }
-  sndfile_read_at (sf, sfinfo, cur_read, left, right, len);
+      int len = 10000;
+      double *left = NULL;
+      double *right = NULL;
+      left  = (double *)malloc (sizeof (double) * len);
+      right = (double *)malloc (sizeof (double) * len);
 
-
-  int iarray = 0;
-  int iy;
-  int iy_t_l, iy_t_l0 = 0;
-  int iy_b_l, iy_b_l0 = 0;
-  int iy_t_r, iy_t_r0 = 0;
-  int iy_b_r, iy_b_r0 = 0;
-  for (i = 0; i < WIN_wav_width; i ++)
-    {
-      // left channel
-      // vertical axis is directing down on the window
-      iy = bottom_wav
-	- (int)((double)height_wav * (left [iarray] + 1.0) / 2.0);
-      iy_t_l = iy_b_l = iy;
-
-      // right channel
-      // vertical axis is directing down on the window
-      iy = bottom_wav
-	- (int)((double)height_wav * (right [iarray] + 1.0) / 2.0);
-      iy_t_r = iy_b_r = iy;
-
-      iarray++;
-      if (iarray >= len)
+      int cur_read = WIN_wav_cur + i0 * WIN_wav_scale;
+      for (i = 0; i < len; i ++)
 	{
-	  // read next frame
-	  cur_read += iarray;
-	  for (k = 0; k < len; k ++) left [k] = right [k] = 0.0;
-	  sndfile_read_at (sf, sfinfo, cur_read, left, right, len);
-	  // reset iarray
-	  iarray = 0;
+	  left [i] = right [i] = 0.0;
 	}
+      sndfile_read_at (sf, sfinfo, cur_read, left, right, len);
 
-      for (j = 1; j < WIN_wav_scale; j ++)
+
+      int iarray = 0;
+      int iy;
+      int iy_t_l, iy_t_l0 = 0;
+      int iy_b_l, iy_b_l0 = 0;
+      int iy_t_r, iy_t_r0 = 0;
+      int iy_b_r, iy_b_r0 = 0;
+      for (i = i0; i < i1; i ++)
 	{
 	  // left channel
 	  // vertical axis is directing down on the window
 	  iy = bottom_wav
 	    - (int)((double)height_wav * (left [iarray] + 1.0) / 2.0);
-	  if (iy_t_l < iy) iy_t_l = iy;
-	  if (iy_b_l > iy) iy_b_l = iy;
+	  iy_t_l = iy_b_l = iy;
 
 	  // right channel
 	  // vertical axis is directing down on the window
 	  iy = bottom_wav
 	    - (int)((double)height_wav * (right [iarray] + 1.0) / 2.0);
-	  if (iy_t_r < iy) iy_t_r = iy;
-	  if (iy_b_r > iy) iy_b_r = iy;
+	  iy_t_r = iy_b_r = iy;
 
 	  iarray++;
 	  if (iarray >= len)
@@ -183,32 +177,61 @@ draw_wav_frame (GtkWidget *widget,
 	      // reset iarray
 	      iarray = 0;
 	    }
-	}
-      get_color (widget, 255, 0, 0, gc); // red
-      gdk_draw_line (wav_pixmap, gc, i, iy_b_l, i, iy_t_l);
-      if (i > 0)
-	{
-	  gdk_draw_line (wav_pixmap, gc, i-1, iy_t_l0, i, iy_t_l);
-	  gdk_draw_line (wav_pixmap, gc, i-1, iy_b_l0, i, iy_b_l);
-	}
-      iy_t_l0 = iy_t_l;
-      iy_b_l0 = iy_b_l;
 
-      get_color (widget, 0, 255, 0, gc); // green
-      gdk_draw_line (wav_pixmap, gc, i, iy_b_r, i, iy_t_r);
-      if (i > 0)
-	{
-	  gdk_draw_line (wav_pixmap, gc, i-1, iy_t_r0, i, iy_t_r);
-	  gdk_draw_line (wav_pixmap, gc, i-1, iy_b_r0, i, iy_b_r);
+	  for (j = 1; j < WIN_wav_scale; j ++)
+	    {
+	      // left channel
+	      // vertical axis is directing down on the window
+	      iy = bottom_wav
+		- (int)((double)height_wav * (left [iarray] + 1.0) / 2.0);
+	      if (iy_t_l < iy) iy_t_l = iy;
+	      if (iy_b_l > iy) iy_b_l = iy;
+
+	      // right channel
+	      // vertical axis is directing down on the window
+	      iy = bottom_wav
+		- (int)((double)height_wav * (right [iarray] + 1.0) / 2.0);
+	      if (iy_t_r < iy) iy_t_r = iy;
+	      if (iy_b_r > iy) iy_b_r = iy;
+
+	      iarray++;
+	      if (iarray >= len)
+		{
+		  // read next frame
+		  cur_read += iarray;
+		  for (k = 0; k < len; k ++) left [k] = right [k] = 0.0;
+		  sndfile_read_at (sf, sfinfo, cur_read, left, right, len);
+		  // reset iarray
+		  iarray = 0;
+		}
+	    }
+	  get_color (widget, 255, 0, 0, gc); // red
+	  gdk_draw_line (wav_pixmap, gc, i, iy_b_l, i, iy_t_l);
+	  if (i > 0)
+	    {
+	      gdk_draw_line (wav_pixmap, gc, i-1, iy_t_l0, i, iy_t_l);
+	      gdk_draw_line (wav_pixmap, gc, i-1, iy_b_l0, i, iy_b_l);
+	    }
+	  iy_t_l0 = iy_t_l;
+	  iy_b_l0 = iy_b_l;
+
+	  get_color (widget, 0, 255, 0, gc); // green
+	  gdk_draw_line (wav_pixmap, gc, i, iy_b_r, i, iy_t_r);
+	  if (i > 0)
+	    {
+	      gdk_draw_line (wav_pixmap, gc, i-1, iy_t_r0, i, iy_t_r);
+	      gdk_draw_line (wav_pixmap, gc, i-1, iy_b_r0, i, iy_b_r);
+	    }
+	  iy_t_r0 = iy_t_r;
+	  iy_b_r0 = iy_b_r;
 	}
-      iy_t_r0 = iy_t_r;
-      iy_b_r0 = iy_b_r;
+      free (left);
+      free (right);
+
+      // recover GC's function
+      gdk_gc_set_function (gc, backup_gc_values.function);
     }
-  free (left);
-  free (right);
-
-  // recover GC's function
-  gdk_gc_set_function (gc, backup_gc_values.function);
+  // the following is static contents
 }
 
 /*
@@ -273,7 +296,7 @@ draw_keyboard (GtkWidget *widget,
 	       GdkGC *gc,
 	       int bottom, int height)
 {
-  extern GdkPixmap * wav_pixmap;
+  extern GdkPixmap *wav_pixmap;
 
   extern int oct_min, oct_max;
   extern double logf_min, logf_max;
@@ -685,95 +708,31 @@ average_PV_FFT (int resolution,
 }
 
 
-
+/* draw spectrum panel (power and phase spectra)
+ * INPUT
+ */
 static void
-update_win_wav (GtkWidget *widget)
+draw_spectrum_frame (GtkWidget *widget,
+		     GdkGC *gc,
+		     int bottom_spec, int height_spec,
+		     int bottom_phase, int height_phase)
 {
+  extern GdkPixmap *wav_pixmap;
   extern gint WIN_wav_width;
-  extern gint WIN_wav_height;
-
-  extern int WIN_wav_cur;
-  extern int WIN_wav_scale;
-  extern int WIN_wav_mark;
-  extern int WIN_spec_n;
+  extern int WIN_spec_mode;
+  extern double amp2_min, amp2_max;
   extern SNDFILE *sf;
   extern SF_INFO sfinfo;
 
-  GdkGC *gc;
-  int i, j, k;
+  int i;
+
+  double x;
+  int ix, ix0;
+  double y;
   int iy;
-
-  //if (sf == NULL) return;
-
-  // first, create a GC to draw on
-  gc = gdk_gc_new (widget->window);
-
-  // backup GdkFunction
-  GdkGCValues backup_gc_values;
-  gdk_gc_get_values (gc, &backup_gc_values);
-
-
-  // find proper dimensions for rectangle
-  gdk_window_get_size (widget->window, &WIN_wav_width, &WIN_wav_height);
-
-
-  // vertical axis is directing down on the window
-  int bottom_spec = WIN_wav_height*3/16;
-  int height_spec = WIN_wav_height*3/16;
-
-  int bottom_phase = WIN_wav_height*9/32;
-  int height_phase = WIN_wav_height*3/32;
-
-  int bottom_spg = WIN_wav_height*29/32;
-  int height_spg = WIN_wav_height*5/8;
-
-  int bottom_wav = WIN_wav_height;
-  int height_wav = WIN_wav_height*3/32;
+  int ic;
 
   int max_rad_phase = 6;
-
-
-  // clear image first
-  get_color (widget, 0, 0, 0, gc);
-  gdk_draw_rectangle (wav_pixmap, gc, TRUE /* fill */,
-		      0, 0, 
-		      WIN_wav_width, WIN_wav_height);
-
-  int ix, ix0;
-  double x;
-
-  int ic;
-  double y;
-
-
-  // the following is the dynamic
-  if (sf != NULL)
-    {
-
-
-  // WAV window
-  draw_wav_frame (widget, gc,
-		  bottom_wav, height_wav);
-
-  // parameters for FFT
-  extern double amp2_min, amp2_max;
-  extern int flag_window;
-
-  double *l_amp2 = NULL;
-  double *l_ph = NULL;
-  l_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-  l_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-
-  double *r_amp2 = NULL;
-  double *r_ph = NULL;
-  r_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-  r_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-
-  double *l_dphi = NULL;
-  double *r_dphi = NULL;
-  l_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-  r_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-
 
   double ph_min, ph_max;
   ph_min = - M_PI;
@@ -781,423 +740,17 @@ update_win_wav (GtkWidget *widget)
   int rad;
 
 
-  // Spectrum window
-  // set GC wiht OR function
-  gdk_gc_set_function (gc, GDK_OR);
+  // clear image first
+  get_color (widget, 0, 0, 0, gc);
+  // spec
+  gdk_draw_rectangle (wav_pixmap, gc, TRUE, // fill
+		      0, bottom_spec - height_spec, 
+		      WIN_wav_width, height_spec);
+  // phase
+  gdk_draw_rectangle (wav_pixmap, gc, TRUE, // fill
+		      0, bottom_phase - height_phase, 
+		      WIN_wav_width, height_phase);
 
-  // analyse the frame WIN_wav_mark
-  if (WIN_spec_mode == 0)
-    {
-      fft_one_frame (WIN_wav_mark,
-		     l_amp2, r_amp2,
-		     l_ph, r_ph);
-    }
-  else
-    {
-      fft_two_frames (WIN_wav_mark, WIN_spec_hop,
-		      l_amp2, r_amp2,
-		      l_ph, r_ph,
-		      l_dphi, r_dphi);
-    }
-
-  // left power and phase
-  for (i = 0; i < (WIN_spec_n/2)+1; i ++) // full span
-    {
-      x = log ((double)i / (double)WIN_spec_n * sfinfo.samplerate);
-      ix = logf_to_display (x, WIN_wav_width);
-      if (ix < 0 || ix >= WIN_wav_width)
-	continue;
-
-      // left power
-      y = log10 (l_amp2 [i]);
-      iy = (int)((double)height_spec * (y - amp2_min) / (amp2_max - amp2_min));
-      if (iy < 0) iy = 0;
-
-      if (WIN_spec_mode == 0)
-	{
-	  get_color (widget, 255, 0, 0, gc); // red
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix, bottom_spec,
-			 ix, bottom_spec - iy);
-	}
-      else if (WIN_spec_mode == 1)
-	{
-	  get_color (widget, 255, 0, 0, gc); // red
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix, bottom_spec,
-			 ix, bottom_spec - iy);
-
-	  // log of the corrected freq
-	  get_color (widget, 255, 0, 255, gc);
-	  x = log (((double)i / (double)WIN_spec_n + l_dphi [i])
-		   * sfinfo.samplerate);
-	  ix0 = logf_to_display (x, WIN_wav_width);
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix,  bottom_spec - iy,
-			 ix0, bottom_spec - iy);
-	  gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
-			ix0-2, (bottom_spec - iy)-2,
-			4, 4,
-			0, 64*360);
-	}
-      else if (WIN_spec_mode == 2)
-	{
-	  get_color (widget, 255, 0, 0, gc); // red
-	  // log of the corrected freq
-	  x = log (((double)i / (double)WIN_spec_n + l_dphi [i])
-		   * sfinfo.samplerate);
-	  ix0 = logf_to_display (x, WIN_wav_width);
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix0, bottom_spec,
-			 ix0, bottom_spec - iy);
-	}
-
-      // left phase
-      get_color (widget, 255, 0, 0, gc); // red
-      iy = bottom_phase
-	- (int)((double)height_phase
-		* (l_ph [i] - ph_min) / (ph_max - ph_min));
-      rad = (int)((double)max_rad_phase
-		  * (y - amp2_min) / (amp2_max - amp2_min));
-      if (rad <= 0) rad = 1;
-      gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
-		    ix-rad/2, iy-rad/2,
-		    rad, rad,
-		    0, 64*360);
-
-
-      // right power
-      y = log10 (r_amp2 [i]);
-      iy = (int)((double)height_spec * (y - amp2_min) / (amp2_max - amp2_min));
-      if (iy < 0) iy = 0;
-
-      if (WIN_spec_mode == 0)
-	{
-	  get_color (widget, 0, 255, 0, gc); // green
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix, bottom_spec,
-			 ix, bottom_spec - iy);
-	}
-      else if (WIN_spec_mode == 1)
-	{
-	  get_color (widget, 0, 255, 0, gc); // green
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix, bottom_spec,
-			 ix, bottom_spec - iy);
-
-	  // log of the corrected freq
-	  get_color (widget, 0, 255, 255, gc);
-	  x = log (((double)i / (double)WIN_spec_n + r_dphi [i])
-		   * sfinfo.samplerate);
-	  ix0 = logf_to_display (x, WIN_wav_width);
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix,  bottom_spec - iy,
-			 ix0, bottom_spec - iy);
-	  gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
-			ix0-2, (bottom_spec - iy)-2,
-			4, 4,
-			0, 64*360);
-	}
-      else if (WIN_spec_mode == 2)
-	{
-	  // log of the corrected freq
-	  get_color (widget, 0, 255, 0, gc); // green
-	  x = log (((double)i / (double)WIN_spec_n + r_dphi [i])
-		   * sfinfo.samplerate);
-	  ix0 = logf_to_display (x, WIN_wav_width);
-	  gdk_draw_line (wav_pixmap, gc,
-			 ix0, bottom_spec,
-			 ix0, bottom_spec - iy);
-	}
-
-      // right phase
-      get_color (widget, 0, 255, 0, gc); // green
-      iy = bottom_phase
-	- (int)((double)height_phase
-		* (r_ph [i] - ph_min) / (ph_max - ph_min));
-      rad = (int)((double)max_rad_phase
-		  * (y - amp2_min) / (amp2_max - amp2_min));
-      if (rad <= 0) rad = 1;
-      gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
-		    ix-rad/2, iy-rad/2,
-		    rad, rad,
-		    0, 64*360);
-    }
-  free (r_amp2);
-  free (r_ph);
-  free (r_dphi);
-
-  // recover GC's function
-  gdk_gc_set_function (gc, backup_gc_values.function);
-
-  // spectrogram
-  extern gint colormap_power_r[256];
-  extern gint colormap_power_g[256];
-  extern gint colormap_power_b[256];
-
-  int istep;
-  istep = WIN_spec_n / WIN_wav_scale;
-  if (istep <= 0) istep = 1;
-
-  double *ave = NULL;
-  if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
-    {
-      ave = (double *)malloc (sizeof (double) * height_spg);
-    }
-
-  for (i = 0; i < WIN_wav_width; i+=istep)
-    {
-      if (WIN_spec_mode == 0)
-	{
-	  // get amp2 for the frame (WIN_wav_cur + i * WIN_wav_scale)
-	  fft_one_frame (WIN_wav_cur + i * WIN_wav_scale,
-			 l_amp2, NULL, NULL, NULL);
-
-	  // drawing
-	  ix0 = -1;
-	  y = 0.0;
-	  int ny = 0;
-	  for (k = 0; k < (WIN_spec_n/2)+1; k ++) // full span
-	    {
-	      x = log ((double)k / (double)WIN_spec_n * sfinfo.samplerate);
-	      if (x < logf_min || x > logf_max)
-		continue;
-
-	      ix = logf_to_display (x, height_spg);
-	      if (ix != ix0)
-		{
-		  if (ny > 0)
-		    {
-		      y /= (double) ny;
-		      y = log10 (y);
-		      ic = (int)(256.0
-				 * (y - amp2_min) / (amp2_max - amp2_min));
-		      if (ic < 0)    ic = 0;
-		      if (ic >= 256) ic = 255;
-		      get_color (widget,
-				 colormap_power_r[ic],
-				 colormap_power_g[ic],
-				 colormap_power_b[ic],
-				 gc);
-
-		      // draw ix0
-		      if (ix - ix0 > 1)
-			{
-			  // too big gap
-			  int ix1;
-			  // check
-			  x = log ((double)(k-1)
-				   / (double)WIN_spec_n * sfinfo.samplerate);
-			  ix1 = logf_to_display (x, height_spg);
-			  if (ix1 != ix0)
-			    {
-			      fprintf (stderr, "something is wrong...\n");
-			      exit (1);
-			    }
-
-			  x = log ((double)(k-2)
-				   / (double)WIN_spec_n * sfinfo.samplerate);
-			  ix1 = logf_to_display (x, height_spg);
-			  // so that (ix1, ix0, ix) are the positions
-			  // => draw the rectangle for
-			  // (ix0-(ix0-ix1)/2, ix0+(ix-ix0)/2) = (ix_b, ix_t)
-			  // whose width is ((ix+ix0) - (ix0+ix1))/2 = ix_d
-			  int ix_b, ix_t, ix_d;
-			  ix_b = (ix0 + ix1)/2;
-			  ix_t = (ix  + ix0)/2;
-			  ix_d = (ix  - ix1)/2+1;
-			  if (ix_b < 0) ix_b = 0;
-			  if (ix_d < 1) ix_d = 1;
-			  if (ix_t > height_spg) ix_t = height_spg;
-
-			  if (istep <= 1)
-			    {
-			      gdk_draw_line
-				(wav_pixmap, gc,
-				 i, bottom_spg - ix_b,
-				 i, bottom_spg - ix_t);
-			    }
-			  else
-			    {
-			      if (i + istep >= WIN_wav_width)
-				{
-				  gdk_draw_rectangle
-				    (wav_pixmap, gc,
-				     TRUE, // fill
-				     i, bottom_spg - ix_t,
-				     WIN_wav_width-i, ix_d);
-				}
-			      else
-				{
-				  gdk_draw_rectangle
-				    (wav_pixmap, gc,
-				     TRUE, // fill
-				     i, bottom_spg - ix_t,
-				     istep, ix_d);
-				}
-			    }
-			}
-		      else
-			{
-			  if (istep <= 1)
-			    {
-			      gdk_draw_point
-				(wav_pixmap, gc,
-				 i, bottom_spg - ix0);
-			    }
-			  else
-			    {
-			      if (i + istep >= WIN_wav_width)
-				{
-				  gdk_draw_line
-				    (wav_pixmap, gc,
-				     i,             bottom_spg - ix0,
-				     WIN_wav_width, bottom_spg - ix0);
-				}
-			      else
-				{
-				  gdk_draw_line
-				    (wav_pixmap, gc,
-				     i,         bottom_spg - ix0,
-				     i + istep, bottom_spg - ix0);
-				}
-			    }
-			}
-		    }
-		  // for the next step
-		  y = 0.0;
-		  ny = 0;
-		  ix0 = ix;
-		}
-	      y += l_amp2 [k];
-	      ny ++;
-	    }
-	}
-      else // WIN_spec_mode == 1 || WIN_spec_mode == 2
-	{
-	  // get amp2 and dphi for the frame (WIN_wav_cur + i * WIN_wav_scale)
-	  fft_two_frames (WIN_wav_cur + i * WIN_wav_scale, WIN_spec_hop,
-			  l_amp2, NULL,
-			  l_ph, NULL,
-			  l_dphi, NULL);
-	  average_PV_FFT (height_spg, l_amp2, l_dphi, ave);
-
-	  if (WIN_spec_mode == 1 ||
-	      (WIN_spec_mode == 2 && height_spg < (oct_max-oct_min)*12))
-	    {
-	      for (k = 0; k < height_spg; k ++)
-		{
-		  y = 2.0 * log10 (ave [k]);
-		  ic = (int)(256.0 * (y - amp2_min) / (amp2_max - amp2_min));
-		  if (ic < 0)    ic = 0;
-		  if (ic >= 256) ic = 255;
-		  get_color (widget,
-			     colormap_power_r[ic],
-			     colormap_power_g[ic],
-			     colormap_power_b[ic],
-			     gc);
-
-		  if (istep <= 1)
-		    {
-		      gdk_draw_point (wav_pixmap, gc, i, bottom_spg - k);
-		    }
-		  else
-		    {
-		      if (i + istep >= WIN_wav_width)
-			{
-			  gdk_draw_line (wav_pixmap, gc,
-					 i,             bottom_spg - k,
-					 WIN_wav_width, bottom_spg - k);
-			}
-		      else
-			{
-			  gdk_draw_line (wav_pixmap, gc,
-					 i,         bottom_spg - k,
-					 i + istep, bottom_spg - k);
-			}
-		    }
-		}
-	    }
-	  else // WIN_spec_mode == 2 and height_spg > 4*12
-	    {
-	      int midi0, midi;
-	      midi0 = -1;
-	      y = 0.0;
-	      int ny = 0;
-	      for (k = 0; k < height_spg; k ++)
-		{
-		  // current midi note for display position k
-		  midi = logf_to_midi (display_to_logf (k, height_spg));
-		  if (midi != midi0)
-		    {
-		      if (ny > 0)
-			{
-			  // draw for midi0 (= midi - 1)
-			  y /= (double) ny;
-			  y = 2.0 * log10 (y);
-			  ic = (int)(256.0
-				     * (y - amp2_min) / (amp2_max - amp2_min));
-			  if (ic < 0)    ic = 0;
-			  if (ic >= 256) ic = 255;
-			  get_color (widget,
-				     colormap_power_r[ic],
-				     colormap_power_g[ic],
-				     colormap_power_b[ic],
-				     gc);
-			  int ix_b, ix_t, ix_d;
-			  ix_b = midi_to_display_bottom (midi-1, height_spg);
-			  ix_t = midi_to_display_top (midi-1, height_spg);
-			  ix_d = ix_t - ix_b + 1;
-			  if (ix_b < 0) ix_b = 0;
-			  if (ix_d < 1) ix_d = 1;
-			  if (ix_t > height_spg) ix_t = height_spg;
-
-			  if (istep <= 1)
-			    {
-			      gdk_draw_line
-				(wav_pixmap, gc,
-				 i, bottom_spg - ix_b,
-				 i, bottom_spg - ix_t);
-			    }
-			  else
-			    {
-			      if (i + istep >= WIN_wav_width)
-				{
-				  gdk_draw_rectangle
-				    (wav_pixmap, gc,
-				     TRUE, // fill
-				     i, bottom_spg - ix_t,
-				     WIN_wav_width-i, ix_d);
-				}
-			      else
-				{
-				  gdk_draw_rectangle
-				    (wav_pixmap, gc,
-				     TRUE, // fill
-				     i, bottom_spg - ix_t,
-				     istep, ix_d);
-				}
-			    }
-			}
-		      // for the next step
-		      y = 0.0;
-		      ny = 0;
-		      midi0 = midi;
-		    }
-		  y += ave [k];
-		  ny ++;
-		}
-	    }
-	}
-    }
-  free (l_amp2);
-  free (l_ph);
-  free (l_dphi);
-  if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
-    free (ave);
-
-    }
-  // the following is the static
 
   // center of the phase (zero)
   get_color (widget, 0, 0, 255, gc); // blue
@@ -1217,6 +770,189 @@ update_win_wav (GtkWidget *widget)
     }
 
 
+  // backup GdkFunction
+  GdkGCValues backup_gc_values;
+  gdk_gc_get_values (gc, &backup_gc_values);
+
+
+  // the following is the dynamic
+  if (sf != NULL)
+    {
+      // allocate working area
+      double *l_amp2 = NULL;
+      double *l_ph = NULL;
+      l_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+      l_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+      double *r_amp2 = NULL;
+      double *r_ph = NULL;
+      r_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+      r_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+      double *l_dphi = NULL;
+      double *r_dphi = NULL;
+      l_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+      r_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+
+      // set GC wiht OR function
+      gdk_gc_set_function (gc, GDK_OR);
+
+      // analyse the frame WIN_wav_mark
+      if (WIN_spec_mode == 0)
+	{
+	  fft_one_frame (WIN_wav_mark,
+			 l_amp2, r_amp2,
+			 l_ph, r_ph);
+	}
+      else
+	{
+	  fft_two_frames (WIN_wav_mark, WIN_spec_hop,
+			  l_amp2, r_amp2,
+			  l_ph, r_ph,
+			  l_dphi, r_dphi);
+	}
+
+      // left power and phase
+      for (i = 0; i < (WIN_spec_n/2)+1; i ++) // full span
+	{
+	  x = log ((double)i / (double)WIN_spec_n * sfinfo.samplerate);
+	  ix = logf_to_display (x, WIN_wav_width);
+	  if (ix < 0 || ix >= WIN_wav_width)
+	    continue;
+
+	  // left power
+	  y = log10 (l_amp2 [i]);
+	  iy = (int)((double)height_spec * (y - amp2_min)
+		     / (amp2_max - amp2_min));
+	  if (iy < 0) iy = 0;
+
+	  if (WIN_spec_mode == 0)
+	    {
+	      get_color (widget, 255, 0, 0, gc); // red
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix, bottom_spec,
+			     ix, bottom_spec - iy);
+	    }
+	  else if (WIN_spec_mode == 1)
+	    {
+	      get_color (widget, 255, 0, 0, gc); // red
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix, bottom_spec,
+			     ix, bottom_spec - iy);
+
+	      // log of the corrected freq
+	      get_color (widget, 255, 0, 255, gc);
+	      x = log (((double)i / (double)WIN_spec_n + l_dphi [i])
+		       * sfinfo.samplerate);
+	      ix0 = logf_to_display (x, WIN_wav_width);
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix,  bottom_spec - iy,
+			     ix0, bottom_spec - iy);
+	      gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
+			    ix0-2, (bottom_spec - iy)-2,
+			    4, 4,
+			    0, 64*360);
+	    }
+	  else if (WIN_spec_mode == 2)
+	    {
+	      get_color (widget, 255, 0, 0, gc); // red
+	      // log of the corrected freq
+	      x = log (((double)i / (double)WIN_spec_n + l_dphi [i])
+		       * sfinfo.samplerate);
+	      ix0 = logf_to_display (x, WIN_wav_width);
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix0, bottom_spec,
+			     ix0, bottom_spec - iy);
+	    }
+
+	  // left phase
+	  get_color (widget, 255, 0, 0, gc); // red
+	  iy = bottom_phase
+	    - (int)((double)height_phase
+		    * (l_ph [i] - ph_min) / (ph_max - ph_min));
+	  rad = (int)((double)max_rad_phase
+		      * (y - amp2_min) / (amp2_max - amp2_min));
+	  if (rad <= 0) rad = 1;
+	  gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
+			ix-rad/2, iy-rad/2,
+			rad, rad,
+			0, 64*360);
+
+
+	  // right power
+	  y = log10 (r_amp2 [i]);
+	  iy = (int)((double)height_spec * (y - amp2_min)
+		     / (amp2_max - amp2_min));
+	  if (iy < 0) iy = 0;
+
+	  if (WIN_spec_mode == 0)
+	    {
+	      get_color (widget, 0, 255, 0, gc); // green
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix, bottom_spec,
+			     ix, bottom_spec - iy);
+	    }
+	  else if (WIN_spec_mode == 1)
+	    {
+	      get_color (widget, 0, 255, 0, gc); // green
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix, bottom_spec,
+			     ix, bottom_spec - iy);
+
+	      // log of the corrected freq
+	      get_color (widget, 0, 255, 255, gc);
+	      x = log (((double)i / (double)WIN_spec_n + r_dphi [i])
+		       * sfinfo.samplerate);
+	      ix0 = logf_to_display (x, WIN_wav_width);
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix,  bottom_spec - iy,
+			     ix0, bottom_spec - iy);
+	      gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
+			    ix0-2, (bottom_spec - iy)-2,
+			    4, 4,
+			    0, 64*360);
+	    }
+	  else if (WIN_spec_mode == 2)
+	    {
+	      // log of the corrected freq
+	      get_color (widget, 0, 255, 0, gc); // green
+	      x = log (((double)i / (double)WIN_spec_n + r_dphi [i])
+		       * sfinfo.samplerate);
+	      ix0 = logf_to_display (x, WIN_wav_width);
+	      gdk_draw_line (wav_pixmap, gc,
+			     ix0, bottom_spec,
+			     ix0, bottom_spec - iy);
+	    }
+
+	  // right phase
+	  get_color (widget, 0, 255, 0, gc); // green
+	  iy = bottom_phase
+	    - (int)((double)height_phase
+		    * (r_ph [i] - ph_min) / (ph_max - ph_min));
+	  rad = (int)((double)max_rad_phase
+		      * (y - amp2_min) / (amp2_max - amp2_min));
+	  if (rad <= 0) rad = 1;
+	  gdk_draw_arc (wav_pixmap, gc, TRUE, // fill
+			ix-rad/2, iy-rad/2,
+			rad, rad,
+			0, 64*360);
+	}
+      free (l_amp2);
+      free (r_amp2);
+
+      free (l_ph);
+      free (r_ph);
+
+      free (l_dphi);
+      free (r_dphi);
+
+      // recover GC's function
+      gdk_gc_set_function (gc, backup_gc_values.function);
+    }
+  // the following is static contents
+
+
   // put scale (colormap) for power spectrum
   for (i = 0; i < height_spec; i ++)
     {
@@ -1233,6 +969,351 @@ update_win_wav (GtkWidget *widget)
 		     0, bottom_spec - i,
 		     9, bottom_spec - i);
     }
+
+  // horizontal lines
+  get_color (widget, 255, 255, 255, gc); // white
+  // between spec and phase
+  gdk_draw_line (wav_pixmap, gc,
+		 0, bottom_spec,
+		 WIN_wav_width, bottom_spec);
+  // bottom of the phase
+  gdk_draw_line (wav_pixmap, gc,
+		 0, bottom_phase,
+		 WIN_wav_width, bottom_phase);
+}
+
+/* draw spectrogram panel
+ * INPUT
+ *  i0, i1 : the range to draw in the display (pixel)
+ */
+static void
+draw_spectrogram_frame (GtkWidget *widget,
+			GdkGC *gc,
+			int bottom_spg, int height_spg,
+			int i0, int i1)
+{
+  extern GdkPixmap *wav_pixmap;
+  //extern gint WIN_wav_width;
+  extern int WIN_spec_mode;
+  extern double amp2_min, amp2_max;
+  extern SNDFILE *sf;
+  extern SF_INFO sfinfo;
+
+  int i, j;
+  int k;
+
+  double x;
+  int ix, ix0;
+  double y;
+  int ic;
+
+
+  if (i0 < 10) i0 = 10;
+  // 10 pixel is the width of keyboard picture in the left
+  if (i0 >= i1) return;
+
+
+  // clear image first
+  get_color (widget, 0, 0, 0, gc);
+  gdk_draw_rectangle (wav_pixmap, gc, TRUE /* fill */,
+		      i0, bottom_spg - height_spg, 
+		      i1, height_spg);
+
+
+  // backup GdkFunction
+  GdkGCValues backup_gc_values;
+  gdk_gc_get_values (gc, &backup_gc_values);
+
+
+  // the following is the dynamic
+  if (sf != NULL)
+    {
+      // allocate working area
+      double *l_amp2 = NULL;
+      double *l_ph = NULL;
+      l_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+      l_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+      double *l_dphi = NULL;
+      l_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+
+      extern gint colormap_power_r[256];
+      extern gint colormap_power_g[256];
+      extern gint colormap_power_b[256];
+
+      int istep;
+      istep = WIN_spec_n / WIN_wav_scale;
+      if (istep <= 0) istep = 1;
+
+      double *ave = NULL;
+      if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
+	{
+	  ave = (double *)malloc (sizeof (double) * height_spg);
+	}
+
+      for (i = i0/*0*/; i < i1/*WIN_wav_width*/; i+=istep)
+	{
+	  if (WIN_spec_mode == 0)
+	    {
+	      // get amp2 for the frame (WIN_wav_cur + i * WIN_wav_scale)
+	      fft_one_frame (WIN_wav_cur + i * WIN_wav_scale,
+			     l_amp2, NULL, NULL, NULL);
+
+	      // drawing
+	      ix0 = -1;
+	      y = 0.0;
+	      int ny = 0;
+	      for (k = 0; k < (WIN_spec_n/2)+1; k ++) // full span
+		{
+		  x = log ((double)k / (double)WIN_spec_n * sfinfo.samplerate);
+		  if (x < logf_min || x > logf_max)
+		    continue;
+
+		  ix = logf_to_display (x, height_spg);
+		  if (ix != ix0)
+		    {
+		      if (ny > 0)
+			{
+			  y /= (double) ny;
+			  y = log10 (y);
+			  ic = (int)(256.0
+				     * (y - amp2_min) / (amp2_max - amp2_min));
+			  if (ic < 0)    ic = 0;
+			  if (ic >= 256) ic = 255;
+			  get_color (widget,
+				     colormap_power_r[ic],
+				     colormap_power_g[ic],
+				     colormap_power_b[ic],
+				     gc);
+
+			  // draw ix0
+			  if (ix - ix0 > 1)
+			    {
+			      // too big gap
+			      int ix1;
+			      // check
+			      x = log ((double)(k-1)
+				       / (double)WIN_spec_n
+				       * sfinfo.samplerate);
+			      ix1 = logf_to_display (x, height_spg);
+			      if (ix1 != ix0)
+				{
+				  fprintf (stderr, "something is wrong...\n");
+				  exit (1);
+				}
+
+			      x = log ((double)(k-2)
+				       / (double)WIN_spec_n
+				       * sfinfo.samplerate);
+			      ix1 = logf_to_display (x, height_spg);
+			      // so that (ix1, ix0, ix) are the positions
+			      // => draw the rectangle for
+			      // (ix0-(ix0-ix1)/2,ix0+(ix-ix0)/2)=(ix_b, ix_t)
+			      // whose width is ((ix+ix0) - (ix0+ix1))/2 = ix_d
+			      int ix_b, ix_t, ix_d;
+			      ix_b = (ix0 + ix1)/2;
+			      ix_t = (ix  + ix0)/2;
+			      ix_d = (ix  - ix1)/2+1;
+			      if (ix_b < 0) ix_b = 0;
+			      if (ix_d < 1) ix_d = 1;
+			      if (ix_t > height_spg) ix_t = height_spg;
+
+			      if (istep <= 1)
+				{
+				  gdk_draw_line
+				    (wav_pixmap, gc,
+				     i, bottom_spg - ix_b,
+				     i, bottom_spg - ix_t);
+				}
+			      else
+				{
+				  if (i + istep >= WIN_wav_width)
+				    {
+				      gdk_draw_rectangle
+					(wav_pixmap, gc,
+					 TRUE, // fill
+					 i, bottom_spg - ix_t,
+					 WIN_wav_width-i, ix_d);
+				    }
+				  else
+				    {
+				      gdk_draw_rectangle
+					(wav_pixmap, gc,
+					 TRUE, // fill
+					 i, bottom_spg - ix_t,
+					 istep, ix_d);
+				    }
+				}
+			    }
+			  else
+			    {
+			      if (istep <= 1)
+				{
+				  gdk_draw_point
+				    (wav_pixmap, gc,
+				     i, bottom_spg - ix0);
+				}
+			      else
+				{
+				  if (i + istep >= WIN_wav_width)
+				    {
+				      gdk_draw_line
+					(wav_pixmap, gc,
+					 i,             bottom_spg - ix0,
+					 WIN_wav_width, bottom_spg - ix0);
+				    }
+				  else
+				    {
+				      gdk_draw_line
+					(wav_pixmap, gc,
+					 i,         bottom_spg - ix0,
+					 i + istep, bottom_spg - ix0);
+				    }
+				}
+			    }
+			}
+		      // for the next step
+		      y = 0.0;
+		      ny = 0;
+		      ix0 = ix;
+		    }
+		  y += l_amp2 [k];
+		  ny ++;
+		}
+	    }
+	  else // WIN_spec_mode == 1 || WIN_spec_mode == 2
+	    {
+	      // get amp2 and dphi for the frame (WIN_wav_cur + i * WIN_wav_scale)
+	      fft_two_frames (WIN_wav_cur + i * WIN_wav_scale, WIN_spec_hop,
+			      l_amp2, NULL,
+			      l_ph, NULL,
+			      l_dphi, NULL);
+	      average_PV_FFT (height_spg, l_amp2, l_dphi, ave);
+
+	      if (WIN_spec_mode == 1 ||
+		  (WIN_spec_mode == 2 && height_spg < (oct_max-oct_min)*12))
+		{
+		  for (k = 0; k < height_spg; k ++)
+		    {
+		      y = 2.0 * log10 (ave [k]);
+		      ic = (int)(256.0 * (y - amp2_min)
+				 / (amp2_max - amp2_min));
+		      if (ic < 0)    ic = 0;
+		      if (ic >= 256) ic = 255;
+		      get_color (widget,
+				 colormap_power_r[ic],
+				 colormap_power_g[ic],
+				 colormap_power_b[ic],
+				 gc);
+
+		      if (istep <= 1)
+			{
+			  gdk_draw_point (wav_pixmap, gc, i, bottom_spg - k);
+			}
+		      else
+			{
+			  if (i + istep >= WIN_wav_width)
+			    {
+			      gdk_draw_line (wav_pixmap, gc,
+					     i,             bottom_spg - k,
+					     WIN_wav_width, bottom_spg - k);
+			    }
+			  else
+			    {
+			      gdk_draw_line (wav_pixmap, gc,
+					     i,         bottom_spg - k,
+					     i + istep, bottom_spg - k);
+			    }
+			}
+		    }
+		}
+	      else // WIN_spec_mode == 2 and height_spg > 4*12
+		{
+		  int midi0, midi;
+		  midi0 = -1;
+		  y = 0.0;
+		  int ny = 0;
+		  for (k = 0; k < height_spg; k ++)
+		    {
+		      // current midi note for display position k
+		      midi = logf_to_midi (display_to_logf (k, height_spg));
+		      if (midi != midi0)
+			{
+			  if (ny > 0)
+			    {
+			      // draw for midi0 (= midi - 1)
+			      y /= (double) ny;
+			      y = 2.0 * log10 (y);
+			      ic = (int)(256.0
+					 * (y - amp2_min)
+					 / (amp2_max - amp2_min));
+			      if (ic < 0)    ic = 0;
+			      if (ic >= 256) ic = 255;
+			      get_color (widget,
+					 colormap_power_r[ic],
+					 colormap_power_g[ic],
+					 colormap_power_b[ic],
+					 gc);
+			      int ix_b, ix_t, ix_d;
+			      ix_b = midi_to_display_bottom (midi-1, height_spg);
+			      ix_t = midi_to_display_top (midi-1, height_spg);
+			      ix_d = ix_t - ix_b + 1;
+			      if (ix_b < 0) ix_b = 0;
+			      if (ix_d < 1) ix_d = 1;
+			      if (ix_t > height_spg) ix_t = height_spg;
+
+			      if (istep <= 1)
+				{
+				  gdk_draw_line
+				    (wav_pixmap, gc,
+				     i, bottom_spg - ix_b,
+				     i, bottom_spg - ix_t);
+				}
+			      else
+				{
+				  if (i + istep >= WIN_wav_width)
+				    {
+				      gdk_draw_rectangle
+					(wav_pixmap, gc,
+					 TRUE, // fill
+					 i, bottom_spg - ix_t,
+					 WIN_wav_width-i, ix_d);
+				    }
+				  else
+				    {
+				      gdk_draw_rectangle
+					(wav_pixmap, gc,
+					 TRUE, // fill
+					 i, bottom_spg - ix_t,
+					 istep, ix_d);
+				    }
+				}
+			    }
+			  // for the next step
+			  y = 0.0;
+			  ny = 0;
+			  midi0 = midi;
+			}
+		      y += ave [k];
+		      ny ++;
+		    }
+		}
+	    }
+	}
+      free (l_amp2);
+      free (l_ph);
+      free (l_dphi);
+
+
+      if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
+	free (ave);
+
+      // recover GC's function
+      gdk_gc_set_function (gc, backup_gc_values.function);
+    }
+  // the following is static contents
+
 
   // cref lines
   get_color (widget, 255, 255, 255, gc); // white
@@ -1268,7 +1349,6 @@ update_win_wav (GtkWidget *widget)
   ix = bottom_spg - logf_to_display (midi_to_logf (77), height_spg);
   gdk_draw_line (wav_pixmap, gc, 10, ix, WIN_wav_width, ix);
 
-
   // set GC wiht XOR function
   gdk_gc_set_function (gc, GDK_OR);
   get_color (widget, 128, 128, 128, gc);
@@ -1280,8 +1360,8 @@ update_win_wav (GtkWidget *widget)
 	  ix = bottom_spg
 	    - midi_to_display_bottom ((i+1)*12+j, height_spg);
 	  gdk_draw_line (wav_pixmap, gc,
-			 10, ix,
-			 WIN_wav_width, ix);
+			 i0/*10*/, ix,
+			 i1/*WIN_wav_width*/, ix);
 	}
     }
   // last line between B and C
@@ -1289,8 +1369,8 @@ update_win_wav (GtkWidget *widget)
   j = 0;
   ix = bottom_spg - midi_to_display_bottom ((i+1)*12+j, height_spg);
   gdk_draw_line (wav_pixmap, gc,
-		 10, ix,
-		 WIN_wav_width, ix);
+		 i0/*10*/, ix,
+		 i1/*WIN_wav_width*/, ix);
 
   // recover GC's function
   gdk_gc_set_function (gc, backup_gc_values.function);
@@ -1298,19 +1378,99 @@ update_win_wav (GtkWidget *widget)
 
   // horizontal lines
   get_color (widget, 255, 255, 255, gc); // white
-  // between spec and phase
-  gdk_draw_line (wav_pixmap, gc,
-		 0, bottom_spec,
-		 WIN_wav_width, bottom_spec);
-  // bottom of the phase
-  gdk_draw_line (wav_pixmap, gc,
-		 0, bottom_phase,
-		 WIN_wav_width, bottom_phase);
   // separate line at the top of wav == the bottom of spectrogram
   gdk_draw_line (wav_pixmap, gc,
-		 0, bottom_spg,
-		 WIN_wav_width, bottom_spg);
+		 i0/*0*/, bottom_spg,
+		 i1/*WIN_wav_width*/, bottom_spg);
 
+  draw_keyboard (widget, gc, bottom_spg, height_spg);
+}
+
+
+/*
+ * INPUT
+ *  flag_spec : set 1 to update spec panel (when mark is set or changed)
+ *  flag_wav  : set 1 to update wav panel
+ *  i0, i1    : the range to draw in the display (pixel)
+ */
+static void
+update_win_wav (GtkWidget *widget,
+		int flag_spec,
+		int flag_wav,
+		int flag_spg)
+{
+  extern gint WIN_wav_width;
+  extern gint WIN_wav_height;
+
+  extern int WIN_wav_cur;
+  extern int WIN_wav_scale;
+  extern int WIN_wav_mark;
+  extern int WIN_spec_n;
+  extern SNDFILE *sf;
+  extern SF_INFO sfinfo;
+
+  //if (sf == NULL) return;
+
+  // first, create a GC to draw on
+  GdkGC *gc;
+  gc = gdk_gc_new (widget->window);
+
+  // backup GdkFunction
+  GdkGCValues backup_gc_values;
+  gdk_gc_get_values (gc, &backup_gc_values);
+
+
+  // find proper dimensions for rectangle
+  gdk_window_get_size (widget->window, &WIN_wav_width, &WIN_wav_height);
+
+
+  // vertical axis is directing down on the window
+  int bottom_spec = WIN_wav_height*3/16;
+  int height_spec = WIN_wav_height*3/16;
+
+  int bottom_phase = WIN_wav_height*9/32;
+  int height_phase = WIN_wav_height*3/32;
+
+  int bottom_spg = WIN_wav_height*29/32;
+  int height_spg = WIN_wav_height*5/8;
+
+  int bottom_wav = WIN_wav_height;
+  int height_wav = WIN_wav_height*3/32;
+
+
+  // WAV window
+  if (flag_wav != 0)
+    {
+      draw_wav_frame (widget, gc,
+		      bottom_wav, height_wav,
+		      0, WIN_wav_width);
+    }
+
+  // Spectrum window
+  if (flag_spec != 0)
+    {
+      draw_spectrum_frame (widget, gc,
+			   bottom_spec, height_spec,
+			   bottom_phase, height_phase);
+    }
+
+  // spectrogram
+  if (flag_spg != 0)
+    {
+      draw_spectrogram_frame (widget, gc,
+			      bottom_spg, height_spg,
+			      0, WIN_wav_width);
+    }
+
+  // take pixbuf at this point (without texts)
+  if (wav_pixbuf != NULL)
+    {
+      gdk_pixbuf_unref (wav_pixbuf);
+    }
+  wav_pixbuf = gdk_pixbuf_get_from_drawable (NULL, wav_pixmap, NULL,
+					     0, 0,
+					     0, 0,
+					     WIN_wav_width, WIN_wav_height);
 
   // check mark
   // set GC wiht XOR function
@@ -1318,23 +1478,21 @@ update_win_wav (GtkWidget *widget)
   gdk_gc_set_function (gc, GDK_OR_REVERSE);
 
   get_color (widget, 128, 128, 128, gc);
-  int i0, i1;
-  i0 = (WIN_wav_mark              - WIN_wav_cur) / WIN_wav_scale;
-  i1 = (WIN_wav_mark + WIN_spec_n - WIN_wav_cur) / WIN_wav_scale;
-  if (i0 <= WIN_wav_width && i1 >= 0)
+  int j0, j1;
+  j0 = (WIN_wav_mark              - WIN_wav_cur) / WIN_wav_scale;
+  j1 = (WIN_wav_mark + WIN_spec_n - WIN_wav_cur) / WIN_wav_scale;
+  if (j0 <= WIN_wav_width && j1 >= 0)
     {
-      if (i0 < 0) i0 = 0;
-      if (i1 > WIN_wav_width) i1 = WIN_wav_width;
-      if ((i1-i0) == 0) i1 = i0 + 1;
+      if (j0 < 0) j0 = 0;
+      if (j1 > WIN_wav_width) j1 = WIN_wav_width;
+      if ((j1-j0) == 0) j1 = j0 + 1;
       gdk_draw_rectangle (wav_pixmap, gc, TRUE, // fill
-			  i0, WIN_wav_height - (height_wav+height_spg),
-			  (i1-i0), height_wav+height_spg);
+			  j0, WIN_wav_height - (height_wav+height_spg),
+			  (j1-j0), height_wav+height_spg);
     }
   // recover GC's function
   gdk_gc_set_function (gc, backup_gc_values.function);
 
-
-  draw_keyboard (widget, gc, bottom_spg, height_spg);
 
   draw_infos (widget, gc,
 	      0, bottom_spec, // top and bottom of spec window
@@ -1347,6 +1505,84 @@ update_win_wav (GtkWidget *widget)
 
   gtk_widget_queue_draw_area (widget, 0, 0, WIN_wav_width, WIN_wav_height);
 }
+
+
+/* draw playing indicator
+ */
+void
+draw_play_indicator (GtkWidget *widget)
+{
+  extern GdkPixmap *wav_pixmap;
+  extern GdkPixbuf *wav_pixbuf;
+
+  extern int flag_play;
+  extern long play_cur;
+
+  static long last = -1;
+
+  if (flag_play == 0) return; // for sure
+
+
+  // first, create a GC to draw on
+  GdkGC *gc;
+  gc = gdk_gc_new (widget->window);
+  get_color (widget, 255, 0, 0, gc); // red
+
+  // vertical axis is directing down on the window
+  extern gint WIN_wav_height;
+  int bottom_spg = WIN_wav_height*29/32;
+  int height_spg = WIN_wav_height*5/8;
+
+  int bottom_wav = WIN_wav_height;
+  int height_wav = WIN_wav_height*3/32;
+
+
+  int ix;
+  ix  = (int)((play_cur  - WIN_wav_cur) / WIN_wav_scale);
+  if (last < 0)
+    {
+      // no indicator before
+      gdk_draw_line (wav_pixmap, gc,
+		     ix, bottom_spg - height_spg,
+		     ix, bottom_wav);
+      gtk_widget_queue_draw_area (widget,
+				  ix, bottom_spg - height_spg,
+				  1,  height_spg + height_wav);
+    }
+  else
+    {
+      int ix0;
+      ix0 = (int)((last - WIN_wav_cur) / WIN_wav_scale);
+      if (ix != ix0)
+	{
+	  gdk_draw_line (wav_pixmap, gc,
+			 ix, bottom_spg - height_spg,
+			 ix, bottom_wav);
+
+	  // erase the existing indicator
+	  gdk_pixbuf_render_to_drawable (wav_pixbuf,
+					 wav_pixmap, gc,
+					 ix0, bottom_spg - height_spg,
+					 ix0, bottom_spg - height_spg,
+					 1,   height_spg + height_wav,
+					 GDK_RGB_DITHER_NONE, 0, 0);
+
+	  gtk_widget_queue_draw_area (widget,
+				      ix, bottom_spg - height_spg,
+				      1,  height_spg + height_wav);
+	  gtk_widget_queue_draw_area (widget,
+				      ix0, bottom_spg - height_spg,
+				      1,   height_spg + height_wav);
+	}
+      // otherwise, indicator is in the same position (so do nothing)
+    }
+
+  last = play_cur; // frame
+
+  // finally, destroy GC
+  g_object_unref (gc);
+}
+
 
 static gboolean
 wav_configure_event (GtkWidget *widget, GdkEventConfigure *event)
@@ -1363,7 +1599,11 @@ wav_configure_event (GtkWidget *widget, GdkEventConfigure *event)
 			       widget->allocation.width,
 			       widget->allocation.height,
 			       -1);
-  update_win_wav (widget);
+  update_win_wav (widget,
+		  1, // spec
+		  1, // wav
+		  1  // spg
+		  );
 
   return TRUE;
 }
@@ -1386,7 +1626,8 @@ wav_expose_event (GtkWidget *widget, GdkEventExpose *event)
 static gint
 wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 {
-  extern GdkPixmap * wav_pixmap;
+  extern GdkPixmap *wav_pixmap;
+  extern gint WIN_wav_width;
   extern int flag_window;
   extern double amp2_min, amp2_max;
   extern int oct_min, oct_max;
@@ -1422,7 +1663,11 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
 
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_Left:
@@ -1441,14 +1686,22 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
 
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_h:
       WIN_spec_hop_scale /= 2;
       if (WIN_spec_hop_scale <= 1) WIN_spec_hop_scale = 1;
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_H:
@@ -1459,76 +1712,128 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 	  WIN_spec_hop = 1;
 	  WIN_spec_hop_scale = WIN_spec_n / WIN_spec_hop;
 	}
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_p:
       WIN_spec_mode ++;
       if (WIN_spec_mode > 2) WIN_spec_mode = 0;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_P:
       WIN_spec_mode --;
       if (WIN_spec_mode < 0) WIN_spec_mode = 2;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_W:
       flag_window --;
       if (flag_window < 0) flag_window = 6;
       //fprint_window_name (stdout, flag_window);
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
     case GDK_w:
       flag_window ++;
       if (flag_window > 6) flag_window = 0;
       //fprint_window_name (stdout, flag_window);
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_o:
       oct_max ++;
       if (oct_max > 9) oct_max = 9;
       logf_max = midi_to_logf ((oct_max+1)*12);
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
     case GDK_O:
       oct_max --;
       if (oct_max <= oct_min) oct_max = oct_min + 1; 
       logf_max = midi_to_logf ((oct_max+1)*12);
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_L:
       oct_min ++;
       if (oct_min >= oct_max) oct_min = oct_max - 1;
       logf_min = midi_to_logf ((oct_min+1)*12);
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
     case GDK_l:
       oct_min --;
       if (oct_min <= -1) oct_min = -1;
       logf_min = midi_to_logf ((oct_min+1)*12);
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_Up:
       amp2_max += 1.0;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
     case GDK_Down:
       amp2_max -= 1.0;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_Page_Up:
       amp2_min += 1.0;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
     case GDK_Page_Down:
       amp2_min -= 1.0;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      0, // wav
+		      1  // spg
+		      );
       break;
 
     case GDK_space:
@@ -1545,7 +1850,7 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 	  fprintf (stderr, "# PLAY\n");
 	  // gtk_timeout_add is deprecated
 	  tag_play = g_timeout_add (100, // miliseconds
-				    play_esd, NULL);
+				    play_1msec, widget);
 	}
       break;
 
@@ -1559,7 +1864,7 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 static gint
 wav_button_press_event (GtkWidget *widget, GdkEventButton *event)
 {
-  extern GdkPixmap * wav_pixmap;
+  extern GdkPixmap *wav_pixmap;
   extern SF_INFO sfinfo;
 
   if (wav_pixmap == NULL)
@@ -1574,7 +1879,12 @@ wav_button_press_event (GtkWidget *widget, GdkEventButton *event)
       WIN_wav_mark = WIN_wav_cur + WIN_wav_scale * event->x;
       if (WIN_wav_mark > (sfinfo.frames - WIN_spec_n))
 	WIN_wav_mark = sfinfo.frames - WIN_spec_n;
-      update_win_wav (widget);
+      update_win_wav (widget,
+		      1, // spec
+		      1, // wav
+		      1  // spg
+		      );
+      // NOTE ** we can set the limited range here to ease CPU!!
       break;
 
     case 2:
@@ -1595,7 +1905,7 @@ wav_button_press_event (GtkWidget *widget, GdkEventButton *event)
 static gint
 wav_motion_notify_event (GtkWidget *widget, GdkEventMotion *event)
 {
-  extern GdkPixmap * wav_pixmap;
+  extern GdkPixmap *wav_pixmap;
   int x, y;
   GdkModifierType state;
 
@@ -1610,6 +1920,7 @@ wav_motion_notify_event (GtkWidget *widget, GdkEventMotion *event)
       state = event->state;
     }
     
+    /*
   if (state & GDK_BUTTON1_MASK && wav_pixmap != NULL)
     //g_print ("Button Motion 1 %d, %d\n", x, y);
   if (state & GDK_BUTTON2_MASK && wav_pixmap != NULL)
@@ -1625,6 +1936,7 @@ wav_motion_notify_event (GtkWidget *widget, GdkEventMotion *event)
     {
       update_win_wav (widget);
     }
+    */
 
   return TRUE;
 }
@@ -1641,9 +1953,12 @@ wav_adj_cur (GtkAdjustment *get, GtkAdjustment *set)
     {
       WIN_wav_cur = (int)sfinfo.frames;
     }
-  //g_print ("adj_cur() : cur = %d\n", WIN_wav_cur);
 
-  update_win_wav (GTK_WIDGET (set));
+  update_win_wav (GTK_WIDGET (set),
+		  0, // spec
+		  1, // wav
+		  1  // spg
+		  );
 }
 
 static void
@@ -1659,7 +1974,6 @@ wav_adj_scale (GtkAdjustment *get, GtkAdjustment *set)
       WIN_wav_cur = (int)sfinfo.frames - WIN_wav_scale;
       GTK_ADJUSTMENT (adj_cur)->value = (double) WIN_wav_cur;
     }
-  //g_print ("adj_scale() : range = %d\n", WIN_wav_scale);
 
   GTK_ADJUSTMENT (adj_cur)->page_increment
     = (double)(WIN_wav_scale * WIN_wav_width);
@@ -1668,7 +1982,11 @@ wav_adj_scale (GtkAdjustment *get, GtkAdjustment *set)
 
   gtk_adjustment_changed (GTK_ADJUSTMENT (adj_cur));
 
-  update_win_wav (GTK_WIDGET (set));
+  update_win_wav (GTK_WIDGET (set),
+		  0, // spec
+		  1, // wav
+		  1  // spg
+		  );
 }
 
 static void
@@ -1953,11 +2271,11 @@ create_wav (void)
   pv_rate = 1.0; // initial value
   adj_pv_rate = gtk_adjustment_new
     (1.0, // value
-     -2.0, // lower
-     2.0, // upper
+     -2.5, // lower
+     2.5, // upper
      0.01, // step increment
-     0.01, // page increment
-     0.0); // page size
+     0.1, // page increment
+     0.1); // page size
   g_signal_connect (G_OBJECT (adj_pv_rate), "value_changed",
 		    G_CALLBACK (wav_pv_rate), GTK_OBJECT (wav_win));
 
@@ -1966,6 +2284,7 @@ create_wav (void)
   gtk_range_set_update_policy (GTK_RANGE (scale2),
 			       GTK_UPDATE_CONTINUOUS);
   gtk_box_pack_start (GTK_BOX (hbox), scale2, FALSE, FALSE, 0);
+  gtk_scale_set_digits (GTK_SCALE (scale2), 2);
   gtk_range_set_inverted (GTK_RANGE (scale2), TRUE);
   gtk_widget_show (scale2);
 
