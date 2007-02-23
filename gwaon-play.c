@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.c,v 1.2 2007/02/23 07:00:36 kichiki Exp $
+ * $Id: gwaon-play.c,v 1.3 2007/02/23 07:37:21 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,8 +78,7 @@ play_1msec (gpointer data)
   long l;
   for (l = 0; l < len_1msec; l += len_play)
     {
-      len_play = pv_complex_play_step (pv, play_cur, pv_rate,
-				       0 /* no phase lock */);
+      len_play = pv_complex_play_step (pv, play_cur, pv_rate);
       if (len_play < pv->hop_out)
 	{
 	  flag_play = 0; // stop playing
