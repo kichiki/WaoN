@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.2 2007/02/17 05:31:06 kichiki Exp $
+ * $Id: pv.c,v 1.3 2007/02/23 01:45:19 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,19 +28,22 @@
 #include "pv-loose-lock-complex.h"
 #include "pv-loose-lock.h"
 
+#include "VERSION.h"
 
 
 void usage (char * argv0)
 {
-  fprintf (stderr, "PV - phase vocoder\n");
+  fprintf (stderr, "PV - phase vocoder, Version %s\n",
+	   WAON_VERSION);
   fprintf (stderr, "Copyright (C) 2007 Kengo Ichiki "
-	   "<kichiki@users.sourceforge.net>\n\n");
+	   "<kichiki@users.sourceforge.net>\n");
+  fprintf (stderr, "Web: http://waon.sourceforge.net/\n\n");
   fprintf (stderr, "Usage: %s [option ...]\n", argv0);
   fprintf (stderr, "  -h, --help\tprint this help.\n");
   fprintf (stderr, "OPTIONS FOR FILES\n");
   fprintf (stderr, "  -i, --input\tinput file (default: stdin)\n");
   fprintf (stderr, "  -o, --output\toutput file (default: esd)\n");
-  fprintf (stderr, "  -n         \tFFT data number (default: 1024)\n");
+  fprintf (stderr, "  -n         \tFFT data number (default: 2048)\n");
   fprintf (stderr, "  -hop       \thop number (default: 256)\n");
   fprintf (stderr, "  -rate      \tsynthesize rate; larger is faster"
 	   " (default: 1.0)\n");
@@ -71,7 +74,7 @@ int main (int argc, char** argv)
   char * file_out = NULL;
 
   /* option analysis */
-  long len = 1024;
+  long len = 2048;
   long hop = 256;
   double rate = 1.0;
   int scheme = 0;
@@ -159,11 +162,13 @@ int main (int argc, char** argv)
       break;
 
     case 2:
-      pv_loose_lock_complex (file_in, file_out, rate, len, hop, flag_window);
+      pv_complex (file_in, file_out, rate, len, hop, flag_window,
+		  1 /* loose phase lock */);
       break;
 
     case 3:
-      pv_complex (file_in, file_out, rate, len, hop, flag_window);
+      pv_complex (file_in, file_out, rate, len, hop, flag_window,
+		  0 /* no phase lock */);
       break;
 
     case 4:
