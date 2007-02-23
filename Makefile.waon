@@ -1,6 +1,6 @@
 # Makefile for waon
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
-# $Id: Makefile.waon,v 1.4 2007/02/14 04:01:42 kichiki Exp $
+# $Id: Makefile.waon,v 1.5 2007/02/23 07:57:59 kichiki Exp $
 
 
 CC = gcc
@@ -26,7 +26,6 @@ LDFLAGS= \
 #	-lm
 
 OBJS =	main.o \
-	sox-wav.o \
 	midi.o \
 	analyse.o \
 	fft.o \
@@ -35,12 +34,6 @@ OBJS =	main.o \
 
 waon: $(OBJS)
 	$(CC) $(CFLAGS) -o waon $(OBJS) $(LDFLAGS)
-
-main.o: main.c sox-wav.h midi.h fft.h analyse.h
-sox-wav.o: sox-wav.c sox-wav.h
-midi.o: midi.c midi.h
-analyse.o: analyse.c analyse.h sox-wav.h midi.h fft.h
-fft.o: 
 
 clean: 
 	rm -f *.o *~ waon *.core
