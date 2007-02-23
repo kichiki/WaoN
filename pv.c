@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.4 2007/02/23 02:29:06 kichiki Exp $
+ * $Id: pv.c,v 1.5 2007/02/23 07:59:58 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,7 +41,8 @@ void usage (char * argv0)
   fprintf (stderr, "  -h, --help\tprint this help.\n");
   fprintf (stderr, "OPTIONS FOR FILES\n");
   fprintf (stderr, "  -i, --input\tinput file (default: stdin)\n");
-  fprintf (stderr, "  -o, --output\toutput file (default: esd)\n");
+  fprintf (stderr, "  -o, --output\toutput file in flac"
+	   " (default: play audio by ao)\n");
   fprintf (stderr, "  -n         \tFFT data number (default: 2048)\n");
   fprintf (stderr, "  -hop       \thop number (default: 256)\n");
   fprintf (stderr, "  -rate      \tsynthesize rate; larger is faster"
