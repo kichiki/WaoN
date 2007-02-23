@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.5 2007/02/11 23:49:46 kichiki Exp $
+ * $Id: main.c,v 1.6 2007/02/23 03:12:49 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,10 +45,11 @@
 
 void usage (char * argv0)
 {
-  fprintf (stderr, "WaoN - a Wave-to-Notes transcriber, version %s\n",
+  fprintf (stderr, "WaoN - a Wave-to-Notes transcriber, Version %s\n",
 	   WAON_VERSION);
   fprintf (stderr, "Copyright (C) 1998-2007 Kengo Ichiki "
-	   "<kichiki@users.sourceforge.net>\n\n");
+	   "<kichiki@users.sourceforge.net>\n");
+  fprintf (stderr, "Web: http://waon.sourceforge.net/\n\n");
   fprintf (stderr, "Usage: %s [option ...]\n", argv0);
   fprintf (stderr, "  -h --help\tprint this help.\n");
   fprintf (stderr, "OPTIONS FOR FILES\n");
