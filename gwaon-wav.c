@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.7 2007/02/23 02:15:36 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.8 2007/02/23 07:39:36 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
-#include "pv-complex.h" // struct pv_complex_data, pv_complex_play_step()
+#include "pv-complex.h" // struct pv_complex_data
 
 #include "gtk-color.h" /* get_color() */
 
@@ -458,6 +458,7 @@ void draw_infos (GtkWidget *widget,
   extern int flag_window;
   extern double amp2_min, amp2_max;
   extern int oct_min, oct_max;
+  //extern struct pv_complex_data *pv;
 
   gchar string [256];
 
@@ -469,6 +470,8 @@ void draw_infos (GtkWidget *widget,
   sprintf (string, "H = %d (%d)", WIN_spec_hop, WIN_spec_hop_scale);
   draw_text (widget, gc, 280, 0, string,
 	     r, g, b, drop, rd, gd, bd, font);
+
+  // spectrum mode
   switch (WIN_spec_mode)
     {
     case 0: // plain FFT
@@ -486,6 +489,7 @@ void draw_infos (GtkWidget *widget,
   draw_text (widget, gc, 400, 0, string,
 	     r, g, b, drop, rd, gd, bd, font);
 
+  // window
   switch (flag_window)
     {
     case 0: // square (no window)
@@ -518,6 +522,21 @@ void draw_infos (GtkWidget *widget,
     }
   draw_text (widget, gc, 200, 0, string,
 	     r, g, b, drop, rd, gd, bd, font);
+
+  // phase lock
+  /*
+  if (pv->flag_lock == 0)
+    {
+      strcpy (string, "no lock");
+    }
+  else
+    {
+      strcpy (string, "loose lock");
+    }
+  draw_text (widget, gc, 480, 0, string,
+	     r, g, b, drop, rd, gd, bd, font);
+  */
+
 
   sprintf (string, "10^%.0f", amp2_max);
   draw_text (widget, gc, 10, y_spec_top, string,
@@ -1636,6 +1655,8 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
   extern int flag_play;
   extern gint tag_play;
 
+  extern struct pv_complex_data *pv;
+
 
   //fprintf (stderr, "key_press_event\n");
   if (wav_pixmap == NULL)
@@ -1851,6 +1872,20 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 	  // gtk_timeout_add is deprecated
 	  tag_play = g_timeout_add (100, // miliseconds
 				    play_1msec, widget);
+	}
+      break;
+
+    case GDK_Q:
+    case GDK_q:
+      if (pv->flag_lock == 0)
+	{
+	  pv->flag_lock = 1;
+	  fprintf (stderr, "# loose phase lock\n");
+	}
+      else
+	{
+	  pv->flag_lock = 0;
+	  fprintf (stderr, "# no phase lock\n");
 	}
       break;
 
