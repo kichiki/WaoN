@@ -1,6 +1,6 @@
 /* half-complex format routines
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.c,v 1.3 2007/02/16 06:22:17 kichiki Exp $
+ * $Id: hc.c,v 1.4 2007/02/23 01:44:37 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -307,19 +307,19 @@ void HC_puckette_lock (long len, const double *y,
   int k;
 
   z [0] = y [0];
-  for (k = 1; k < ((len+1)/2); k ++)
+  for (k = 1; k < (len+1)/2; k ++)
     {
       z [k]       = y [k];
       z [len - k] = y [len - k];
       if (k > 1)
 	{
-	  z [k-1]         += y [k-1];
-	  z [len - (k-1)] += y [len - (k-1)];
+	  z [k]       += y [k-1];
+	  z [len - k] += y [len - (k-1)];
 	}
       if (k < (len+1)/2 - 1)
 	{
-	  z [k+1]         += y [k+1];
-	  z [len - (k+1)] += y [len - (k+1)];
+	  z [k]       += y [k+1];
+	  z [len - k] += y [len - (k+1)];
 	}
     }
   if (len%2 == 0)
