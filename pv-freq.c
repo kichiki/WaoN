@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-freq.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-freq.c,v 1.3 2007/02/17 05:34:41 kichiki Exp $
+ * $Id: pv-freq.c,v 1.4 2007/02/23 01:49:09 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,9 +30,9 @@
 #include <sndfile.h>
 #include "snd.h"
 
-// esd sound device
-#include <esd.h>
-#include "esd-wrapper.h"
+// ao device
+#include <ao/ao.h>
+#include "ao-wrapper.h"
 
 
 /* phase vocoder by frequency domain
@@ -51,7 +51,7 @@ void pv_freq (const char *file, const char *outfile,
   long len_out;
   int iscale;
 
-  // open wav file
+  // open the input file
   // libsndfile version
   SNDFILE *sf = NULL;
   SF_INFO sfinfo;
@@ -76,14 +76,14 @@ void pv_freq (const char *file, const char *outfile,
   len_out = len * (long)iscale;
 
 
-  /* esd sound device */
+  // prepare the output
   int status;
-  int esd = 0; // for compiler warning...
+  ao_device *ao = NULL;
   SNDFILE *sfout = NULL;
   SF_INFO sfout_info;
   if (outfile == NULL)
     {
-      esd = esd_init_16_stereo_strem_play (sfinfo.samplerate);
+      ao = ao_init_16_stereo (sfinfo.samplerate);
     }
   else
     {
@@ -177,7 +177,7 @@ void pv_freq (const char *file, const char *outfile,
       // output
       if (outfile == NULL)
 	{
-	  status = esd_write (esd, l_out, r_out, len_out);
+	  status = ao_write (ao, l_out, r_out, hop_out);
 	}
       else
 	{
@@ -186,6 +186,20 @@ void pv_freq (const char *file, const char *outfile,
 	}
 
       step ++;
+    }
+
+
+  sf_close (sf);
+  if (outfile == NULL)
+    {
+      ao_close (ao);
+    }
+  else
+    {
+      // frames left in l_out[] and r_out[]
+      status = sndfile_write (sfout, sfout_info, l_out, r_out, len);
+      sf_write_sync (sfout);
+      sf_close (sfout);
     }
 
   free (left);
@@ -207,14 +221,4 @@ void pv_freq (const char *file, const char *outfile,
 
   free (p_out);
   free (a_out);
-
-  sf_close (sf) ;
-  if (outfile == NULL) esd_close (esd);
-  else
-    {
-      // set frames
-      sfout_info.frames = out_frames;
-      sf_write_sync (sfout);
-      sf_close (sfout);
-    }
 }
