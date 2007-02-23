@@ -1,6 +1,6 @@
 /* routines to analyse power spectrum and output notes
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.c,v 1.4 2007/02/11 23:46:15 kichiki Exp $
+ * $Id: analyse.c,v 1.5 2007/02/23 07:56:26 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include <stdlib.h> // malloc()
 #include <string.h> // memset()
 #include <math.h> // log10()
+#include <sys/errno.h> // errno
 
 /* FFTW library  */
 #ifdef FFTW2
@@ -29,7 +30,10 @@
 #include <fftw3.h>
 #endif // FFTW2
 
-#include "sox-wav.h" /* ft_t, wavstartread(), wavread()  */
+// libsndfile
+#include <sndfile.h>
+#include "snd.h"
+
 #include "midi.h" /* get_note()  */
 #include "fft.h" /* init_den(), power_spectrum_fftw() */
 #include "analyse.h"
@@ -522,24 +526,8 @@ init_patch (char *file_patch, int plen, int nwin)
   extern double p0; /* maximum power  */
   extern double if0; /* freq point of maximum  */
   
-/* FFTW library  */
-#ifdef FFTW2
-  rfftw_plan plan;
-#else
-  fftw_plan plan;
-#endif /* FFTW2 */
-
-  long *ibuf;
-  double *x; /* wave data for FFT  */
-  double *y; /* spectrum data for FFT */ 
-  double den;
-
-  struct soundstream patformat;
-  ft_t ft_pat;
-
   int i;
 
-  ft_pat = &patformat;
 
   /* prepare patch  */
   if (file_patch == NULL)
@@ -557,62 +545,78 @@ init_patch (char *file_patch, int plen, int nwin)
 	  patch_flg = 0;
 	  return;
 	}
-      ibuf = (long *)malloc (sizeof (long) * plen);
-      if (ibuf == NULL)
-	{
-	  fprintf(stderr, "cannot allocate ibuf[%d]\n", plen);
-	  patch_flg = 0;
-	  return;
-	}
-      x = (double *)malloc (sizeof (double) * plen);
-      if (x == NULL)
+
+      double *x = NULL;
+      double *xx = NULL;
+      x  = (double *)malloc (sizeof (double) * plen);
+      xx = (double *)malloc (sizeof (double) * plen);
+      if (x == NULL || xx == NULL)
 	{
 	  fprintf(stderr, "cannot allocate x[%d]\n", plen);
 	  patch_flg = 0;
-	  free (ibuf);
 	  return;
 	}
+
+      /* spectrum data for FFT */ 
+      double *y = NULL;
       y = (double *)malloc (sizeof (double) * plen);
       if (y == NULL)
 	{
 	  fprintf(stderr, "cannot allocate y[%d]\n", plen);
 	  patch_flg = 0;
-	  free (ibuf);
 	  free (x);
+	  free (xx);
 	  return;
 	}
 
       /* open patch file  */
-      ft_pat->fp = fopen (file_patch, "r");
+      SNDFILE *sf = NULL;
+      SF_INFO sfinfo;
+      sf = sf_open (file_patch, SFM_READ, &sfinfo);
+      if (sf == NULL)
+	{
+	  fprintf (stderr, "Can't open patch file %s : %s\n",
+		   file_patch, strerror (errno));
+	  exit (1);
+	}
+
       /* read patch wav  */
-      wavstartread (ft_pat);
-      if (wavread (ft_pat, ibuf, plen) == 0)
+      if (sndfile_read (sf, sfinfo, x, xx, plen) != plen)
 	{
 	  fprintf (stderr, "No Patch Data!\n");
 	  patch_flg = 0;
-	  free (ibuf);
 	  free (x);
+	  free (xx);
+	  free (y);
 	  return;
 	}
-      for (i=0; i<plen; i++)
-	x[i] = (double)ibuf[i];
+      if (sfinfo.channels == 2)
+	{
+	  for (i = 0; i < plen; i ++)
+	    {
+	      x[i] = 0.5 * (x[i] + xx[i]);
+	    }
+	}
 
       /* calc power of patch  */
+      double den;
       den = init_den (plen, nwin);
 
 #ifdef FFTW2
+      rfftw_plan plan;
       plan = rfftw_create_plan (plen, FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE);
 #else
+      fftw_plan plan;
       plan = fftw_plan_r2r_1d (plen, x, y, FFTW_R2HC, FFTW_ESTIMATE);
 #endif /* FFTW2 */
 
       power_spectrum_fftw (plen, x, y, pat, den, nwin, plan);
       fftw_destroy_plan (plan);
 
-      free (ibuf);
       free (x);
+      free (xx);
       free (y);
-      fclose (ft_pat->fp);
+      sf_close (sf);
 
       /* search maximum  */
       p0 = 0.0;
