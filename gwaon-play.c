@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.c,v 1.1 2007/02/23 02:14:27 kichiki Exp $
+ * $Id: gwaon-play.c,v 1.2 2007/02/23 07:00:36 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,8 +68,8 @@ play_1msec (gpointer data)
   long frame0;
   long frame1;
   frame0 = (long) WIN_wav_cur;
-  frame1 = frame0 + (long)(WIN_wav_scale * WIN_wav_width);
-  if (frame1 >= pv->sfinfo->frames) frame1 = (long)pv->sfinfo->frames;
+  frame1 = frame0 + (long)(WIN_wav_scale * WIN_wav_width) - 1;
+  if (frame1 >= pv->sfinfo->frames) frame1 = (long)pv->sfinfo->frames - 1;
   if (play_cur < frame0) play_cur = frame0;
   if (play_cur >= frame1) play_cur = frame1;
 
@@ -84,8 +84,8 @@ play_1msec (gpointer data)
 	{
 	  flag_play = 0; // stop playing
 	  // rewind
-	  if (pv_rate >= 0) play_cur = frame0;
-	  else              play_cur = frame1;
+	  if (pv_rate >= 0.0) play_cur = frame0;
+	  else                play_cur = frame1;
 
 	  // if FAIL is returned, this timeout is removed
 	  return FALSE;
@@ -96,11 +96,11 @@ play_1msec (gpointer data)
 
       // check the boundary
       if (play_cur < frame0 ||
-	  play_cur + pv->hop_out >= frame1)
+	  play_cur + hop_in >= frame1)
 	{
 	  // rewind
-	  if (pv_rate >= 0) play_cur = frame0;
-	  else              play_cur = frame1;
+	  if (pv_rate >= 0.0) play_cur = frame0;
+	  else                play_cur = frame1;
 	}
     }
   return TRUE;
