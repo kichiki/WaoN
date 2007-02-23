@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.3 2007/02/23 02:10:57 kichiki Exp $
+ * $Id: pv-complex.h,v 1.4 2007/02/23 07:35:48 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -40,7 +40,6 @@ struct pv_complex_data {
   // output (just reference purpose only)
   int flag_out; // 0 = ao, 1 = sf
 
-  //int esd;
   ao_device *ao;
 
   SNDFILE *sfout;
@@ -59,13 +58,16 @@ struct pv_complex_data {
   double *f_out;
   fftw_plan plan_inv;
 
-  int flag_run; // 0 = stop, 1 = running
+  int flag_left;  // whether l_f_old[] is ready (1) or not (0)
+  int flag_right; // whether r_f_old[] is ready (1) or not (0)
 
-  double *l_f_out_old;
-  double *r_f_out_old;
+  double *l_f_old;
+  double *r_f_old;
 
   double *l_out;
   double *r_out;
+
+  int flag_lock; // 0 = no phase lock, 1 = loose phase lock
 };
 
 
@@ -100,14 +102,13 @@ pv_complex_free (struct pv_complex_data *pv);
  *  cur : current frame to play.
  *        you have to increment this by yourself.
  *  rate : time-stretch rate (larger is slower)
- *  flag_lock : 0 == no phase lock
- *              1 == loose phase lock
+ *  pv->flag_lock : 0 == no phase lock
+ *                  1 == loose phase lock
  * OUTPUT (returned value)
  *  status : output frame.
  */
 long pv_complex_play_step (struct pv_complex_data *pv,
-			   long cur, double rate,
-			   int flag_lock);
+			   long cur, double rate);
 
 
 /** some wrapper routines **/

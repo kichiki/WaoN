@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.4 2007/02/23 02:10:25 kichiki Exp $
+ * $Id: pv-complex.c,v 1.5 2007/02/23 07:35:15 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -66,8 +66,8 @@ pv_complex_init (long len, long hop_out, int flag_window)
   pv->plan_inv = fftw_plan_r2r_1d (len, pv->f_out, pv->t_out,
 				   FFTW_HC2R, FFTW_ESTIMATE);
 
-  pv->l_f_out_old = (double *)malloc (len * sizeof(double));
-  pv->r_f_out_old = (double *)malloc (len * sizeof(double));
+  pv->l_f_old = (double *)malloc (len * sizeof(double));
+  pv->r_f_old = (double *)malloc (len * sizeof(double));
 
   pv->l_out = (double *) malloc ((hop_out + len) * sizeof(double));
   pv->r_out = (double *) malloc ((hop_out + len) * sizeof(double));
@@ -78,7 +78,10 @@ pv_complex_init (long len, long hop_out, int flag_window)
       pv->r_out [i] = 0.0;
     }
 
-  pv->flag_run = 0; // not running
+  pv->flag_left  = 0; // l_f_old[] is not initialized yet
+  pv->flag_right = 0; // r_f_old[] is not initialized yet
+
+  pv->flag_lock = 0; // no phase lock (for default)
 
   return (pv);
 }
@@ -121,8 +124,8 @@ pv_complex_free (struct pv_complex_data *pv)
   if (pv->f_out != NULL) free (pv->f_out);
   if (pv->plan_inv != NULL) fftw_destroy_plan (pv->plan_inv);
 
-  if (pv->l_f_out_old != NULL) free (pv->l_f_out_old);
-  if (pv->r_f_out_old != NULL) free (pv->r_f_out_old);
+  if (pv->l_f_old != NULL) free (pv->l_f_old);
+  if (pv->r_f_old != NULL) free (pv->r_f_old);
 
   if (pv->l_out != NULL) free (pv->l_out);
   if (pv->r_out != NULL) free (pv->r_out);
@@ -173,22 +176,21 @@ read_and_FFT_stereo (struct pv_complex_data *pv,
   return (status);
 }
 
-/* the results are stored in pv->[lr]_out [i]
- * for i = hop_out to (hop_out + len)
+/* the results are stored in out [i] for i = hop_out to (hop_out + len)
  * INPUT
  *  scale : for safety (give 0.5, for example)
  */
 static void
-apply_invFFT_stereo (struct pv_complex_data *pv,
-		     double *f_left, double *f_right,
-		     double scale)
+apply_invFFT_mono (struct pv_complex_data *pv,
+		   const double *f, double scale,
+		   double *out)
 {
   int i;
 
   // scale
   for (i = 0; i < pv->len; i ++)
     {
-      pv->f_out [i] = 0.5 * f_left [i];
+      pv->f_out [i] = scale * f [i];
     }
   fftw_execute (pv->plan_inv); // iFFT: f_out[] -> t_out[]
   // scale by len and windowing
@@ -197,23 +199,25 @@ apply_invFFT_stereo (struct pv_complex_data *pv,
   // superimpose
   for (i = 0; i < pv->len; i ++)
     {
-      pv->l_out [pv->hop_out + i] += pv->t_out [i];
+      out [pv->hop_out + i] += pv->t_out [i];
     }
+}
 
-  // scale
-  for (i = 0; i < pv->len; i ++)
+/*
+ * OUTPUT
+ *  returned value : 1 if x[i] = 0 for i = 0 to n-1
+ *                   0 otherwise
+ */
+static int
+check_zero (int n, const double *x)
+{
+  int i;
+
+  for (i = 0; i < n; i ++)
     {
-      pv->f_out [i] = 0.5 * f_right [i];
+      if (x[i] != 0.0) return 1;
     }
-  fftw_execute (pv->plan_inv); // iFFT: f_out[] -> t_out[]
-  // scale by len and windowing
-  windowing (pv->len, pv->t_out, pv->flag_window, (double)pv->len,
-	     pv->t_out);
-  // superimpose
-  for (i = 0; i < pv->len; i ++)
-    {
-      pv->r_out [pv->hop_out + i] += pv->t_out [i];
-    }
+  return 0;
 }
 
 /* play one hop_in by the phase vocoder:
@@ -227,14 +231,13 @@ apply_invFFT_stereo (struct pv_complex_data *pv,
  *  cur : current frame to play.
  *        you have to increment this by yourself.
  *  rate : time-stretch rate (larger is slower)
- *  flag_lock : 0 == no phase lock
- *              1 == loose phase lock
+ *  pv->flag_lock : 0 == no phase lock
+ *                  1 == loose phase lock
  * OUTPUT (returned value)
  *  status : output frame.
  */
 long pv_complex_play_step (struct pv_complex_data *pv,
-			   long cur, double rate,
-			   int flag_lock)
+			   long cur, double rate)
 {
   int i;
 
@@ -266,53 +269,112 @@ long pv_complex_play_step (struct pv_complex_data *pv,
     return 0; // no output
 
 
-  if (pv->flag_run == 0)
+  int flag_left_cur;
+  int flag_right_cur;
+  if (check_zero (pv->len, l_fs) == 0 ||
+      check_zero (pv->len, l_ft) == 0)
     {
-      // set [lr]_f_out_old at "u_{i-1}" (because there is no back up yet)
-      if (flag_lock == 0) // no phase lock
+      flag_left_cur = 0; // inactive
+    }
+  else
+    {
+      flag_left_cur = 1; // active
+    }
+
+  if (check_zero (pv->len, r_fs) == 0 ||
+      check_zero (pv->len, r_ft) == 0)
+    {
+      flag_right_cur = 0; // inactive
+    }
+  else
+    {
+      flag_right_cur = 1; // active
+    }
+
+
+  // left channel
+  if (flag_left_cur == 1)
+    {
+      // check l_f_old[]
+      if (pv->flag_left == 0)
 	{
-	  for (i = 0; i < pv->len; i ++)
+	  if (pv->flag_lock == 0) // no phase lock
 	    {
-	      pv->l_f_out_old [i] = l_fs [i];
-	      pv->r_f_out_old [i] = r_fs [i];
+	      for (i = 0; i < pv->len; i ++)
+		{
+		  pv->l_f_old [i] = l_fs [i];
+		}
 	    }
+	  else // loose phase lock
+	    {
+	      // apply loose phase lock
+	      HC_puckette_lock (pv->len, l_fs, pv->l_f_old);
+	    }
+
+	  pv->flag_left = 1;
+	}
+
+      // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
+      if (pv->flag_lock == 0) // no phase lock
+	{
+	  // Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+	  HC_complex_phase_vocoder (pv->len, l_fs, l_ft, pv->l_f_old,
+				    pv->l_f_old);
+	  // already backed up for the next step in [lr]_f_old[]
+	  apply_invFFT_mono (pv, pv->l_f_old, 0.5, pv->l_out);
 	}
       else // loose phase lock
 	{
-	  // apply loose phase lock
-	  HC_puckette_lock (pv->len, l_fs, pv->l_f_out_old);
-	  HC_puckette_lock (pv->len, r_fs, pv->r_f_out_old);
+	  // Y[u_i] = X[t_i] (Z[u_{i-1}]/X[s_i]) / |Z[u_{i-1}]/X[s_i]|
+	  HC_complex_phase_vocoder (pv->len, l_fs, l_ft, pv->l_f_old,
+				    l_tmp);
+	  // apply loose phase lock and store for the next step
+	  HC_puckette_lock (pv->len, l_tmp, pv->l_f_old);
+
+	  apply_invFFT_mono (pv, l_tmp, 0.5, pv->l_out);
+	}
+    }
+
+  // right channel
+  if (flag_right_cur == 1)
+    {
+      // check l_f_old[]
+      if (pv->flag_right == 0)
+	{
+	  if (pv->flag_lock == 0) // no phase lock
+	    {
+	      for (i = 0; i < pv->len; i ++)
+		{
+		  pv->r_f_old [i] = r_fs [i];
+		}
+	    }
+	  else // loose phase lock
+	    {
+	      // apply loose phase lock
+	      HC_puckette_lock (pv->len, r_fs, pv->r_f_old);
+	    }
+	  pv->flag_right = 1;
 	}
 
-      // check
-      fprintf (stderr, "flag_lock = %d\n", flag_lock);
-      pv->flag_run = 1;
-    }
+      // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
+      if (pv->flag_lock == 0) // no phase lock
+	{
+	  // Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
+	  HC_complex_phase_vocoder (pv->len, r_fs, r_ft, pv->r_f_old,
+				    pv->r_f_old);
+	  // already backed up for the next step in [lr]_f_old[]
+	  apply_invFFT_mono (pv, pv->r_f_old, 0.5, pv->r_out);
+	}
+      else // loose phase lock
+	{
+	  // Y[u_i] = X[t_i] (Z[u_{i-1}]/X[s_i]) / |Z[u_{i-1}]/X[s_i]|
+	  HC_complex_phase_vocoder (pv->len, r_fs, r_ft, pv->r_f_old,
+				    r_tmp);
+	  // apply loose phase lock and store for the next step
+	  HC_puckette_lock (pv->len, r_tmp, pv->r_f_old);
 
-  // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
-  if (flag_lock == 0) // no phase lock
-    {
-      // Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
-      HC_complex_phase_vocoder (pv->len, l_fs, l_ft, pv->l_f_out_old,
-				pv->l_f_out_old);
-      HC_complex_phase_vocoder (pv->len, r_fs, r_ft, pv->r_f_out_old,
-				pv->r_f_out_old);
-      // already backed up for the next step in [lr]_f_out_old[]
-
-      apply_invFFT_stereo (pv, pv->l_f_out_old, pv->r_f_out_old, 0.5);
-    }
-  else // loose phase lock
-    {
-      // Y[u_i] = X[t_i] (Z[u_{i-1}]/X[s_i]) / |Z[u_{i-1}]/X[s_i]|
-      HC_complex_phase_vocoder (pv->len, l_fs, l_ft, pv->l_f_out_old,
-				l_tmp);
-      HC_complex_phase_vocoder (pv->len, r_fs, r_ft, pv->r_f_out_old,
-				r_tmp);
-      // apply loose phase lock and store for the next step
-      HC_puckette_lock (pv->len, l_tmp, pv->l_f_out_old);
-      HC_puckette_lock (pv->len, r_tmp, pv->r_f_out_old);
-
-      apply_invFFT_stereo (pv, l_tmp, r_tmp, 0.5);
+	  apply_invFFT_mono (pv, r_tmp, 0.5, pv->r_out);
+	}
     }
 
 
@@ -415,12 +477,13 @@ void pv_complex (const char *file, const char *outfile,
 	}
       pv_complex_set_output_sf (pv, sfout, &sfout_info);
     }
+  pv->flag_lock = flag_lock;
 
   long cur;
   for (cur = 0; cur < (long)sfinfo.frames; cur += hop_in)
     {
       long status;
-      status = pv_complex_play_step (pv, cur, rate, flag_lock);
+      status = pv_complex_play_step (pv, cur, rate);
       if (status < pv->hop_out)
 	{
 	  break;
