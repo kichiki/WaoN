@@ -1,23 +1,25 @@
 # Makefile for gWaoN
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.gwaon,v 1.4 2007/02/20 05:01:07 kichiki Exp $
+# $Id: Makefile.gwaon,v 1.5 2007/02/23 02:31:29 kichiki Exp $
 
 LIBS    =\
- `pkg-config --libs gtk+-2.0` \
- -lao \
- -lfftw3 \
- -lsndfile \
- -lm
+	`pkg-config --libs gtk+-2.0` \
+	`pkg-config --libs gdk_pixbuf` \
+	-lao \
+	-lfftw3 \
+	-lsndfile \
+	-lm
 
 CFLAGS  =\
- -Wall -O3 \
- `pkg-config --cflags gtk+-2.0`
+	-Wall -O3 \
+	`pkg-config --cflags gtk+-2.0` \
+	`pkg-config --cflags gdk_pixbuf`
 
 LDFLAGS      = 
 
-CC           = cc
-LD           = $(CC)
-RM           = rm -f
+CC	= cc
+LD	= $(CC)
+RM	= rm -f
 
 
 all:	gwaon
@@ -26,14 +28,15 @@ OBJ = gwaon.o \
 	gwaon-menu.o \
 	gwaon-about.o \
 	gwaon-wav.o \
-	gwaon-esd.o \
+	gwaon-play.o \
+	pv-complex.o \
 	ao-wrapper.o \
-	gwaon-pv.o \
 	gtk-color.o \
 	snd.o \
 	hc.o \
 	fft.o \
 	midi.o
+
 
 gwaon:	$(OBJ)
 	$(LD) $(LDFLAGS) -o gwaon $(OBJ) $(LIBS)
