@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.3 2007/02/23 01:45:19 kichiki Exp $
+ * $Id: pv.c,v 1.4 2007/02/23 02:29:06 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,6 @@
 #include "pv-conventional.h"
 #include "pv-ellis.h"
 #include "pv-freq.h"
-#include "pv-loose-lock-complex.h"
 #include "pv-loose-lock.h"
 
 #include "VERSION.h"
@@ -33,7 +32,7 @@
 
 void usage (char * argv0)
 {
-  fprintf (stderr, "PV - phase vocoder, Version %s\n",
+  fprintf (stderr, "WaoN - phase vocoder, Version %s\n",
 	   WAON_VERSION);
   fprintf (stderr, "Copyright (C) 2007 Kengo Ichiki "
 	   "<kichiki@users.sourceforge.net>\n");
