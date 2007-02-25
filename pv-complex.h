@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.4 2007/02/23 07:35:48 kichiki Exp $
+ * $Id: pv-complex.h,v 1.5 2007/02/25 03:42:54 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -68,8 +68,9 @@ struct pv_complex_data {
   double *r_out;
 
   int flag_lock; // 0 = no phase lock, 1 = loose phase lock
-};
 
+  double pitch_shift;
+};
 
 
 /** utility routines for struct pv_omplex_data **/
@@ -89,6 +90,13 @@ pv_complex_set_output_ao (struct pv_complex_data *pv,
 
 void
 pv_complex_free (struct pv_complex_data *pv);
+
+
+/* play the segment of pv->[lr]_out[] for pv->hop_out
+ * pv->pitch_shift is taken into account
+ */
+int
+pv_complex_play_resample (struct pv_complex_data *pv);
 
 
 /* play one hop_in by the phase vocoder:
@@ -125,7 +133,8 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 void pv_complex (const char *file, const char *outfile,
 		 double rate, long len, long hop_out,
 		 int flag_window,
-		 int flag_lock);
+		 int flag_lock,
+		 double pitch_shift);
 
 
 #endif /* !_PV_COMPLEX_H_ */
