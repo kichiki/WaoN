@@ -1,19 +1,24 @@
 # Makefile for gWaoN
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.gwaon,v 1.5 2007/02/23 02:31:29 kichiki Exp $
+# $Id: Makefile.gwaon,v 1.6 2007/02/25 07:05:19 kichiki Exp $
 
 LIBS    =\
 	`pkg-config --libs gtk+-2.0` \
 	`pkg-config --libs gdk_pixbuf` \
-	-lao \
-	-lfftw3 \
-	-lsndfile \
+	`pkg-config --libs ao` \
+	`pkg-config --libs sndfile` \
+	`pkg-config --libs fftw3` \
+	`pkg-config --libs samplerate` \
 	-lm
 
 CFLAGS  =\
 	-Wall -O3 \
 	`pkg-config --cflags gtk+-2.0` \
-	`pkg-config --cflags gdk_pixbuf`
+	`pkg-config --cflags gdk_pixbuf` \
+	`pkg-config --cflags ao` \
+	`pkg-config --cflags sndfile` \
+	`pkg-config --cflags fftw3` \
+	`pkg-config --cflags samplerate`
 
 LDFLAGS      = 
 
@@ -30,6 +35,7 @@ OBJ = gwaon.o \
 	gwaon-wav.o \
 	gwaon-play.o \
 	pv-complex.o \
+	pv-conventional.o \
 	ao-wrapper.o \
 	gtk-color.o \
 	snd.o \

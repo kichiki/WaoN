@@ -1,6 +1,6 @@
 # Makefile for waon
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
-# $Id: Makefile.waon,v 1.5 2007/02/23 07:57:59 kichiki Exp $
+# $Id: Makefile.waon,v 1.6 2007/02/25 07:04:34 kichiki Exp $
 
 
 CC = gcc
@@ -8,11 +8,12 @@ CC = gcc
 # with FFTW3
 CFLAGS = \
 	-Wall -march=pentium -O3 -ffast-math \
-	-I/usr/local/include
+	`pkg-config --cflags fftw3` \
+	`pkg-config --cflags sndfile`
 LDFLAGS= \
 	-L/usr/local/lib \
-	-lfftw3 \
-	-lsndfile \
+	`pkg-config --libs fftw3` \
+	`pkg-config --libs sndfile` \
 	-lm
 
 # with FFTW2

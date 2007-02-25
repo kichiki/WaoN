@@ -1,18 +1,21 @@
 # Makefile for pv
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.pv,v 1.3 2007/02/23 02:29:33 kichiki Exp $
+# $Id: Makefile.pv,v 1.4 2007/02/25 07:04:57 kichiki Exp $
 
 
 LIBS    =\
-	-L/usr/local/lib \
-	-lao \
-	-lfftw3 \
-	-lsndfile \
+	`pkg-config --libs ao` \
+	`pkg-config --libs sndfile` \
+	`pkg-config --libs fftw3` \
+	`pkg-config --libs samplerate` \
 	-lm
 
 CFLAGS  =\
 	-Wall -O3 \
-	-I/usr/local/include
+	`pkg-config --cflags ao` \
+	`pkg-config --cflags sndfile` \
+	`pkg-config --cflags fftw3` \
+	`pkg-config --cflags samplerate`
 
 LDFLAGS      = 
 
