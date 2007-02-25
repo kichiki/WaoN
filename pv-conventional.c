@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.c,v 1.6 2007/02/25 06:03:12 kichiki Exp $
+ * $Id: pv-conventional.c,v 1.7 2007/02/25 06:46:17 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -180,10 +180,10 @@ get_scale_factor_for_window (int len, long hop_out, int flag_window)
 /* standard phase vocoder
  * Ref: J.Laroche and M.Dolson (1999)
  */
-void pv (const char *file, const char *outfile,
-	 double rate, long len, long hop_out,
-	 int flag_window,
-	 int flag_pitch)
+void pv_conventional (const char *file, const char *outfile,
+		      double rate, long len, long hop_out,
+		      int flag_window,
+		      int flag_pitch)
 {
   long hop_in;
   hop_in = (long)((double)hop_out * rate);
