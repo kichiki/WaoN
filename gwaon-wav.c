@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.8 2007/02/23 07:39:36 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.9 2007/02/25 07:02:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -270,8 +270,6 @@ midi_to_display_bottom (int midi, int res)
 {
   extern double logf_min, logf_max;
   int ix0, ix1;
-  //ix0 = logf_to_display (log (midi_to_freq (midi-1)), res);
-  //ix1 = logf_to_display (log (midi_to_freq (midi)),   res);
   ix0 = logf_to_display (midi_to_logf (midi-1), res);
   ix1 = logf_to_display (midi_to_logf (midi),   res);
   return ((ix1 + ix0) / 2);
@@ -813,6 +811,15 @@ draw_spectrum_frame (GtkWidget *widget,
       l_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
       r_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
 
+      extern int oct_max, oct_min;
+      int resolution = (oct_max - oct_min) * 12;
+      double *l_ave = NULL;
+      double *r_ave = NULL;
+      if (WIN_spec_mode == 2)
+	{
+	  l_ave = (double *)malloc (sizeof (double) * resolution);
+	  r_ave = (double *)malloc (sizeof (double) * resolution);
+	}
 
       // set GC wiht OR function
       gdk_gc_set_function (gc, GDK_OR);
@@ -830,6 +837,11 @@ draw_spectrum_frame (GtkWidget *widget,
 			  l_amp2, r_amp2,
 			  l_ph, r_ph,
 			  l_dphi, r_dphi);
+	  if (WIN_spec_mode == 2)
+	    {
+	      average_PV_FFT (resolution, l_amp2, l_dphi, l_ave);
+	      average_PV_FFT (resolution, r_amp2, r_dphi, r_ave);
+	    }
 	}
 
       // left power and phase
@@ -957,6 +969,67 @@ draw_spectrum_frame (GtkWidget *widget,
 			rad, rad,
 			0, 64*360);
 	}
+
+      /*
+      // average bar
+      if (WIN_spec_mode == 2)
+	{
+	  int ix1;
+	  for (i = 0; i < resolution; i ++)
+	    {
+	      // set ix0 and ix1 by the middle point to the neighbors
+	      ix0 = (int)(((double)i-0.5)
+		* (double)WIN_wav_width / (double)resolution);
+	      ix1 = (int)(((double)i+0.5)
+		* (double)WIN_wav_width / (double)resolution);
+	      if (ix0 < 0) ix0 = 0;
+	      if (ix1 > WIN_wav_width) ix1 = WIN_wav_width;
+
+	      // left channel
+	      get_color (widget, 255, 0, 255, gc);
+
+	      y = 2.0 * log10 (l_ave [i]); // log of the squared
+	      if (y > amp2_max) y = amp2_max;
+	      if (y >= amp2_min)
+		{
+		  iy = (int)((double)height_spec * (y - amp2_min)
+			     / (amp2_max - amp2_min));
+
+		  gdk_draw_line (wav_pixmap, gc,
+				 ix0, bottom_spec,
+				 ix0, bottom_spec - iy);
+		  gdk_draw_line (wav_pixmap, gc,
+				 ix0, bottom_spec - iy,
+				 ix1, bottom_spec - iy);
+		  gdk_draw_line (wav_pixmap, gc,
+				 ix1, bottom_spec - iy,
+				 ix1, bottom_spec);
+		}
+
+	      // right channel
+	      get_color (widget, 0, 255, 255, gc);
+
+	      y = 2.0 * log10 (r_ave [i]); // log of the squared
+	      if (y > amp2_max) y = amp2_max;
+	      if (y >= amp2_min)
+		{
+		  iy = (int)((double)height_spec * (y - amp2_min)
+			     / (amp2_max - amp2_min));
+
+		  gdk_draw_line (wav_pixmap, gc,
+				 ix0, bottom_spec,
+				 ix0, bottom_spec - iy);
+		  gdk_draw_line (wav_pixmap, gc,
+				 ix0, bottom_spec - iy,
+				 ix1, bottom_spec - iy);
+		  gdk_draw_line (wav_pixmap, gc,
+				 ix1, bottom_spec - iy,
+				 ix1, bottom_spec);
+		}
+	    }
+	}
+      */
+
       free (l_amp2);
       free (r_amp2);
 
@@ -965,6 +1038,12 @@ draw_spectrum_frame (GtkWidget *widget,
 
       free (l_dphi);
       free (r_dphi);
+
+      if (WIN_spec_mode == 2)
+	{
+	  free (l_ave);
+	  free (r_ave);
+	}
 
       // recover GC's function
       gdk_gc_set_function (gc, backup_gc_values.function);
@@ -1203,7 +1282,8 @@ draw_spectrogram_frame (GtkWidget *widget,
 	    }
 	  else // WIN_spec_mode == 1 || WIN_spec_mode == 2
 	    {
-	      // get amp2 and dphi for the frame (WIN_wav_cur + i * WIN_wav_scale)
+	      // get amp2 and dphi for the frame
+	      // (WIN_wav_cur + i * WIN_wav_scale)
 	      fft_two_frames (WIN_wav_cur + i * WIN_wav_scale, WIN_spec_hop,
 			      l_amp2, NULL,
 			      l_ph, NULL,
@@ -2122,7 +2202,7 @@ create_wav (void)
   make_color_map ();
 
   extern int WIN_spec_n;
-  WIN_spec_n = 1024;
+  WIN_spec_n = 2048;
   extern int WIN_spec_hop_scale;
   extern int WIN_spec_hop;
   WIN_spec_hop_scale = 4;
@@ -2133,6 +2213,7 @@ create_wav (void)
   extern struct pv_complex_data *pv;
   pv = pv_complex_init (WIN_spec_n, WIN_spec_hop, 3 /* hanning */);
   pv_complex_set_input (pv, sf, &sfinfo);
+  pv->pitch_shift = 0.0;
 
 
   extern double *spec_in;
@@ -2210,6 +2291,7 @@ create_wav (void)
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
 		      GTK_SIGNAL_FUNC (wav_delete), NULL);
 
+
   GtkWidget *hbox;
   hbox = gtk_hbox_new (FALSE, 0);
   gtk_container_set_border_width (GTK_CONTAINER (hbox), 10);
@@ -2246,12 +2328,12 @@ create_wav (void)
                          | GDK_BUTTON_PRESS_MASK
                          | GDK_POINTER_MOTION_MASK
                          | GDK_POINTER_MOTION_HINT_MASK);
-  /* Signals used to handle backing pixmap */
+  // Signals used to handle backing pixmap
   gtk_signal_connect (GTK_OBJECT (wav_win), "expose_event",
                       (GtkSignalFunc) wav_expose_event, NULL);
   gtk_signal_connect (GTK_OBJECT(wav_win),"configure_event",
                       (GtkSignalFunc) wav_configure_event, NULL);
-  /* Event signals */
+  // Event signals
   gtk_signal_connect (GTK_OBJECT (wav_win), "motion_notify_event",
                       (GtkSignalFunc) wav_motion_notify_event, NULL);
   gtk_signal_connect (GTK_OBJECT (wav_win), "key_press_event",
