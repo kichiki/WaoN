@@ -1,4 +1,196 @@
+2007-02-24  Kengo Ichiki  <ichiki@tpr60>
+
+	* Release 0.6.
+
+	* Makefile.gwaon: 1.6 2007/02/25 07:05:19 kichiki Exp
+	* Makefile.pv: 1.4 2007/02/25 07:04:57 kichiki Exp
+	* Makefile.waon: 1.6 2007/02/25 07:04:34 kichiki Exp
+	use pkg-config.
+
+	* gwaon-wav.c: 1.9 2007/02/25 07:02:27 kichiki Exp
+	(create_wav): default WIN_spec_n is increased to 2048.
+	initialize pv->pitch_shift for sure.
+
+	* pv.c: 1.7 2007/02/25 06:52:31 kichiki Exp
+	update due to the name change of pv_conventional() in
+	pv-conventional.c.
+
+	* pv-conventional.h: 1.5 2007/02/25 06:48:11 kichiki Exp
+	* pv-conventional.c: 1.7 2007/02/25 06:46:17 kichiki Exp
+	(pv_conventional): change the name from pv().
+
+	* pv.c: 1.6 2007/02/25 06:41:15 kichiki Exp
+	add '-pitch' option.
+	change the order of the scheme.
+
+	* pv-complex.c: 1.8 2007/02/25 06:38:58 kichiki Exp
+	(pv_complex_play_resample): SRC_SINC_FASTEST is better than
+	SRC_SINC_BEST_QUALITY in this case.
+
+	* pv-complex.h: 1.6 2007/02/25 06:10:14 kichiki Exp
+	update due to the change of apply_FFT() in fft.c.
+	add 'window_scale' in struct pv_complex_data.
+
+	* pv-complex.c: 1.7 2007/02/25 06:09:18 kichiki Exp
+	update due to the change of apply_FFT() in fft.c.
+	it seems that the pitch-shifting is reasonably working.
+
+	* pv-ellis.c: 1.5 2007/02/25 06:06:40 kichiki Exp
+	update due to the change of apply_FFT() in fft.c.
+	house-keeping.
+	(pv_ellis): bug fixed for the case when t0 is two step ahead from nf0.
+
+	* pv-loose-lock.c: 1.6 2007/02/25 06:07:48 kichiki Exp
+	* pv-freq.c: 1.5 2007/02/25 06:04:46 kichiki Exp
+	update due to the change of apply_FFT() in fft.c.
+
+	* pv-conventional.h: 1.4 2007/02/25 06:03:38 kichiki Exp
+	* pv-conventional.c: 1.6 2007/02/25 06:03:12 kichiki Exp
+	(get_scale_factor_for_window): added.
+	(pv): use window_scale for the scaling factor for the superpositions.
+
+	* fft.c: 1.6 2007/02/25 05:59:47 kichiki Exp
+	(apply_FFT): change the definition of "scale" to the same of that in
+	windowing().
+
+	* pv-complex.h: 1.5 2007/02/25 03:42:54 kichiki Exp
+	* pv-complex.c: 1.6 2007/02/25 03:42:19 kichiki Exp
+	add pitch-shifting feature, but not working correctly yet...
+
+	* pv-loose-lock.h: 1.3 2007/02/25 03:40:09 kichiki Exp
+	* pv-loose-lock.c: 1.5 2007/02/25 03:39:39 kichiki Exp
+	* pv-ellis.h: 1.2 2007/02/25 03:38:51 kichiki Exp
+	* pv-ellis.c: 1.4 2007/02/25 03:38:27 kichiki Exp
+	add pitch-shifting feature.
+
+	* pv-conventional.h: 1.3 2007/02/25 03:37:11 kichiki Exp
+	* pv-conventional.c: 1.5 2007/02/25 03:36:46 kichiki Exp
+	(pv_play_resample): added for pitch-shifting.
+	(pv): use pv_play_resample() for pitch-shifting.
+
+2007-02-23  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv.c: 1.5 2007/02/23 07:59:58 kichiki Exp
+	(usage): write the output file format, flac, explicitly.
+
+	* Makefile.waon: 1.5 2007/02/23 07:57:59 kichiki Exp
+	remove sox-wav.c.
+
+	* analyse.c: 1.5 2007/02/23 07:56:26 kichiki Exp
+	(init_patch): use libsndfile instead of sox-wav.c.
+	Note that this patch function is not tested.
+
+	* gwaon-wav.c: 1.8 2007/02/23 07:39:36 kichiki Exp
+	(wav_key_press_event): add Q/q to change phase-lock mode for PV.
+
+	* gwaon-play.c: 1.3 2007/02/23 07:37:21 kichiki Exp
+	(play_1msec): pv->flag_lock is used so that we can switch the mode
+	dynamically now.
+
+	* pv-complex.h: 1.4 2007/02/23 07:35:48 kichiki Exp
+	* pv-complex.c: 1.5 2007/02/23 07:35:15 kichiki Exp
+	for struct pv_complex_data, delete flag_run and add flag_left and
+	flag_right instead.
+	also flag_lock is added to specify the phase lock mode.
+	(pv_complex_play_step): bug fixed for zero signals.
+	(apply_invFFT_mono): split into each channel from 
+	apply_invFFT_stereo().
+	also, scale in the argument is now used in the code.
+
+2007-02-22  Kengo Ichiki  <ichiki@tpr60>
+
+	* gwaon-play.c: 1.2 2007/02/23 07:00:36 kichiki Exp
+	(play_1msec): bug fixed on the range check for the looping.
+
+	* main.c: 1.6 2007/02/23 03:12:49 kichiki Exp
+	(usage): add web information.
+
+	* Makefile.gwaon: 1.5 2007/02/23 02:31:29 kichiki Exp
+	use pv-complex.c instead of gwaon-pv.c (the contents are same).
+
+	* Makefile.pv: 1.3 2007/02/23 02:29:33 kichiki Exp
+	use ao-library instead of esd-library.
+	cut esd-wrapper.o and pv-loose-lock-complex.o.
+
+	* pv.c: 1.4 2007/02/23 02:29:06 kichiki Exp
+	cut the include of pv-loose-lock-complex.h.
+
+	* sox-wav.h: 
+	* sox-wav.c: 
+	removed. now we are using sndfile.
+
+	* gwaon-pv.h: 
+	* gwaon-pv.c: 
+	removed. all contents are in the new pv-complex.c right now.
+
+	* esd-wrapper.h: 
+	* esd-wrapper.c: 
+	removed.
+	now all routines in WaoN use ao-wrapper.c (which also covers esd, BTW).
+
+	* pv-loose-lock-complex.h: 
+	* pv-loose-lock-complex.c: 
+	removed.
+	use the unified pv_complex() in pv-complex.c with flag_lock = 1.
+
+	* gwaon-esd.h: 
+	* gwaon-esd.c: 
+	rename to gwaon-play.[ch].
+
+	* gwaon-wav.h: 1.3 2007/02/23 02:16:07 kichiki Exp
+	* gwaon-wav.c: 1.7 2007/02/23 02:15:36 kichiki Exp
+	(update_win_wav): house-keeping for drawing routines; split for
+	each sub panels.
+	(draw_play_indicator): added to draw indicator for playing position.
+
+	* gwaon-play.h: 1.1 2007/02/23 02:14:51 kichiki Exp
+	* gwaon-play.c: 1.1 2007/02/23 02:14:27 kichiki Exp
+	rename from gwaon-esd.[ch].
+	change the name play_1msec() from play_esd().
+
+	* pv-complex.h: 1.3 2007/02/23 02:10:57 kichiki Exp
+	* pv-complex.c: 1.4 2007/02/23 02:10:25 kichiki Exp
+	contents on struct pv_complex_data are moved from gwaon-pv.c.
+	(pv_complex): now using pv_complex_play_step().
+	this can handle loose phase lock scheme, as well.
+
+	* pv-loose-lock.c: 1.4 2007/02/23 01:45:56 kichiki Exp
+	* pv-freq.c: 1.4 2007/02/23 01:49:09 kichiki Exp
+	* pv-ellis.c: 1.3 2007/02/23 01:50:45 kichiki Exp
+	* pv-conventional.c: 1.4 2007/02/23 01:56:26 kichiki Exp
+	use ao-library instead of esd-library.
+	bug fixed on freeing memories.
+
+	* pv.c: 1.3 2007/02/23 01:45:19 kichiki Exp
+	default FFT size is increased to 2048.
+	use unified pv_complex() routine instead of old pv_complex() and
+	pv_loose_lock_complex().
+
+	* hc.c: 1.4 2007/02/23 01:44:37 kichiki Exp
+	(HC_puckette_lock): bug fixed.
+
+2007-02-19  Kengo Ichiki  <ichiki@tpr60>
+
+	* ao-wrapper.h: 1.1 2007/02/20 05:03:30 kichiki Exp
+	* ao-wrapper.c: 1.1 2007/02/20 05:01:59 kichiki Exp
+	added.
+
+	* Makefile.gwaon: 1.4 2007/02/20 05:01:07 kichiki Exp
+	use ao library instead of esd for audio output.
+	therefore, esd-wrapper.c is removed.
+
+	* gwaon-esd.c: 1.2 2007/02/20 05:00:41 kichiki Exp
+	use ao library instead of esd for audio output.
+	(play_esd): play loop (not once).
+
+	* gwaon-wav.c: 1.6 2007/02/20 05:00:19 kichiki Exp
+	* gwaon-pv.h: 1.2 2007/02/20 04:59:50 kichiki Exp
+	* gwaon-pv.c: 1.2 2007/02/20 04:59:27 kichiki Exp
+	use ao library instead of esd for audio output.
+
 2007-02-16  Kengo Ichiki  <ichiki@tpr60>
+
+	* Release 0.5.
 
 	* pv-loose-lock-complex.h: 1.2 2007/02/17 05:37:37 kichiki Exp
 	* pv-loose-lock-complex.c: 1.3 2007/02/17 05:36:58 kichiki Exp

@@ -1,6 +1,6 @@
 /* half-complex format routines
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.c,v 1.4 2007/02/23 01:44:37 kichiki Exp $
+ * $Id: hc.c,v 1.5 2007/02/25 07:19:30 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -351,6 +351,7 @@ HC_complex_phase_vocoder (int len, const double *fs, const double *ft,
 
   // tmp1 = Y[u_{i-1}]/X[s(i)]
   HC_div (len, f_out_old, fs, tmp1);
+  // tmp2 = |Y[u_{i-1}]/X[s(i)]|
   HC_abs (len, tmp1, tmp2);
 
   // tmp1 = (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|

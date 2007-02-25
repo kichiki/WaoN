@@ -1,1 +1,1 @@
-#define WAON_VERSION "0.5"
+#define WAON_VERSION "0.6"
