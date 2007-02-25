@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.6 2007/02/25 06:41:15 kichiki Exp $
+ * $Id: pv.c,v 1.7 2007/02/25 06:52:31 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -179,7 +179,8 @@ int main (int argc, char** argv)
   switch (scheme)
     {
     case 0:
-      pv (file_in, file_out, rate, len, hop, flag_window, flag_pitch);
+      pv_conventional (file_in, file_out, rate, len, hop, flag_window,
+		       flag_pitch);
       break;
 
     case 1:
