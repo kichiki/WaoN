@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.7 2007/02/25 06:09:18 kichiki Exp $
+ * $Id: pv-complex.c,v 1.8 2007/02/25 06:38:58 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -250,37 +250,29 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 
   if (pv->pitch_shift != 0.0)
     {
-      long hop_out; // local hop_out which is added some extra data
-      hop_out = pv->hop_out + 50;
-      double rate; // rate based on the pitch_shift
-      rate = pow (2.0, - pv->pitch_shift / 12.0);
-      long hop_in_act;
-      hop_in_act = (long)((double)pv->hop_out * rate);
-      long hop_in;
-      hop_in = (long)((double)hop_out * rate);
+      double rate_by_pitch_shift;
+      rate_by_pitch_shift = pow (2.0, - pv->pitch_shift / 12.0);
+      long hop_in = (long)((double)pv->hop_out * rate_by_pitch_shift);
 
-      //fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_out);
-      fl_in  = (float *)malloc (sizeof (float) * 2 * hop_out);
+      fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_out);
       fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
 
-      //srdata.input_frames  = pv->hop_out;
-      srdata.input_frames  = hop_out;
+      srdata.input_frames  = pv->hop_out;
       srdata.output_frames = hop_in;
       //srdata.src_ratio = (double)hop_in / (double)(pv->hop_out);
-      srdata.src_ratio = rate;
+      srdata.src_ratio = rate_by_pitch_shift;
       srdata.data_in  = fl_in;
       srdata.data_out = fl_out;
 
       // samplerate conversion (time fixed)
-      //for (i = 0; i < pv->hop_out; i ++)
-      for (i = 0; i < hop_out; i ++)
+      for (i = 0; i < pv->hop_out; i ++)
 	{
 	  fl_in [i*2 + 0] = (float)(pv->l_out [i]);
 	  fl_in [i*2 + 1] = (float)(pv->r_out [i]);
-	  //fprintf (stdout, "IN %d %f %f\n", i, pv->l_out [i], pv->r_out [i]);
 	}
-      status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
-      //status = src_simple (&srdata, SRC_SINC_FASTEST, 2);
+      //status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
+      status = src_simple (&srdata, SRC_SINC_FASTEST, 2);
+      // this works better
       if (status != 0)
 	{
 	  fprintf (stderr, "fail to samplerate conversion\n");
@@ -290,12 +282,10 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       l_out_src = (double *)malloc (sizeof (double) * hop_in);
       r_out_src = (double *)malloc (sizeof (double) * hop_in);
 
-      //for (i = 0; i < hop_in; i ++)
-      for (i = 0; i < hop_in_act; i ++)
+      for (i = 0; i < hop_in; i ++)
 	{
 	  l_out_src [i] = (double)(fl_out [i*2 + 0]);
 	  r_out_src [i] = (double)(fl_out [i*2 + 1]);
-	  //fprintf (stdout, "OUT %d %f %f\n", i, l_out_src [i], r_out_src [i]);
 	}
       free (fl_in);
       free (fl_out);
@@ -303,18 +293,13 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       // output
       if (pv->flag_out == 0)
 	{
-	  //status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
-	  status = ao_write (pv->ao, l_out_src, r_out_src, hop_in_act);
+	  status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else if (pv->flag_out == 1)
 	{
-	  /*
 	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
 				  l_out_src, r_out_src, hop_in);
-	  */
-	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
-				  l_out_src, r_out_src, hop_in_act);
 	}
       else
 	{
@@ -324,9 +309,8 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       free (r_out_src);
 
       // modify status
-      //if (status == hop_in) status = pv->hop_out;
-      if (status == hop_in_act) status = pv->hop_out;
-      else status = (int)((double)status / rate);
+      if (status == hop_in) status = pv->hop_out;
+      else status = (int)((double)status / rate_by_pitch_shift);
     }
   else
     {
