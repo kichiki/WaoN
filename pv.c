@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.5 2007/02/23 07:59:58 kichiki Exp $
+ * $Id: pv.c,v 1.6 2007/02/25 06:41:15 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 
 #include "pv-complex.h"
@@ -47,12 +48,15 @@ void usage (char * argv0)
   fprintf (stderr, "  -hop       \thop number (default: 256)\n");
   fprintf (stderr, "  -rate      \tsynthesize rate; larger is faster"
 	   " (default: 1.0)\n");
+  fprintf (stderr, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
+	   " (default: 0)\n");
+  fprintf (stderr, "  \t\tNOTE: -rate and -pitch are exclusive\n");
   fprintf (stderr, "  -scheme    \tgive the number for PV scheme\n");
   fprintf (stderr, "\t\t0 : conventional PV (default)\n");
-  fprintf (stderr, "\t\t1 : Puckette's loose-locking PV\n");
-  fprintf (stderr, "\t\t2 : Puckette's loose-locking PV by complex"
+  fprintf (stderr, "\t\t1 : PV by complex arithmetics with fixed hops\n");
+  fprintf (stderr, "\t\t2 : Puckette's loose-locking PV\n");
+  fprintf (stderr, "\t\t3 : Puckette's loose-locking PV by complex"
 	   " with fixed hops\n");
-  fprintf (stderr, "\t\t3 : PV by complex arithmetics with fixed hops\n");
   fprintf (stderr, "\t\t4 : PV with fixed hops by Ellis\n");
   fprintf (stderr, "\t\t5 : PV in freq. domain\n");
   fprintf (stderr, "  -w --window\t0 no window (DEFAULT)\n");
@@ -77,6 +81,8 @@ int main (int argc, char** argv)
   long len = 2048;
   long hop = 256;
   double rate = 1.0;
+  double pitch_shift = 0.0;
+  int flag_pitch = 0;
   int scheme = 0;
   int flag_window = 0;
   for (i=1; i<argc; i++)
@@ -122,6 +128,14 @@ int main (int argc, char** argv)
 	      rate = atof (argv [++i]);
 	    }
 	}
+      else if (strcmp (argv[i], "-pitch" ) == 0)
+	{
+	  if (i+1 < argc)
+	    {
+	      pitch_shift = atof (argv [++i]);
+	      flag_pitch = 1;
+	    }
+	}
       else if (strcmp (argv[i], "-scheme" ) == 0)
 	{
 	  if (i+1 < argc)
@@ -144,6 +158,17 @@ int main (int argc, char** argv)
 	}
     }
 
+  // adjust the rate for pitch-shifting
+  if (flag_pitch == 1)
+    {
+      // rate means the pitch-shift scaled by the half note
+      // hop_in = hop_out * rate;
+      // rate = 2   ==> 1 octave down (12 half notes down) ==> -12
+      // rate = 1/2 ==> 1 octave up   (12 half note up)    ==> +12
+      rate = pow (2.0, - pitch_shift / 12.0);
+      fprintf (stdout, "[pv] %f pitch-shift, rate = %f\n",
+	       pitch_shift, rate);
+    }
 
   if (file_in == NULL)
     {
@@ -154,28 +179,35 @@ int main (int argc, char** argv)
   switch (scheme)
     {
     case 0:
-      pv (file_in, file_out, rate, len, hop, flag_window);
+      pv (file_in, file_out, rate, len, hop, flag_window, flag_pitch);
       break;
 
     case 1:
-      pv_loose_lock (file_in, file_out, rate, len, hop, flag_window);
+      pv_complex (file_in, file_out, rate, len, hop, flag_window,
+		  0 /* no phase lock */,
+		  pitch_shift);
       break;
 
     case 2:
-      pv_complex (file_in, file_out, rate, len, hop, flag_window,
-		  1 /* loose phase lock */);
+      pv_loose_lock (file_in, file_out, rate, len, hop, flag_window, flag_pitch);
       break;
 
     case 3:
       pv_complex (file_in, file_out, rate, len, hop, flag_window,
-		  0 /* no phase lock */);
+		  1 /* loose phase lock */,
+		  pitch_shift);
       break;
 
     case 4:
-      pv_ellis (file_in, file_out, rate, len, hop, flag_window);
+      pv_ellis (file_in, file_out, rate, len, hop, flag_window, flag_pitch);
       break;
 
     case 5:
+      if (flag_pitch == 1)
+	{
+	  fprintf (stderr, "pitch-shifting is not implemented yet\n");
+	  break;
+	}
       pv_freq (file_in, file_out, rate, len, hop, flag_window);
       break;
 
