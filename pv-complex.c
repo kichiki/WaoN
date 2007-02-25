@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.6 2007/02/25 03:42:19 kichiki Exp $
+ * $Id: pv-complex.c,v 1.7 2007/02/25 06:09:18 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -60,6 +60,7 @@ pv_complex_init (long len, long hop_out, int flag_window)
 
   pv->flag_window = flag_window;
 
+  pv->window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
 
   pv->time = (double *)fftw_malloc (len * sizeof(double));
   pv->freq = (double *)fftw_malloc (len * sizeof(double));
@@ -200,11 +201,11 @@ apply_invFFT_mono (struct pv_complex_data *pv,
   // scale
   for (i = 0; i < pv->len; i ++)
     {
-      pv->f_out [i] = scale * f [i];
+      pv->f_out [i] = f [i];
     }
   fftw_execute (pv->plan_inv); // iFFT: f_out[] -> t_out[]
   // scale by len and windowing
-  windowing (pv->len, pv->t_out, pv->flag_window, (double)pv->len,
+  windowing (pv->len, pv->t_out, pv->flag_window, (double)pv->len * scale,
 	     pv->t_out);
   // superimpose
   for (i = 0; i < pv->len; i ++)
@@ -249,15 +250,21 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 
   if (pv->pitch_shift != 0.0)
     {
+      long hop_out; // local hop_out which is added some extra data
+      hop_out = pv->hop_out + 50;
       double rate; // rate based on the pitch_shift
       rate = pow (2.0, - pv->pitch_shift / 12.0);
+      long hop_in_act;
+      hop_in_act = (long)((double)pv->hop_out * rate);
       long hop_in;
-      hop_in = (long)((double)pv->hop_out * rate);
+      hop_in = (long)((double)hop_out * rate);
 
-      fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_out);
+      //fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_out);
+      fl_in  = (float *)malloc (sizeof (float) * 2 * hop_out);
       fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
 
-      srdata.input_frames  = pv->hop_out;
+      //srdata.input_frames  = pv->hop_out;
+      srdata.input_frames  = hop_out;
       srdata.output_frames = hop_in;
       //srdata.src_ratio = (double)hop_in / (double)(pv->hop_out);
       srdata.src_ratio = rate;
@@ -265,12 +272,15 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       srdata.data_out = fl_out;
 
       // samplerate conversion (time fixed)
-      for (i = 0; i < pv->hop_out; i ++)
+      //for (i = 0; i < pv->hop_out; i ++)
+      for (i = 0; i < hop_out; i ++)
 	{
 	  fl_in [i*2 + 0] = (float)(pv->l_out [i]);
 	  fl_in [i*2 + 1] = (float)(pv->r_out [i]);
+	  //fprintf (stdout, "IN %d %f %f\n", i, pv->l_out [i], pv->r_out [i]);
 	}
       status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
+      //status = src_simple (&srdata, SRC_SINC_FASTEST, 2);
       if (status != 0)
 	{
 	  fprintf (stderr, "fail to samplerate conversion\n");
@@ -280,10 +290,12 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       l_out_src = (double *)malloc (sizeof (double) * hop_in);
       r_out_src = (double *)malloc (sizeof (double) * hop_in);
 
-      for (i = 0; i < hop_in; i ++)
+      //for (i = 0; i < hop_in; i ++)
+      for (i = 0; i < hop_in_act; i ++)
 	{
 	  l_out_src [i] = (double)(fl_out [i*2 + 0]);
 	  r_out_src [i] = (double)(fl_out [i*2 + 1]);
+	  //fprintf (stdout, "OUT %d %f %f\n", i, l_out_src [i], r_out_src [i]);
 	}
       free (fl_in);
       free (fl_out);
@@ -291,13 +303,18 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       // output
       if (pv->flag_out == 0)
 	{
-	  status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
+	  //status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
+	  status = ao_write (pv->ao, l_out_src, r_out_src, hop_in_act);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else if (pv->flag_out == 1)
 	{
+	  /*
 	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
 				  l_out_src, r_out_src, hop_in);
+	  */
+	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
+				  l_out_src, r_out_src, hop_in_act);
 	}
       else
 	{
@@ -307,7 +324,8 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       free (r_out_src);
 
       // modify status
-      if (status == hop_in) status = pv->hop_out;
+      //if (status == hop_in) status = pv->hop_out;
+      if (status == hop_in_act) status = pv->hop_out;
       else status = (int)((double)status / rate);
     }
   else
@@ -443,7 +461,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  HC_complex_phase_vocoder (pv->len, l_fs, l_ft, pv->l_f_old,
 				    pv->l_f_old);
 	  // already backed up for the next step in [lr]_f_old[]
-	  apply_invFFT_mono (pv, pv->l_f_old, 0.5, pv->l_out);
+	  apply_invFFT_mono (pv, pv->l_f_old, pv->window_scale, pv->l_out);
 	}
       else // loose phase lock
 	{
@@ -453,7 +471,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  // apply loose phase lock and store for the next step
 	  HC_puckette_lock (pv->len, l_tmp, pv->l_f_old);
 
-	  apply_invFFT_mono (pv, l_tmp, 0.5, pv->l_out);
+	  apply_invFFT_mono (pv, l_tmp, pv->window_scale, pv->l_out);
 	}
     }
   free (l_fs);
@@ -489,7 +507,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  HC_complex_phase_vocoder (pv->len, r_fs, r_ft, pv->r_f_old,
 				    pv->r_f_old);
 	  // already backed up for the next step in [lr]_f_old[]
-	  apply_invFFT_mono (pv, pv->r_f_old, 0.5, pv->r_out);
+	  apply_invFFT_mono (pv, pv->r_f_old, pv->window_scale, pv->r_out);
 	}
       else // loose phase lock
 	{
@@ -499,7 +517,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  // apply loose phase lock and store for the next step
 	  HC_puckette_lock (pv->len, r_tmp, pv->r_f_old);
 
-	  apply_invFFT_mono (pv, r_tmp, 0.5, pv->r_out);
+	  apply_invFFT_mono (pv, r_tmp, pv->window_scale, pv->r_out);
 	}
     }
   free (r_fs);
@@ -508,42 +526,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 
 
   // output
-  /* something is wrong...
   status = pv_complex_play_resample (pv);
-  */
-
-  /*
-  // using pv_play_resample() in pv-conventional.c
-  // but this is not working either...
-  double rate_by_pitch = pow (2.0, - pv->pitch_shift / 12.0);
-  long hop_in = (long)((double)pv->hop_out * rate_by_pitch);
-  int flag_pitch = 0;
-  if (pv->pitch_shift != 0.0) flag_pitch = 1;
-  status = pv_play_resample (hop_in, pv->hop_out, pv->l_out, pv->r_out,
-			     pv->ao, pv->sfout, pv->sfout_info,
-			     flag_pitch);
-  if (flag_pitch == 1)
-    {
-      if (status == hop_in) status = pv->hop_out;
-      else status = (int)((double)status / rate_by_pitch);
-    }
-  */
-
-  // no resampling, that is, no pitch-shifting
-  if (pv->flag_out == 0)
-    {
-      status = ao_write (pv->ao, pv->l_out, pv->r_out, pv->hop_out);
-      status /= 4; // 2 bytes for 2 channels
-    }
-  else if (pv->flag_out == 1)
-    {
-      status = sndfile_write (pv->sfout, *(pv->sfout_info),
-			      pv->l_out, pv->r_out, pv->hop_out);
-    }
-  else
-    {
-      fprintf (stderr, "invalid output device\n");
-    }
 
 
   /* shift [lr]_out by hop_out */
