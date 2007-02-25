@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.5 2007/02/25 03:42:54 kichiki Exp $
+ * $Id: pv-complex.h,v 1.6 2007/02/25 06:10:14 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -49,6 +49,7 @@ struct pv_complex_data {
   long hop_out;
 
   int flag_window;
+  double window_scale;
 
   double *time;
   double *freq;
