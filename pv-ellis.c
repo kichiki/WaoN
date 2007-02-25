@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.c,v 1.4 2007/02/25 03:38:27 kichiki Exp $
+ * $Id: pv-ellis.c,v 1.5 2007/02/25 06:06:40 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,6 +35,45 @@
 
 #include "pv-conventional.h" // pv_play_resample()
 
+
+static long
+read_and_FFT_stereo (SNDFILE *sf, SF_INFO *sfinfo,
+		     long frame,
+		     int len,
+		     int flag_window,
+		     fftw_plan plan, double *time, double *freq,
+		     double *l_amp, double *l_phs,
+		     double *r_amp, double *r_phs)
+{
+  double * left = NULL;
+  double * right = NULL;
+  left  = (double *) malloc (sizeof (double) * len);
+  right = (double *) malloc (sizeof (double) * len);
+
+  long status;
+  status = sndfile_read_at (sf, *sfinfo, frame,
+			    left, right, len);
+  if (status != len)
+    {
+      free (left);
+      free (right);
+
+      return (status);
+    }
+
+  // FFT
+  apply_FFT (len, left, flag_window, plan, time, freq,
+	     1.0,
+	     l_amp, l_phs);
+  apply_FFT (len, right, flag_window, plan, time, freq,
+	     1.0,
+	     r_amp, r_phs);
+
+  free (left);
+  free (right);
+
+  return (status);
+}
 
 /* this routine is translated from Matlab script written by D.P.W.Ellis:
  *   http://www.ee.columbia.edu/~dpwe/resources/matlab/pvoc/
@@ -101,6 +140,10 @@ void pv_ellis (const char *file, const char *outfile,
 	  exit (1);
 	}
     }
+
+
+  double window_scale;
+  window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
 
 
   /* initialization plan for FFTW  */
@@ -182,15 +225,15 @@ void pv_ellis (const char *file, const char *outfile,
 
 
   // read the first frame
-  read_status = sndfile_read (sf, sfinfo, left, right, len);
+  read_status = read_and_FFT_stereo (sf, &sfinfo, 0,
+				     len, flag_window,
+				     plan, time, freq,
+				     l_amp, l_phs,
+				     r_amp, r_phs);
   if (read_status != len)
     {
       exit (1);
     }
-
-  // FFT
-  apply_FFT (len, left, flag_window, plan, time, freq, 0.5, l_amp, l_phs);
-  apply_FFT (len, right, flag_window, plan, time, freq, 0.5, r_amp, r_phs);
   nf = 0; // 0 frame
 
   // Preset to phase of first frame for perfect reconstruction
@@ -212,30 +255,21 @@ void pv_ellis (const char *file, const char *outfile,
       r_am0 [k] = r_amp [k];
       r_ph0 [k] = r_phs [k];
     }
-  // shift
-  for (i = 0; i < (len - hop_in); i ++)
-    {
-      left  [i]  = left  [i + hop_in];
-      right  [i] = right  [i + hop_in];
-    }
-  // read hop_in frames
-  read_status = sndfile_read (sf, sfinfo,
-			      left + len - hop_in,
-			      right + len - hop_in,
-			      hop_in);
-  if (read_status != hop_in)
+  read_status = read_and_FFT_stereo (sf, &sfinfo, hop_in,
+				     len, flag_window,
+				     plan, time, freq,
+				     l_amp, l_phs,
+				     r_amp, r_phs);
+  if (read_status != len)
     {
       exit (1);
     }
-
-  // FFT
-  apply_FFT (len, left, flag_window, plan, time, freq, 0.5, l_amp, l_phs);
-  apply_FFT (len, right, flag_window, plan, time, freq, 0.5, r_amp, r_phs);
   nf = 1; // 1*hop_in frame
 
   double tt;
   int step;
-  for (tt = 0.0, step = 0; ; tt += 1.0 / rate, step++)
+  //for (tt = 0.0, step = 0; ; tt += 1.0 / rate, step++)
+  for (tt = 0.0, step = 0; ; tt += rate, step++)
     {
       int t0, t1;
       t0 = (int)tt;
@@ -254,67 +288,47 @@ void pv_ellis (const char *file, const char *outfile,
 	      nf0 = t0;
 
 	      // read t1 * hop_in frame, the next one!
-	      // shift
-	      for (i = 0; i < (len - hop_in); i ++)
-		{
-		  left  [i]  = left  [i + hop_in];
-		  right  [i] = right  [i + hop_in];
-		}
-	      read_status = sndfile_read (sf, sfinfo,
-					  left + len - hop_in,
-					  right + len - hop_in,
-					  hop_in);
-	      if (read_status != hop_in)
-		{
-		  // most likely, it is EOF.
-		  break;
-		}
-	      // FFT
-	      apply_FFT (len, left, flag_window, plan, time, freq, 0.5,
-			 l_amp, l_phs);
-	      apply_FFT (len, right, flag_window, plan, time, freq, 0.5,
-			 r_amp, r_phs);
-	      nf = t1;
-	    }
-	  else // we have to read the last data for t0 (and for t1, too)
-	    {
-	      // read t0 * hop_in frame
-	      read_status = sndfile_read_at (sf, sfinfo,
-					     (long)t0 * hop_in,
-					     left, right, len);
+	      read_status = read_and_FFT_stereo (sf, &sfinfo,
+						 (long)t1 * hop_in,
+						 len, flag_window,
+						 plan, time, freq,
+						 l_amp, l_phs,
+						 r_amp, r_phs);
 	      if (read_status != len)
 		{
 		  // most likely, it is EOF.
 		  break;
 		}
-	      // FFT
-	      apply_FFT (len, left, flag_window, plan, time, freq, 0.5,
-			 l_am0, l_ph0);
-	      apply_FFT (len, right, flag_window, plan, time, freq, 0.5,
-			 r_am0, r_ph0);
-	      nf0 = t0;
-
-	      // read t1 * hop_in frame, the next one!
-	      // shift
-	      for (i = 0; i < (len - hop_in); i ++)
-		{
-		  left  [i] = left  [i + hop_in];
-		  right [i] = right [i + hop_in];
-		}
-	      read_status = sndfile_read (sf, sfinfo,
-					  left + len - hop_in,
-					  right + len - hop_in,
-					  hop_in);
-	      if (read_status != hop_in)
+	      nf = t1;
+	    }
+	  else // we have to read the last data for t0 (and for t1, too)
+	    {
+	      // read t0 * hop_in frame
+	      read_status = read_and_FFT_stereo (sf, &sfinfo,
+						 (long)t0 * hop_in,
+						 len, flag_window,
+						 plan, time, freq,
+						 l_am0, l_ph0,
+						 r_am0, r_ph0);
+	      if (read_status != len)
 		{
 		  // most likely, it is EOF.
 		  break;
 		}
-	      // FFT
-	      apply_FFT (len, left, flag_window, plan, time, freq, 0.5,
-			 l_amp, l_phs);
-	      apply_FFT (len, right, flag_window, plan, time, freq, 0.5,
-			 r_amp, r_phs);
+	      nf0 = t0;
+
+	      // read t1 * hop_in frame, the next one!
+	      read_status = read_and_FFT_stereo (sf, &sfinfo,
+						 (long)t1 * hop_in,
+						 len, flag_window,
+						 plan, time, freq,
+						 l_amp, l_phs,
+						 r_amp, r_phs);
+	      if (read_status != len)
+		{
+		  // most likely, it is EOF.
+		  break;
+		}
 	      nf = t1;
 	    }
 	}
@@ -333,7 +347,7 @@ void pv_ellis (const char *file, const char *outfile,
       polar_to_HC (len, l_mag, l_ph, 0, f_out); // (bmag, ph) -> f_out[]
       fftw_execute (plan_inv); // inv-FFT: f_out[] -> t_out[]
       // scale by len and windowing
-      windowing (len, t_out, flag_window, (double)len, t_out);
+      windowing (len, t_out, flag_window, (double)len * window_scale, t_out);
       // superimpose
       for (i = 0; i < len; i ++)
 	{
@@ -343,7 +357,7 @@ void pv_ellis (const char *file, const char *outfile,
       polar_to_HC (len, r_mag, r_ph, 0, f_out); // (bmag, ph) -> f_out[]
       fftw_execute (plan_inv); // inv-FFT: f_out[] -> t_out[]
       // scale by len and windowing
-      windowing (len, t_out, flag_window, (double)len, t_out);
+      windowing (len, t_out, flag_window, (double)len * window_scale, t_out);
       // superimpose
       for (i = 0; i < len; i ++)
 	{
