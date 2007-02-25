@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.5 2007/02/14 03:30:13 kichiki Exp $
+ * $Id: fft.c,v 1.6 2007/02/25 05:59:47 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -203,7 +203,7 @@ apply_FFT (int len, const double *data, int flag_window,
   // some scaling
   for (i = 0; i < (len/2)+1; i ++)
     {
-      amp [i] *= scale;
+      amp [i] /= scale;
     }
 }
 
