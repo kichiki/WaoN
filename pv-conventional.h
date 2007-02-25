@@ -1,7 +1,7 @@
 /* header file for pv-conventional.c --
  * PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.h,v 1.3 2007/02/25 03:37:11 kichiki Exp $
+ * $Id: pv-conventional.h,v 1.4 2007/02/25 06:03:38 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -37,6 +37,12 @@ pv_play_resample (long hop_in, long hop_out,
 		  double *l_out, double *r_out,
 		  ao_device *ao, SNDFILE *sfout, SF_INFO *sfout_info,
 		  int flag_pitch);
+
+/* estimate the superposing weight for the window with hop
+ */
+double
+get_scale_factor_for_window (int len, long hop_out, int flag_window);
+
 
 /* standard phase vocoder
  * Ref: J.Laroche and M.Dolson (1999)

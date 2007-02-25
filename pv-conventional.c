@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.c,v 1.5 2007/02/25 03:36:46 kichiki Exp $
+ * $Id: pv-conventional.c,v 1.6 2007/02/25 06:03:12 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -138,6 +138,45 @@ pv_play_resample (long hop_in, long hop_out,
 }
 
 
+/* estimate the superposing weight for the window with hop
+ */
+double
+get_scale_factor_for_window (int len, long hop_out, int flag_window)
+{
+  double *x = NULL;
+  x = (double *)malloc (sizeof (double) * len);
+
+  int i;
+  for (i = 0; i < len; i ++)
+    {
+      x [i] = 1.0;
+    }
+  windowing (len, x, flag_window, 1.0, x);
+
+  double acc = 0.0;
+  double acc_max;
+  acc_max = 0.0;
+  int j;
+  for (j = 0; j < hop_out; j++)
+    {
+      acc = 0.0;
+      for (i = 0; i < len; i += hop_out)
+	{
+	  acc += x [j + i];
+	}
+      if (acc_max < acc) acc_max = acc;
+    }
+
+  free (x);
+
+  // extra safety
+  acc *= 1.5;
+
+  return (acc);
+}
+
+
+
 /* standard phase vocoder
  * Ref: J.Laroche and M.Dolson (1999)
  */
@@ -198,6 +237,10 @@ void pv (const char *file, const char *outfile,
 	  exit (1);
 	}
     }
+
+
+  double window_scale;
+  window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
 
 
   /* initialization plan for FFTW  */
@@ -269,7 +312,9 @@ void pv (const char *file, const char *outfile,
   for (;;)
     {
       // left channel
-      apply_FFT (len, left, flag_window, plan, time, freq, 0.5, amp, ph_in);
+      apply_FFT (len, left, flag_window, plan, time, freq,
+		 1.0,
+		 amp, ph_in);
       if (flag_ph == 0)
 	{
 	  // initialize phase
@@ -303,7 +348,7 @@ void pv (const char *file, const char *outfile,
       polar_to_HC (len, amp, l_ph_out, 0, f_out);
       fftw_execute (plan_inv);
       // scale by len and windowing
-      windowing (len, t_out, flag_window, (double)len, t_out);
+      windowing (len, t_out, flag_window, (double)len * window_scale, t_out);
       // superimpose
       for (i = 0; i < len; i ++)
 	{
@@ -311,7 +356,9 @@ void pv (const char *file, const char *outfile,
 	}
 
       // right channel
-      apply_FFT (len, right, flag_window, plan, time, freq, 0.5, amp, ph_in);
+      apply_FFT (len, right, flag_window, plan, time, freq,
+		 1.0,
+		 amp, ph_in);
       if (flag_ph == 0)
 	{
 	  // initialize phase
@@ -345,7 +392,8 @@ void pv (const char *file, const char *outfile,
       polar_to_HC (len, amp, r_ph_out, 0, f_out);
       fftw_execute (plan_inv);
       // scale by len and windowing
-      windowing (len, t_out, flag_window, (double)len, t_out);
+      //windowing (len, t_out, flag_window, (double)len, t_out);
+      windowing (len, t_out, flag_window, (double)len * window_scale, t_out);
       // superimpose
       for (i = 0; i < len; i ++)
 	{
