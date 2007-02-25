@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.c,v 1.3 2007/02/23 01:50:45 kichiki Exp $
+ * $Id: pv-ellis.c,v 1.4 2007/02/25 03:38:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,13 +33,16 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
+#include "pv-conventional.h" // pv_play_resample()
+
 
 /* this routine is translated from Matlab script written by D.P.W.Ellis:
  *   http://www.ee.columbia.edu/~dpwe/resources/matlab/pvoc/
  */
 void pv_ellis (const char *file, const char *outfile,
 	       double rate, long len, long hop,
-	       int flag_window)
+	       int flag_window,
+	       int flag_pitch)
 {
   double twopi = 2.0 * M_PI;
 
@@ -98,7 +101,6 @@ void pv_ellis (const char *file, const char *outfile,
 	  exit (1);
 	}
     }
-  long out_frames = 0;
 
 
   /* initialization plan for FFTW  */
@@ -372,15 +374,11 @@ void pv_ellis (const char *file, const char *outfile,
 	}
 
       // output
-      if (outfile == NULL)
-	{
-	  status = ao_write (ao, l_out, r_out, hop_out);
-	}
-      else
-	{
-	  status = sndfile_write (sfout, sfout_info, l_out, r_out, hop_out);
-	  out_frames += status;
-	}
+      status = pv_play_resample ((long)((double)hop_out * rate),
+				 hop_out, l_out, r_out,
+				 ao, sfout, &sfout_info,
+				 flag_pitch);
+      // note here hop_in is set equal to hop_out, so give the correct one
 
 
       // shift acc_out by hop_out

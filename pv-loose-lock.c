@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-loose-lock.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-loose-lock.c,v 1.4 2007/02/23 01:45:56 kichiki Exp $
+ * $Id: pv-loose-lock.c,v 1.5 2007/02/25 03:39:39 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -34,6 +34,8 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
+#include "pv-conventional.h" // pv_play_resample()
+
 
 /* puckette's loose phase lock scheme in conventional form
  *   (not by the complex arithmetics)
@@ -42,7 +44,8 @@
  */
 void pv_loose_lock (const char *file, const char *outfile,
 		    double rate, long len, long hop_out,
-		    int flag_window)
+		    int flag_window,
+		    int flag_pitch)
 {
   long hop_in;
   hop_in = (long)((double)hop_out * rate);
@@ -96,7 +99,6 @@ void pv_loose_lock (const char *file, const char *outfile,
 	  exit (1);
 	}
     }
-  long out_frames = 0;
 
 
   /* initialization plan for FFTW  */
@@ -280,15 +282,9 @@ void pv_loose_lock (const char *file, const char *outfile,
 
 
       // output
-      if (outfile == NULL)
-	{
-	  status = ao_write (ao, l_out, r_out, hop_out);
-	}
-      else
-	{
-	  status = sndfile_write (sfout, sfout_info, l_out, r_out, hop_out);
-	  out_frames += status;
-	}
+      status = pv_play_resample (hop_in, hop_out, l_out, r_out,
+				 ao, sfout, &sfout_info,
+				 flag_pitch);
 
 
       // shift acc_out by hop_out
