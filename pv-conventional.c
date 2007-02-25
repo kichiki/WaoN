@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.c,v 1.4 2007/02/23 01:56:26 kichiki Exp $
+ * $Id: pv-conventional.c,v 1.5 2007/02/25 03:36:46 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -34,6 +34,108 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
+// samplerate
+#include <samplerate.h>
+
+
+/** general utility routines for pv **/
+
+/*
+ * INPUT
+ *  hop_in :
+ *  hop_out :
+ *  l_out [hop_out] :
+ *  r_out [hop_out] :
+ *  ao, sfout, sfout_info : properties for output
+ *  flag_pitch :
+ */
+int
+pv_play_resample (long hop_in, long hop_out,
+		  double *l_out, double *r_out,
+		  ao_device *ao, SNDFILE *sfout, SF_INFO *sfout_info,
+		  int flag_pitch)
+{
+  int status = 0;
+
+  int i;
+
+
+  // samplerate conversion
+  float *fl_in  = NULL;
+  float *fl_out = NULL;
+  double *l_out_src = NULL;
+  double *r_out_src = NULL;
+  SRC_DATA srdata;
+
+  if (flag_pitch != 0)
+    {
+      fl_in  = (float *)malloc (sizeof (float) * 2 * hop_out);
+      fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
+
+      srdata.input_frames  = hop_out;
+      srdata.output_frames = hop_in;
+      srdata.src_ratio = (double)hop_in / (double)hop_out;
+      srdata.data_in  = fl_in;
+      srdata.data_out = fl_out;
+
+      l_out_src = (double *)malloc (sizeof (double) * hop_in);
+      r_out_src = (double *)malloc (sizeof (double) * hop_in);
+
+
+      // samplerate conversion (time fixed)
+      for (i = 0; i < hop_out; i ++)
+	{
+	  fl_in [i*2 + 0] = (float)l_out [i];
+	  fl_in [i*2 + 1] = (float)r_out [i];
+	}
+      status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
+      if (status != 0)
+	{
+	  fprintf (stderr, "fail to samplerate conversion\n");
+	  exit (1);
+	}
+      for (i = 0; i < hop_in; i ++)
+	{
+	  l_out_src [i] = (double)fl_out [i*2 + 0];
+	  r_out_src [i] = (double)fl_out [i*2 + 1];
+	}
+
+      // output
+      if (sfout == NULL)
+	{
+	  status = ao_write (ao, l_out_src, r_out_src, hop_in);
+	  status /= 4; // 2 bytes for 2 channels
+	}
+      else
+	{
+	  status = sndfile_write (sfout, *sfout_info,
+				  l_out_src, r_out_src, hop_in);
+	}
+
+      free (fl_in);
+      free (fl_out);
+
+      free (l_out_src);
+      free (r_out_src);
+    }
+  else
+    {
+      // no samplerate conversion (pitch fixed)
+      // output
+      if (sfout == NULL)
+	{
+	  status = ao_write (ao, l_out, r_out, hop_out);
+	  status /= 4; // 2 bytes for 2 channels
+	}
+      else
+	{
+	  status = sndfile_write (sfout, *sfout_info,
+				  l_out, r_out, hop_out);
+	}
+    }
+
+  return (status);
+}
 
 
 /* standard phase vocoder
@@ -41,7 +143,8 @@
  */
 void pv (const char *file, const char *outfile,
 	 double rate, long len, long hop_out,
-	 int flag_window)
+	 int flag_window,
+	 int flag_pitch)
 {
   long hop_in;
   hop_in = (long)((double)hop_out * rate);
@@ -95,7 +198,6 @@ void pv (const char *file, const char *outfile,
 	  exit (1);
 	}
     }
-  long out_frames = 0;
 
 
   /* initialization plan for FFTW  */
@@ -250,16 +352,11 @@ void pv (const char *file, const char *outfile,
 	  r_out [hop_out + i] += t_out [i];
 	}
 
-      /* output */
-      if (outfile == NULL)
-	{
-	  status = ao_write (ao, l_out, r_out, hop_out);
-	}
-      else
-	{
-	  status = sndfile_write (sfout, sfout_info, l_out, r_out, hop_out);
-	  out_frames += status;
-	}
+
+      // output
+      status = pv_play_resample (hop_in, hop_out, l_out, r_out,
+				 ao, sfout, &sfout_info,
+				 flag_pitch);
 
 
       /* shift acc_out by hop_out */

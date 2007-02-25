@@ -1,7 +1,7 @@
 /* header file for pv-conventional.c --
  * PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.h,v 1.2 2007/02/17 05:32:37 kichiki Exp $
+ * $Id: pv-conventional.h,v 1.3 2007/02/25 03:37:11 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,12 +21,30 @@
 #define	_PV_CONVENTIONAL_H_
 
 
+/** general utility routines for pv **/
+
+/*
+ * INPUT
+ *  hop_in :
+ *  hop_out :
+ *  l_out [hop_out] :
+ *  r_out [hop_out] :
+ *  ao, sfout, sfout_info : properties for output
+ *  flag_pitch :
+ */
+int
+pv_play_resample (long hop_in, long hop_out,
+		  double *l_out, double *r_out,
+		  ao_device *ao, SNDFILE *sfout, SF_INFO *sfout_info,
+		  int flag_pitch);
+
 /* standard phase vocoder
  * Ref: J.Laroche and M.Dolson (1999)
  */
 void pv (const char *file, const char *outfile,
 	 double rate, long len, long hop_out,
-	 int flag_window);
+	 int flag_window,
+	 int flag_pitch);
 
 
 #endif /* !_PV_CONVENTIONAL_H_ */
