@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-freq.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-freq.c,v 1.4 2007/02/23 01:49:09 kichiki Exp $
+ * $Id: pv-freq.c,v 1.5 2007/02/25 06:04:46 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -97,7 +97,6 @@ void pv_freq (const char *file, const char *outfile,
 	  exit (1);
 	}
     }
-  long out_frames = 0;
 
 
   /* initialization plan for FFTW  */
@@ -139,7 +138,7 @@ void pv_freq (const char *file, const char *outfile,
   while (sndfile_read (sf, sfinfo, left, right, len) != 0)
     {
       // left channel
-      apply_FFT (len, left, flag_window, plan, time, freq, 0.5, amp, phs);
+      apply_FFT (len, left, flag_window, plan, time, freq, 2.0, amp, phs);
 
       // cut signal of amp < amp_lim
       for (i = 0; i < (len/2)+1; i ++)
@@ -157,7 +156,7 @@ void pv_freq (const char *file, const char *outfile,
 
 
       // right channel
-      apply_FFT (len, right, flag_window, plan, time, freq, 0.5, amp, phs);
+      apply_FFT (len, right, flag_window, plan, time, freq, 2.0, amp, phs);
 
       // cut signal of amp < amp_lim
       for (i = 0; i < (len/2)+1; i ++)
@@ -178,11 +177,11 @@ void pv_freq (const char *file, const char *outfile,
       if (outfile == NULL)
 	{
 	  status = ao_write (ao, l_out, r_out, hop_out);
+	  status /= 4; // 2 bytes for 2 channels
 	}
       else
 	{
 	  status = sndfile_write (sfout, sfout_info, l_out, r_out, len_out);
-	  out_frames += status;
 	}
 
       step ++;

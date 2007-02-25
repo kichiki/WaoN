@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-loose-lock.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-loose-lock.c,v 1.5 2007/02/25 03:39:39 kichiki Exp $
+ * $Id: pv-loose-lock.c,v 1.6 2007/02/25 06:07:48 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -101,6 +101,10 @@ void pv_loose_lock (const char *file, const char *outfile,
     }
 
 
+  double window_scale;
+  window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
+
+
   /* initialization plan for FFTW  */
   double *time = NULL;
   double *freq = NULL;
@@ -176,7 +180,9 @@ void pv_loose_lock (const char *file, const char *outfile,
   for (;;)
     {
       // left channel
-      apply_FFT (len, left, flag_window, plan, time, freq, 0.5, amp, ph_in);
+      apply_FFT (len, left, flag_window, plan, time, freq,
+		 1.0,
+		 amp, ph_in);
 
       if (flag_ph == 0)
 	{
@@ -220,7 +226,7 @@ void pv_loose_lock (const char *file, const char *outfile,
 
       fftw_execute (plan_inv); // f_out[] -> t_out[]
       // scale by len and windowing
-      windowing (len, t_out, flag_window, (double)len, t_out);
+      windowing (len, t_out, flag_window, (double)len * window_scale, t_out);
       // superimpose
       for (i = 0; i < len; i ++)
 	{
@@ -229,7 +235,9 @@ void pv_loose_lock (const char *file, const char *outfile,
 
 
       // right channel
-      apply_FFT (len, right, flag_window, plan, time, freq, 0.5, amp, ph_in);
+      apply_FFT (len, right, flag_window, plan, time, freq,
+		 1.0,
+		 amp, ph_in);
 
       if (flag_ph == 0)
 	{
@@ -273,7 +281,7 @@ void pv_loose_lock (const char *file, const char *outfile,
 
       fftw_execute (plan_inv); // f_out[] -> t_out[]
       // scale by len and windowing
-      windowing (len, t_out, flag_window, (double)len, t_out);
+      windowing (len, t_out, flag_window, (double)len * window_scale, t_out);
       // superimpose
       for (i = 0; i < len; i ++)
 	{
