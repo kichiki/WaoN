@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.7 2007/02/25 06:52:31 kichiki Exp $
+ * $Id: pv.c,v 1.8 2007/02/28 08:42:26 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -59,10 +59,10 @@ void usage (char * argv0)
 	   " with fixed hops\n");
   fprintf (stderr, "\t\t4 : PV with fixed hops by Ellis\n");
   fprintf (stderr, "\t\t5 : PV in freq. domain\n");
-  fprintf (stderr, "  -w --window\t0 no window (DEFAULT)\n");
+  fprintf (stderr, "  -w --window\t0 no window\n");
   fprintf (stderr, "\t\t1 parzen window\n");
   fprintf (stderr, "\t\t2 welch window\n");
-  fprintf (stderr, "\t\t3 hanning window\n");
+  fprintf (stderr, "\t\t3 hanning window (default)\n");
   fprintf (stderr, "\t\t4 hamming window\n");
   fprintf (stderr, "\t\t5 blackman window\n");
   fprintf (stderr, "\t\t6 steeper 30-dB/octave rolloff window\n");
@@ -84,7 +84,7 @@ int main (int argc, char** argv)
   double pitch_shift = 0.0;
   int flag_pitch = 0;
   int scheme = 0;
-  int flag_window = 0;
+  int flag_window = 3; // hanning window
   for (i=1; i<argc; i++)
     {
       if ((strcmp (argv[i], "--input" ) == 0)
