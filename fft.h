@@ -1,7 +1,7 @@
 /* header file for fft.c --
  * FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.h,v 1.6 2007/02/14 03:31:10 kichiki Exp $
+ * $Id: fft.h,v 1.7 2007/02/28 08:34:23 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,6 +112,37 @@ power_spectrum_fftw (int n, double *x, double *y, double *p,
 		     char flag_window,
 		     fftw_plan plan);
 #endif // !FFTW2
+
+
+/* subtract average from the power spectrum
+ * -- intend to remove non-tonal signal (such as drums, percussions)
+ * INPUT
+ *  n : FFT size
+ *  p[(n+1)/2] : power spectrum
+ *  m : number of bins to average out
+ *  factor : factor * average is subtracted from the power
+ *           (factor = 0.0) means no subtraction
+ *           (factor = 1.0) means full subtraction of the average
+ *           (factor = 2.0) means over subtraction
+ * OUTPUT
+ *  p[(n+1)/2] : subtracted power spectrum
+ */
+void
+power_subtract_ave (int n, double *p, int m, double factor);
+
+/* octave remover
+ * INPUT
+ *  n : FFT size
+ *  p[(n+1)/2] : power spectrum
+ *  factor : factor * average is subtracted from the power
+ *           (factor = 0.0) means no subtraction
+ *           (factor = 1.0) means full subtraction of the average
+ *           (factor = 2.0) means over subtraction
+ * OUTPUT
+ *  p[(n+1)/2] : subtracted power spectrum
+ */
+void
+power_subtract_octave (int n, double *p, double factor);
 
 
 #endif /* !_FFT_H_ */

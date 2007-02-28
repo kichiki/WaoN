@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.6 2007/02/25 05:59:47 kichiki Exp $
+ * $Id: fft.c,v 1.7 2007/02/28 08:33:56 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -312,3 +312,93 @@ power_spectrum_fftw (int n, double *x, double *y, double *p,
   HC_to_amp2 (n, y, den, p);
 }
 
+
+/* subtract average from the power spectrum
+ * -- intend to remove non-tonal signal (such as drums, percussions)
+ * INPUT
+ *  n : FFT size
+ *  p[(n+1)/2] : power spectrum
+ *  m : number of bins to average out
+ *  factor : factor * average is subtracted from the power
+ *           (factor = 0.0) means no subtraction
+ *           (factor = 1.0) means full subtraction of the average
+ *           (factor = 2.0) means over subtraction
+ * OUTPUT
+ *  p[(n+1)/2] : subtracted power spectrum
+ */
+void
+power_subtract_ave (int n, double *p, int m, double factor)
+{
+  int nlen = n/2+1;
+  int i;
+  int k;
+  int nave;
+
+  double *ave = NULL;
+  ave = (double *) malloc (sizeof (double) * nlen);
+
+  for (i = 0; i < nlen; i ++) // full span
+    {
+      ave [i] = 0.0;
+      nave = 0;
+      for (k = -m; k <= m; k ++)
+	{
+	  if ((i + k) < 0 || (i + k) >= nlen) continue;
+
+	  ave [i] += p [i+k];
+	  nave ++;
+	}
+      if (nave > 0) ave [i] /= (double)nave;
+    }
+
+  for (i = 0; i < nlen; i ++) // full span
+    {
+      p [i] = sqrt (p[i]) - factor * sqrt (ave [i]);
+      if (p [i] < 0.0) p [i] = 0.0;
+      else             p [i] = p [i] * p [i];
+    }
+
+  free (ave);
+}
+
+/* octave remover
+ * INPUT
+ *  n : FFT size
+ *  p[(n+1)/2] : power spectrum
+ *  factor : factor * average is subtracted from the power
+ *           (factor = 0.0) means no subtraction
+ *           (factor = 1.0) means full subtraction of the average
+ *           (factor = 2.0) means over subtraction
+ * OUTPUT
+ *  p[(n+1)/2] : subtracted power spectrum
+ */
+void
+power_subtract_octave (int n, double *p, double factor)
+{
+  int nlen = (n+1)/2;
+  int i;
+  int i2;
+
+  double *oct = NULL;
+  oct = (double *)calloc (n/2+1, sizeof (double));
+
+  oct [0] = p [0];
+  for (i = 1; i < nlen/2+1; i ++)
+    {
+      i2 = i * 2;
+      if (i2 >= n/2+1) break;
+
+      oct [i2]   = factor * p[i];
+      if (i2-1 > 0)    oct [i2-1] = 0.5 * factor * p[i];
+      if (i2+1 < nlen) oct [i2+1] = 0.5 * factor * p[i];
+    }
+
+  for (i = 0; i < nlen; i ++) // full span
+    {
+      p [i] = sqrt (p[i]) - factor * sqrt (oct [i]);
+      if (p [i] < 0.0) p [i] = 0.0;
+      else             p [i] = p [i] * p [i];
+    }
+
+  free (oct);
+}
