@@ -1,6 +1,6 @@
 /* routines to analyse power spectrum and output notes
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.c,v 1.5 2007/02/23 07:56:26 kichiki Exp $
+ * $Id: analyse.c,v 1.6 2007/02/28 07:08:14 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -138,33 +138,27 @@ note_intensity (double *p, double *fp,
       else
 	{
 	  freq = fp [imax];
+	  //fprintf (stderr, "freq = %f, %f\n", freq, (double)imax / t0);
 	}
       in = get_note (freq); // midi note #
-      if (in < 0 || in >= 128) // fail safe
+      // check  the range of the note
+      if (in >= i0 && in <= i1)
 	{
-	  continue;
-	  /* I don't know why I am writing those... so just comment out
-	  fprintf (stderr, "imax = %d, freq = %f (%f), in = %d\n",
-		   imax, freq, (double)imax/t0, in);
-	  freq = (double)imax/t0; // freq of maximum
-	  in = get_note (freq); // midi note #
-	  */
-	}
-
-      // if second time on same note, skip
-      if (intens[in] == 0)
-	{
-	  /* scale intensity (velocity) of the peak
-	   * power range from 10^cut_ratio to 10^0 is scaled  */
-	  x = 127.0 / (double)(-cut_ratio)
-	    * (log10 (p[imax]) - (double) cut_ratio);
-	  if (x >= 128.0)
+	  // if second time on same note, skip
+	  if (intens[in] == 0)
 	    {
-	      intens[in] = 127;
-	    }
-	  else if (x > 0)
-	    {
-	      intens[in] = (int)x;
+	      /* scale intensity (velocity) of the peak
+	       * power range from 10^cut_ratio to 10^0 is scaled  */
+	      x = 127.0 / (double)(-cut_ratio)
+		* (log10 (p[imax]) - (double) cut_ratio);
+	      if (x >= 128.0)
+		{
+		  intens[in] = 127;
+		}
+	      else if (x > 0)
+		{
+		  intens[in] = (int)x;
+		}
 	    }
 	}
 
