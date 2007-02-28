@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.6 2007/02/23 03:12:49 kichiki Exp $
+ * $Id: main.c,v 1.7 2007/02/28 08:39:57 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,50 +53,63 @@ void usage (char * argv0)
   fprintf (stderr, "Usage: %s [option ...]\n", argv0);
   fprintf (stderr, "  -h --help\tprint this help.\n");
   fprintf (stderr, "OPTIONS FOR FILES\n");
-  fprintf (stderr, "  -i --input\tinput wav file (DEFAULT stdin)\n");
+  fprintf (stderr, "  -i --input\tinput wav file (default: stdin)\n");
   fprintf (stderr, "  -o --output\toutput mid file"
-	   " (DEFAULT 'output.mid')\n");
+	   " (default: 'output.mid')\n");
   fprintf (stderr, "\toptions -i and -o have argument '-' "
 	   "as stdin/stdout\n");
-  fprintf (stderr, "  -p --patch\tpatch file (DEFAULT no patch)\n");
+  fprintf (stderr, "  -p --patch\tpatch file (default: no patch)\n");
+  fprintf (stderr, "FFT OPTIONS\n");
+  fprintf (stderr, "  -n\t\tsampling number from WAV in 1 step "
+	   "(default: 2048)\n");
+  fprintf (stderr, "  -w --window\t0 no window\n");
+  fprintf (stderr, "\t\t1 parzen window\n");
+  fprintf (stderr, "\t\t2 welch window\n");
+  fprintf (stderr, "\t\t3 hanning window (default)\n");
+  fprintf (stderr, "\t\t4 hamming window\n");
+  fprintf (stderr, "\t\t5 blackman window\n");
+  fprintf (stderr, "\t\t6 steeper 30-dB/octave rolloff window\n");
+  fprintf (stderr, "READING WAV OPTIONS\n");
+  fprintf (stderr, "  -s --shift\tshift number from WAV in 1 step\n");
+  fprintf (stderr, "\t\t(default: 1/4 of the value in -n option)\n");
+  fprintf (stderr, "PHASE-VOCODER OPTIONS\n");
+  fprintf (stderr, "  -nophase\tdon't use phase diff to improve freq estimation.\n"
+	   "\t\t(default: use the correction)\n");
   fprintf (stderr, "NOTE SELECTION OPTIONS\n");
   fprintf (stderr, "  -c --cutoff\tlog10 of cut-off ratio "
 	   "to scale velocity of note\n"
-	   "\t\t(DEFAULT -5.0)\n");
+	   "\t\t(default: -5.0)\n");
   fprintf (stderr, "  -r --relative\tlog10 of cut-off ratio "
 	   "relative to the average.\n"
-	   "\t\t(DEFAULT no relative cutoff\n"
+	   "\t\t(default: no relative cutoff\n"
 	   "\t\t= absolute cutoff with the value in -c option)\n");
   fprintf (stderr, "  -k --peak\tpeak threshold for note-on, "
 	   "which ranges [0,127]\n"
-	   "\t\t(DEFAULT 128 = no peak-search = "
+	   "\t\t(default: 128 = no peak-search = "
 	   "search only first on-event)\n");
   fprintf (stderr, "  -t --top\ttop note [midi #] "
-	   "(DEFAULT 103 = G7)\n");
+	   "(default: 103 = G7)\n");
   fprintf (stderr, "  -b --bottom\tbottom note [midi #] "
-	   "(DEFAULT 28 = E1)\n");
+	   "(default: 28 = E1)\n");
   fprintf (stderr, "\tHere middle C (261 Hz) = C4 = midi 60. "
 	   "Midi # ranges [0,127].\n");
   fprintf (stderr, "  -a --adjust\tadjust-pitch param, "
 	   "which is suggested by WaoN after analysis.\n"
 	   "\t\tunit is half-note, that is, +1 is half-note up,\n"
-	   "\t\tand -0.5 is quater-note down. (DEFAULT 0)\n");
-  fprintf (stderr, "READING WAV OPTIONS\n");
-  fprintf (stderr, "  -n\t\tsampling number from WAV in 1 step "
-	   "(DEFAULT 2048)\n");
-  fprintf (stderr, "  -s --shift\tshift number from WAV in 1 step\n");
-  fprintf (stderr, "\t\t(DEFAULT (1/4 of the value in -n option)\n");
-  /*fprintf (stderr, "\t\tYou Should Set 2^n for -[nsp] options\n");*/
-  fprintf (stderr, "FFT OPTIONS\n");
-  fprintf (stderr, "  -w --window\t0 no window (DEFAULT)\n");
-  fprintf (stderr, "\t\t1 parzen window\n");
-  fprintf (stderr, "\t\t2 welch window\n");
-  fprintf (stderr, "\t\t3 hanning window\n");
-  fprintf (stderr, "\t\t4 hamming window\n");
-  fprintf (stderr, "\t\t5 blackman window\n");
-  fprintf (stderr, "\t\t6 steeper 30-dB/octave rolloff window\n");
-  fprintf (stderr, "  --phase\tuse phase diff to improve freq estimation."
-	   " (DEFAULT: no)\n");
+	   "\t\tand -0.5 is quater-note down. (default: 0)\n");
+  fprintf (stderr, "DRUM-REMOVAL OPTIONS\n");
+  fprintf (stderr, "  -psub-n\tnumber of averaging bins in one side.\n"
+	   "\t\tthat is, for n, (i-n,...,i,...,i+n) are averaged\n"
+	   "\t\t(default: 0)\n");
+  fprintf (stderr, "  -psub-f\tfactor to the average,"
+	   " where the power is modified as\n"
+	   "\t\tp[i] = (sqrt(p[i]) - f * sqrt(ave[i]))^2\n"
+	   "\t\t(default: 0.0)\n");
+  fprintf (stderr, "OCTAVE-REMOVER OPTIONS\n");
+  fprintf (stderr, "  -oct\tfactor to the octave removal,"
+	   " where the power is modified as\n"
+	   "\t\tp[i] = (sqrt(p[i]) - f * sqrt(oct[i]))^2\n"
+	   "\t\t(default: 0.0)\n");
 }
 
 
@@ -108,25 +121,19 @@ int main (int argc, char** argv)
   extern double pitch_shift;
   extern int n_pitch;
 
-  int show_help;
-
   char *file_midi = NULL;
   char *file_wav = NULL;
   char *file_patch = NULL;
 
   int i;
   int icnt; /* counter  */
-  int nwin;
-  int i0, i1, notetop, notelow;
-  double cut_ratio; /* log10 of cutoff ratio for scale velocity  */
-  double rel_cut_ratio; /* log10 of cutoff ratio relative to average  */
+  int i0, i1;
   double den; /* weight of window function for FFT  */
   double t0; /* time-period for FFT (inverse of smallest frequency)  */
 
-  long hop, len, div;
+  long div;
   int num, nmidi;
 
-  int flag_phase;
 
   struct ia_note *note_top; /* top of infinite array of note_sig  */
   struct ia_note *notes; /* infinite array of note_sig  */
@@ -137,24 +144,29 @@ int main (int argc, char** argv)
   char * on_lst[128]; /* on list point to intensity in ia_note array  */
 
 
-  /* default value */
+  // default value
+  double cut_ratio; // log10 of cutoff ratio for scale velocity
   cut_ratio = -5.0;
-  rel_cut_ratio = 1.0; /* this value is ignored when abs_flg == 1  */
-  len = 2048;
-  nwin = 0;
+  double rel_cut_ratio; // log10 of cutoff ratio relative to average
+  rel_cut_ratio = 1.0; // this value is ignored when abs_flg == 1
+  long len = 2048;
+  int flag_window = 3; // hanning window
   /* for 76 keys piano  */
-  notetop = 103; /* G8  */
-  notelow = 28; /* E2  */
+  int notetop = 103; /* G8  */
+  int notelow = 28; /* E2  */
 
   abs_flg = 1;
 
-  hop = 0;
-  show_help = 0;
+  long hop = 0;
+  int show_help = 0;
   adj_pitch = 0.0;
   peak_threshold = 128; /* this means no peak search  */
 
-  flag_phase = 0;
-  for (i=1; i<argc; i++)
+  int flag_phase = 1; // use the phase correction
+  int psub_n = 0;
+  double psub_f = 0.0;
+  double oct_f = 0.0;
+  for (i = 1; i < argc; i++)
     {
       if ((strcmp (argv[i], "-input" ) == 0)
 	 || (strcmp (argv[i], "-i" ) == 0))
@@ -230,7 +242,7 @@ int main (int argc, char** argv)
 	{
 	  if ( i+1 < argc )
 	    {
-	      nwin = atoi (argv[++i]);
+	      flag_window = atoi (argv[++i]);
 	    }
 	  else
 	    {
@@ -322,9 +334,45 @@ int main (int argc, char** argv)
 	  show_help = 1;
 	  break;
 	}
-      else if (strcmp (argv[i], "--phase") == 0)
+      else if (strcmp (argv[i], "-nophase") == 0)
 	{
-	  flag_phase = 1;
+	  flag_phase = 0;
+	}
+      else if (strcmp (argv[i], "-psub-n") == 0)
+	{
+	  if ( i+1 < argc )
+	    {
+	      psub_n = atoi (argv[++i]);
+	    }
+	  else
+	    {
+	      show_help = 1;
+	      break;
+	    }
+	}
+      else if (strcmp (argv[i], "-psub-f") == 0)
+	{
+	  if ( i+1 < argc )
+	    {
+	      psub_f = atof (argv[++i]);
+	    }
+	  else
+	    {
+	      show_help = 1;
+	      break;
+	    }
+	}
+      else if (strcmp (argv[i], "-oct") == 0)
+	{
+	  if ( i+1 < argc )
+	    {
+	      oct_f = atof (argv[++i]);
+	    }
+	  else
+	    {
+	      show_help = 1;
+	      break;
+	    }
 	}
       else
 	{
@@ -337,15 +385,16 @@ int main (int argc, char** argv)
       exit (1);
     }
 
-  if (nwin < 0 || nwin > 6)
+  if (flag_window < 0 || flag_window > 6)
     {
-      nwin = 0;
+      flag_window = 0;
     }
   if (hop == 0)
     {
       hop = len / 4;
     }
-
+  if (psub_n == 0) psub_f = 0.0;
+  if (psub_f == 0.0) psub_n = 0;
 
   /* malloc for note_on_off buffer  */
   note_top = init_ia_note ();
@@ -488,7 +537,7 @@ int main (int argc, char** argv)
   t0 = (double)len/(double)sfinfo.samplerate;
 
   // window factor for FFT
-  den = init_den (len, nwin);
+  den = init_den (len, flag_window);
 
   /* set range to analyse (search notes) */
   /* -- after 't0' is calculated  */
@@ -504,7 +553,7 @@ int main (int argc, char** argv)
     }
 
   // init patch
-  init_patch (file_patch, len, nwin);
+  init_patch (file_patch, len, flag_window);
   /*                      ^^^ len could be given by option separately  */
 
   // initialization plan for FFTW
@@ -546,7 +595,7 @@ int main (int argc, char** argv)
 	    }
 	  else // mono
 	    {
-	      left  [i] = left  [i + len - hop];
+	      left  [i] = left  [i + hop];
 	    }
 	}
       // read from wav
@@ -575,7 +624,7 @@ int main (int argc, char** argv)
 
 
       // stage 1: calc power spectrum
-      windowing (len, x, nwin, 1.0, x);
+      windowing (len, x, flag_window, 1.0, x);
 
       /* FFTW library  */
 #ifdef FFTW2
@@ -630,6 +679,20 @@ int main (int argc, char** argv)
 		}
 	    }
 	}
+
+      // drum-removal process
+      if (psub_n != 0)
+	{
+	  power_subtract_ave (len, p, psub_n, psub_f);
+	}
+
+
+      // octave-removal process
+      if (oct_f != 0.0)
+	{
+	  power_subtract_octave (len, p, oct_f);
+	}
+
 
       // stage 2: pickup notes
       /* new code
