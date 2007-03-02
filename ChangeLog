@@ -1,3 +1,29 @@
+2007-02-28  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv.c: 1.8 2007/02/28 08:42:26 kichiki Exp
+	set the hanning window as the default window.
+
+	* main.c: 1.7 2007/02/28 08:39:57 kichiki Exp
+	(main): bug fixed on shift of left[] for the mono case.
+	phase-difference correction is set by default, so replace the option
+	by -nophase.
+	hanning window is set by default.
+	those default setting would work well for most cases.
+	introduce new, experimental functionalities, drum-removal, and octave
+	removal.
+	(usage): update the descriptions.
+
+	* fft.h: 1.7 2007/02/28 08:34:23 kichiki Exp
+	* fft.c: 1.7 2007/02/28 08:33:56 kichiki Exp
+	(power_subtract_ave): added.
+	(power_subtract_octave): added.
+
+2007-02-27  Kengo Ichiki  <ichiki@tpr60>
+
+	* analyse.c: 1.6 2007/02/28 07:08:14 kichiki Exp
+	(note_intensity): bug fixed. if fp[] is given, it might be trapped
+	into the end-less loop.
+
 2007-02-24  Kengo Ichiki  <ichiki@tpr60>
 
 	* Release 0.6.
