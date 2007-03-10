@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : menu
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-menu.c,v 1.1 2007/02/09 23:03:59 kichiki Exp $
+ * $Id: gwaon-menu.c,v 1.2 2007/03/10 20:42:17 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +17,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #include <stdio.h> /* fprintf() */
-#include <stdlib.h> /* malloc() */
-#include <fcntl.h> /* open() */
-#include <unistd.h> /* close() */
 #include <gtk/gtk.h>
 
 #include <string.h> // memset()
