@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.7 2007/02/28 08:33:56 kichiki Exp $
+ * $Id: fft.c,v 1.8 2007/03/10 20:52:34 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
 #else // FFTW3
 #include <fftw3.h>
 #endif // FFTW2
+
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 #include "hc.h" // HC_to_amp2()
 
@@ -336,6 +338,7 @@ power_subtract_ave (int n, double *p, int m, double factor)
 
   double *ave = NULL;
   ave = (double *) malloc (sizeof (double) * nlen);
+  CHECK_MALLOC (ave, "power_subtract_ave");
 
   for (i = 0; i < nlen; i ++) // full span
     {

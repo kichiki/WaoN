@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.c,v 1.5 2007/02/25 06:06:40 kichiki Exp $
+ * $Id: pv-ellis.c,v 1.6 2007/03/10 20:52:35 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,6 +33,7 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
+#include "memory-check.h" // CHECK_MALLOC() macro
 #include "pv-conventional.h" // pv_play_resample()
 
 
@@ -49,6 +50,8 @@ read_and_FFT_stereo (SNDFILE *sf, SF_INFO *sfinfo,
   double * right = NULL;
   left  = (double *) malloc (sizeof (double) * len);
   right = (double *) malloc (sizeof (double) * len);
+  CHECK_MALLOC (left,  "read_and_FFT_stereo");
+  CHECK_MALLOC (right, "read_and_FFT_stereo");
 
   long status;
   status = sndfile_read_at (sf, *sfinfo, frame,
@@ -118,6 +121,8 @@ void pv_ellis (const char *file, const char *outfile,
   double * right = NULL;
   left  = (double *) malloc (sizeof (double) * len);
   right = (double *) malloc (sizeof (double) * len);
+  CHECK_MALLOC (left,  "pv_ellis");
+  CHECK_MALLOC (right, "pv_ellis");
 
   // prepare the output
   int status;
@@ -151,6 +156,8 @@ void pv_ellis (const char *file, const char *outfile,
   double *freq = NULL;
   time = (double *)fftw_malloc (len * sizeof(double));
   freq = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (time, "pv_ellis");
+  CHECK_MALLOC (freq, "pv_ellis");
   fftw_plan plan;
   plan = fftw_plan_r2r_1d (len, time, freq, FFTW_R2HC, FFTW_ESTIMATE);
 
@@ -158,6 +165,8 @@ void pv_ellis (const char *file, const char *outfile,
   double *f_out = NULL;
   f_out = (double *)fftw_malloc (len * sizeof(double));
   t_out = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (f_out, "pv_ellis");
+  CHECK_MALLOC (t_out, "pv_ellis");
   fftw_plan plan_inv;
   plan_inv = fftw_plan_r2r_1d (len, f_out, t_out,
 			       FFTW_HC2R, FFTW_ESTIMATE);
@@ -170,6 +179,10 @@ void pv_ellis (const char *file, const char *outfile,
   l_phs = (double *)malloc (((len/2)+1) * sizeof(double));
   r_amp = (double *)malloc (((len/2)+1) * sizeof(double));
   r_phs = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (l_amp, "pv_ellis");
+  CHECK_MALLOC (l_phs, "pv_ellis");
+  CHECK_MALLOC (r_amp, "pv_ellis");
+  CHECK_MALLOC (r_phs, "pv_ellis");
 
   double *l_am0 = NULL;
   double *l_ph0 = NULL;
@@ -179,6 +192,10 @@ void pv_ellis (const char *file, const char *outfile,
   l_ph0 = (double *)malloc (((len/2)+1) * sizeof(double));
   r_am0 = (double *)malloc (((len/2)+1) * sizeof(double));
   r_ph0 = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (l_am0, "pv_ellis");
+  CHECK_MALLOC (l_ph0, "pv_ellis");
+  CHECK_MALLOC (r_am0, "pv_ellis");
+  CHECK_MALLOC (r_ph0, "pv_ellis");
 
   for (i = 0; i < (len/2)+1; i ++)
     {
@@ -197,6 +214,8 @@ void pv_ellis (const char *file, const char *outfile,
   double *r_out = NULL;
   l_out = (double *) malloc ((hop_out + len) * sizeof(double));
   r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  CHECK_MALLOC (l_out, "pv_ellis");
+  CHECK_MALLOC (r_out, "pv_ellis");
   for (i = 0; i < (hop_out + len); i ++)
     {
       l_out [i] = 0.0;
@@ -206,6 +225,7 @@ void pv_ellis (const char *file, const char *outfile,
   // expected frequency
   double *omega = NULL;
   omega = (double *) malloc (sizeof (double) * ((len/2)+1));
+  CHECK_MALLOC (omega, "pv_ellis");
   for (k = 0; k < (len/2)+1; k ++)
     {
       omega [k] = twopi * (double)k / (double)len;
@@ -216,12 +236,16 @@ void pv_ellis (const char *file, const char *outfile,
   double *r_mag = NULL;
   l_mag = (double *) malloc (sizeof (double) * ((len/2)+1));
   r_mag = (double *) malloc (sizeof (double) * ((len/2)+1));
+  CHECK_MALLOC (l_mag, "pv_ellis");
+  CHECK_MALLOC (r_mag, "pv_ellis");
 
   // Phase accumulator to re-synthesize
   double *l_ph = NULL;
   double *r_ph = NULL;
   l_ph = (double *) malloc (sizeof (double) * ((len/2)+1));
   r_ph = (double *) malloc (sizeof (double) * ((len/2)+1));
+  CHECK_MALLOC (l_ph, "pv_ellis");
+  CHECK_MALLOC (r_ph, "pv_ellis");
 
 
   // read the first frame

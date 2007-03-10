@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-loose-lock.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-loose-lock.c,v 1.6 2007/02/25 06:07:48 kichiki Exp $
+ * $Id: pv-loose-lock.c,v 1.7 2007/03/10 20:52:35 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -34,6 +34,7 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
+#include "memory-check.h" // CHECK_MALLOC() macro
 #include "pv-conventional.h" // pv_play_resample()
 
 
@@ -76,6 +77,8 @@ void pv_loose_lock (const char *file, const char *outfile,
   double * right = NULL;
   left  = (double *) malloc (sizeof (double) * len);
   right = (double *) malloc (sizeof (double) * len);
+  CHECK_MALLOC (left,  "pv_loose_lock");
+  CHECK_MALLOC (right, "pv_loose_lock");
 
 
   // prepare the output
@@ -110,6 +113,8 @@ void pv_loose_lock (const char *file, const char *outfile,
   double *freq = NULL;
   time = (double *)fftw_malloc (len * sizeof(double));
   freq = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (time, "pv_loose_lock");
+  CHECK_MALLOC (freq, "pv_loose_lock");
   fftw_plan plan;
   plan = fftw_plan_r2r_1d (len, time, freq, FFTW_R2HC, FFTW_ESTIMATE);
 
@@ -117,22 +122,29 @@ void pv_loose_lock (const char *file, const char *outfile,
   double *f_out = NULL;
   f_out = (double *)fftw_malloc (len * sizeof(double));
   t_out = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (f_out, "pv_loose_lock");
+  CHECK_MALLOC (t_out, "pv_loose_lock");
   fftw_plan plan_inv;
   plan_inv = fftw_plan_r2r_1d (len, f_out, t_out,
 			       FFTW_HC2R, FFTW_ESTIMATE);
 
   double *amp = NULL;
   amp = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (amp, "pv_loose_lock");
 
   double *ph_in = NULL;
   double *ph_out = NULL;
-  ph_in      = (double *)malloc (((len/2)+1) * sizeof(double));
-  ph_out     = (double *)malloc (((len/2)+1) * sizeof(double));
+  ph_in  = (double *)malloc (((len/2)+1) * sizeof(double));
+  ph_out = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (ph_in,  "pv_loose_lock");
+  CHECK_MALLOC (ph_out, "pv_loose_lock");
 
   double *l_ph_in_old = NULL;
   double *r_ph_in_old = NULL;
-  l_ph_in_old  = (double *)malloc (((len/2)+1) * sizeof(double));
-  r_ph_in_old  = (double *)malloc (((len/2)+1) * sizeof(double));
+  l_ph_in_old = (double *)malloc (((len/2)+1) * sizeof(double));
+  r_ph_in_old = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (l_ph_in_old, "pv_loose_lock");
+  CHECK_MALLOC (r_ph_in_old, "pv_loose_lock");
 
   for (i = 0; i < (len/2)+1; i ++)
     {
@@ -144,16 +156,21 @@ void pv_loose_lock (const char *file, const char *outfile,
 
   double *z = NULL;
   z = (double *)malloc (len * sizeof(double));
+  CHECK_MALLOC (z, "pv_loose_lock");
 
   double *l_ph_z = NULL;
   double *r_ph_z = NULL;
   l_ph_z = (double *)malloc (((len/2)+1) * sizeof(double));
   r_ph_z = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (l_ph_z, "pv_loose_lock");
+  CHECK_MALLOC (r_ph_z, "pv_loose_lock");
 
   double *l_out = NULL;
   double *r_out = NULL;
   l_out = (double *) malloc ((hop_out + len) * sizeof(double));
   r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  CHECK_MALLOC (l_out, "pv_loose_lock");
+  CHECK_MALLOC (r_out, "pv_loose_lock");
   for (i = 0; i < (hop_out + len); i ++)
     {
       l_out [i] = 0.0;
@@ -163,6 +180,7 @@ void pv_loose_lock (const char *file, const char *outfile,
 
   double * omega = NULL;
   omega = (double *) malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (omega, "pv_loose_lock");
   for (k = 0; k < (len/2)+1; k ++)
     {
       omega [k] = twopi * (double)k / (double)len;

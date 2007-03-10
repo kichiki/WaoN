@@ -1,6 +1,6 @@
 /* routines to analyse power spectrum and output notes
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.c,v 1.6 2007/02/28 07:08:14 kichiki Exp $
+ * $Id: analyse.c,v 1.7 2007/03/10 20:52:34 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,8 @@
 #include "midi.h" /* get_note()  */
 #include "fft.h" /* init_den(), power_spectrum_fftw() */
 #include "analyse.h"
+
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 
 /* global variables  */
@@ -225,6 +227,7 @@ average_FFT_into_midi (int len, double samplerate,
   double f;
   int *n = NULL;
   n = (int *) malloc (sizeof (int) * 128);
+  CHECK_MALLOC (n, "average_FFT_into_midi");
 
   for (midi = 0; midi < 128; midi ++)
     {

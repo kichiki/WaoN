@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.8 2007/02/28 08:42:26 kichiki Exp $
+ * $Id: pv.c,v 1.9 2007/03/10 20:52:35 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,12 +28,14 @@
 #include "pv-freq.h"
 #include "pv-loose-lock.h"
 
+#include "memory-check.h" // CHECK_MALLOC() macro
+
 #include "VERSION.h"
 
 
 void usage (char * argv0)
 {
-  fprintf (stderr, "WaoN - phase vocoder, Version %s\n",
+  fprintf (stderr, "WaoN-pv : phase vocoder, Version %s\n",
 	   WAON_VERSION);
   fprintf (stderr, "Copyright (C) 2007 Kengo Ichiki "
 	   "<kichiki@users.sourceforge.net>\n");
@@ -94,6 +96,7 @@ int main (int argc, char** argv)
 	    {
 	      file_in = (char *) malloc (sizeof (char)
 					 * (strlen (argv [++i]) + 1));
+	      CHECK_MALLOC (file_in, "main");
 	      strcpy (file_in, argv[i]);
 	    }
 	}
@@ -104,6 +107,7 @@ int main (int argc, char** argv)
 	    {
 	      file_out = (char *) malloc (sizeof (char)
 					 * (strlen (argv [++i]) + 1));
+	      CHECK_MALLOC (file_out, "main");
 	      strcpy (file_out, argv[i]);
 	    }
 	}

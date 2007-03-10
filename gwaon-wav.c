@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.9 2007/02/25 07:02:27 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.10 2007/03/10 20:52:34 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,8 +40,8 @@
 #include "ao-wrapper.h"
 
 #include "pv-complex.h" // struct pv_complex_data
-
 #include "gtk-color.h" /* get_color() */
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 
 // global variables
@@ -138,6 +138,8 @@ draw_wav_frame (GtkWidget *widget,
       double *right = NULL;
       left  = (double *)malloc (sizeof (double) * len);
       right = (double *)malloc (sizeof (double) * len);
+      CHECK_MALLOC (left,  "draw_wav_frame");
+      CHECK_MALLOC (right, "draw_wav_frame");
 
       int cur_read = WIN_wav_cur + i0 * WIN_wav_scale;
       for (i = 0; i < len; i ++)
@@ -657,6 +659,8 @@ fft_two_frames (int i, int hop,
   double *r_ph1 = NULL;
   l_ph1 = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
   r_ph1 = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+  CHECK_MALLOC (l_ph1, "fft_two_frames");
+  CHECK_MALLOC (r_ph1, "fft_two_frames");
 
   fft_one_frame (i + hop, l_amp2, r_amp2, l_ph1, r_ph1);
   fft_one_frame (i,       l_amp2, r_amp2, l_ph,  r_ph);
@@ -684,7 +688,6 @@ fft_two_frames (int i, int hop,
 	  r_dphi [i] = dphi / twopi / (double)hop;
 	}
     }
-
 
   free (l_ph1);
   free (r_ph1);
@@ -797,19 +800,27 @@ draw_spectrum_frame (GtkWidget *widget,
     {
       // allocate working area
       double *l_amp2 = NULL;
-      double *l_ph = NULL;
-      l_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-      l_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-
       double *r_amp2 = NULL;
-      double *r_ph = NULL;
+      l_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
       r_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+      double *l_ph = NULL;
+      double *r_ph = NULL;
+      l_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
       r_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
 
       double *l_dphi = NULL;
       double *r_dphi = NULL;
       l_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
       r_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+
+      CHECK_MALLOC (l_amp2, "draw_spectrum_frame");
+      CHECK_MALLOC (r_amp2, "draw_spectrum_frame");
+      CHECK_MALLOC (l_ph,   "draw_spectrum_frame");
+      CHECK_MALLOC (r_ph,   "draw_spectrum_frame");
+      CHECK_MALLOC (l_dphi, "draw_spectrum_frame");
+      CHECK_MALLOC (r_dphi, "draw_spectrum_frame");
+
 
       extern int oct_max, oct_min;
       int resolution = (oct_max - oct_min) * 12;
@@ -819,6 +830,8 @@ draw_spectrum_frame (GtkWidget *widget,
 	{
 	  l_ave = (double *)malloc (sizeof (double) * resolution);
 	  r_ave = (double *)malloc (sizeof (double) * resolution);
+	  CHECK_MALLOC (l_ave, "draw_spectrum_frame");
+	  CHECK_MALLOC (r_ave, "draw_spectrum_frame");
 	}
 
       // set GC wiht OR function
@@ -1032,10 +1045,8 @@ draw_spectrum_frame (GtkWidget *widget,
 
       free (l_amp2);
       free (r_amp2);
-
       free (l_ph);
       free (r_ph);
-
       free (l_dphi);
       free (r_dphi);
 
@@ -1129,12 +1140,13 @@ draw_spectrogram_frame (GtkWidget *widget,
       // allocate working area
       double *l_amp2 = NULL;
       double *l_ph = NULL;
-      l_amp2  = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-      l_ph = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-
       double *l_dphi = NULL;
+      l_amp2 = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
+      l_ph   = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
       l_dphi = (double *)malloc (sizeof (double) * ((WIN_spec_n/2)+1));
-
+      CHECK_MALLOC (l_amp2, "draw_spectrogram_frame");
+      CHECK_MALLOC (l_ph,   "draw_spectrogram_frame");
+      CHECK_MALLOC (l_dphi, "draw_spectrogram_frame");
 
       extern gint colormap_power_r[256];
       extern gint colormap_power_g[256];
@@ -1148,6 +1160,7 @@ draw_spectrogram_frame (GtkWidget *widget,
       if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
 	{
 	  ave = (double *)malloc (sizeof (double) * height_spg);
+	  CHECK_MALLOC (ave, "draw_spectrogram_frame");
 	}
 
       for (i = i0/*0*/; i < i1/*WIN_wav_width*/; i+=istep)
@@ -1404,9 +1417,10 @@ draw_spectrogram_frame (GtkWidget *widget,
       free (l_ph);
       free (l_dphi);
 
-
       if (WIN_spec_mode == 1 || WIN_spec_mode == 2)
-	free (ave);
+	{
+	  free (ave);
+	}
 
       // recover GC's function
       gdk_gc_set_function (gc, backup_gc_values.function);
@@ -1757,10 +1771,14 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       fftw_destroy_plan (plan);
       spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
       spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
+      CHECK_MALLOC (spec_in,  "wav_key_press_event");
+      CHECK_MALLOC (spec_out, "wav_key_press_event");
       plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
 			       FFTW_R2HC, FFTW_ESTIMATE);
       spec_left  = (double *)realloc (spec_left, sizeof(double) * WIN_spec_n);
       spec_right = (double *)realloc (spec_right, sizeof(double) * WIN_spec_n);
+      CHECK_MALLOC (spec_left,  "wav_key_press_event");
+      CHECK_MALLOC (spec_right, "wav_key_press_event");
 
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
 
@@ -1780,10 +1798,14 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       fftw_destroy_plan (plan);
       spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
       spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
+      CHECK_MALLOC (spec_in,  "wav_key_press_event");
+      CHECK_MALLOC (spec_out, "wav_key_press_event");
       plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
 			       FFTW_R2HC, FFTW_ESTIMATE);
       spec_left  = (double *)realloc (spec_left, sizeof(double) * WIN_spec_n);
       spec_right = (double *)realloc (spec_right, sizeof(double) * WIN_spec_n);
+      CHECK_MALLOC (spec_left,  "wav_key_press_event");
+      CHECK_MALLOC (spec_right, "wav_key_press_event");
 
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
 
@@ -2221,6 +2243,8 @@ create_wav (void)
   extern fftw_plan plan;
   spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
   spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
+  CHECK_MALLOC (spec_in,  "wav_key_press_event");
+  CHECK_MALLOC (spec_out, "wav_key_press_event");
   plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
 			   FFTW_R2HC, FFTW_ESTIMATE);
 
@@ -2234,6 +2258,8 @@ create_wav (void)
   extern double *spec_right;
   spec_left  = (double *)malloc (sizeof(double) * WIN_spec_n);
   spec_right = (double *)malloc (sizeof(double) * WIN_spec_n);
+  CHECK_MALLOC (spec_left,  "wav_key_press_event");
+  CHECK_MALLOC (spec_right, "wav_key_press_event");
 
   extern int WIN_wav_cur;
   extern int WIN_wav_scale;

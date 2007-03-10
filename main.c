@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.7 2007/02/28 08:39:57 kichiki Exp $
+ * $Id: main.c,v 1.8 2007/03/10 20:52:34 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 
 #include "midi.h" /* smf_...(), mid2freq[], get_note()  */
 #include "analyse.h" /* note_intensity(), note_on_off(), output_midi()  */
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 #include "VERSION.h"
 
@@ -175,6 +176,7 @@ int main (int argc, char** argv)
 	    {
 	      file_wav = (char *)malloc (sizeof (char)
 					 * (strlen (argv[++i]) + 1));
+	      CHECK_MALLOC (file_wav, "main");
 	      strcpy (file_wav, argv[i]);
 	    }
 	  else
@@ -190,6 +192,7 @@ int main (int argc, char** argv)
 	    {
 	      file_midi = (char *)malloc (sizeof (char)
 					 * (strlen (argv[++i]) + 1));
+	      CHECK_MALLOC (file_midi, "main");
 	      strcpy (file_midi, argv[i]);
 	    }
 	  else
@@ -418,16 +421,8 @@ int main (int argc, char** argv)
   double *right = NULL;
   left  = (double *)malloc (sizeof (double) * len);
   right = (double *)malloc (sizeof (double) * len);
-  if (left == NULL)
-    {
-      fprintf(stderr, "cannot allocate left[%ld]\n", len);
-      exit (1);
-    }
-  if (right == NULL)
-    {
-      fprintf(stderr, "cannot allocate right[%ld]\n", len);
-      exit (1);
-    }
+  CHECK_MALLOC (left,  "main");
+  CHECK_MALLOC (right, "main");
 
   double *x = NULL; /* wave data for FFT  */
   double *y = NULL; /* spectrum data for FFT */ 
@@ -438,24 +433,12 @@ int main (int argc, char** argv)
   x = (double *)fftw_malloc (sizeof (double) * len);
   y = (double *)fftw_malloc (sizeof (double) * len);
 #endif // FFTW2
-  if (x == NULL)
-    {
-      fprintf(stderr, "cannot allocate x[%ld]\n", len);
-      exit (1);
-    }
-  if (y == NULL)
-    {
-      fprintf(stderr, "cannot allocate y[%ld]\n", len);
-      exit (1);
-    }
+  CHECK_MALLOC (x, "main");
+  CHECK_MALLOC (y, "main");
 
   double *p = NULL; /* power spectrum  */
   p = (double *)malloc (sizeof (double) * (len / 2 + 1));
-  if (p == NULL)
-    {
-      fprintf (stderr, "cannot allocate p[%ld]\n", (len/2+1));
-      exit (1);
-    }
+  CHECK_MALLOC (p, "main");
 
   double *p0 = NULL;
   double *dphi = NULL;
@@ -464,46 +447,27 @@ int main (int argc, char** argv)
   if (flag_phase != 0)
     {
       p0 = (double *)malloc (sizeof (double) * (len / 2 + 1));
-      if (p0 == NULL)
-	{
-	  fprintf (stderr, "cannot allocate p0[%ld]\n", (len/2+1));
-	  exit (1);
-	}
+      CHECK_MALLOC (p0, "main");
 
       dphi = (double *)malloc (sizeof (double) * (len / 2 + 1));
-      if (dphi == NULL)
-	{
-	  fprintf (stderr, "cannot allocate dphi[%ld]\n", (len/2+1));
-	  exit (1);
-	}
+      CHECK_MALLOC (dphi, "main");
 
       ph0 = (double *)malloc (sizeof (double) * (len/2+1));
       ph1 = (double *)malloc (sizeof (double) * (len/2+1));
-      if (ph0 == NULL)
-	{
-	  fprintf (stderr, "cannot allocate ph0[%ld]\n", (len/2+1));
-	  exit (1);
-	}
-      if (ph1 == NULL)
-	{
-	  fprintf (stderr, "cannot allocate ph1[%ld]\n", (len/2+1));
-	  exit (1);
-	}
+      CHECK_MALLOC (ph0, "main");
+      CHECK_MALLOC (ph1, "main");
     }
 
   double *pmidi = NULL;
   pmidi = (double *)malloc (sizeof (double) * 128);
-  if (pmidi == NULL)
-    {
-      fprintf (stderr, "cannot allocate pmidi[%d]\n", 128);
-      exit (1);
-    }
+  CHECK_MALLOC (pmidi, "main");
 
 
   // MIDI output
   if (file_midi == NULL)
     {
       file_midi = (char *)malloc (sizeof (char) * (strlen("output.mid") + 1));
+      CHECK_MALLOC (file_midi, "main");
       strcpy (file_midi, "output.mid");
     }
 
@@ -513,6 +477,7 @@ int main (int argc, char** argv)
   if (file_wav == NULL)
     {
       file_wav = (char *) malloc (sizeof (char) * 2);
+      CHECK_MALLOC (file_wav, "main");
       file_wav [0] = '-';
     }
   sf = sf_open (file_wav, SFM_READ, &sfinfo);

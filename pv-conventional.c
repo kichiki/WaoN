@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.c,v 1.7 2007/02/25 06:46:17 kichiki Exp $
+ * $Id: pv-conventional.c,v 1.8 2007/03/10 20:52:35 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -37,6 +37,8 @@
 // samplerate
 #include <samplerate.h>
 
+#include "memory-check.h" // CHECK_MALLOC() macro
+
 
 /** general utility routines for pv **/
 
@@ -71,6 +73,8 @@ pv_play_resample (long hop_in, long hop_out,
     {
       fl_in  = (float *)malloc (sizeof (float) * 2 * hop_out);
       fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
+      CHECK_MALLOC (fl_in,  "pv_play_resample");
+      CHECK_MALLOC (fl_out, "pv_play_resample");
 
       srdata.input_frames  = hop_out;
       srdata.output_frames = hop_in;
@@ -80,6 +84,8 @@ pv_play_resample (long hop_in, long hop_out,
 
       l_out_src = (double *)malloc (sizeof (double) * hop_in);
       r_out_src = (double *)malloc (sizeof (double) * hop_in);
+      CHECK_MALLOC (l_out_src, "pv_play_resample");
+      CHECK_MALLOC (r_out_src, "pv_play_resample");
 
 
       // samplerate conversion (time fixed)
@@ -145,6 +151,7 @@ get_scale_factor_for_window (int len, long hop_out, int flag_window)
 {
   double *x = NULL;
   x = (double *)malloc (sizeof (double) * len);
+  CHECK_MALLOC (x, "get_scale_factor_for_window");
 
   int i;
   for (i = 0; i < len; i ++)
@@ -214,6 +221,8 @@ void pv_conventional (const char *file, const char *outfile,
   double * right = NULL;
   left  = (double *) malloc (sizeof (double) * len);
   right = (double *) malloc (sizeof (double) * len);
+  CHECK_MALLOC (left,  "pv_conventional");
+  CHECK_MALLOC (right, "pv_conventional");
 
 
   // prepare the output
@@ -248,6 +257,8 @@ void pv_conventional (const char *file, const char *outfile,
   double *freq = NULL;
   time = (double *)fftw_malloc (len * sizeof(double));
   freq = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (time, "pv_conventional");
+  CHECK_MALLOC (freq, "pv_conventional");
   fftw_plan plan;
   plan = fftw_plan_r2r_1d (len, time, freq, FFTW_R2HC, FFTW_ESTIMATE);
 
@@ -255,24 +266,33 @@ void pv_conventional (const char *file, const char *outfile,
   double *f_out = NULL;
   f_out = (double *)fftw_malloc (len * sizeof(double));
   t_out = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (f_out, "pv_conventional");
+  CHECK_MALLOC (t_out, "pv_conventional");
   fftw_plan plan_inv;
   plan_inv = fftw_plan_r2r_1d (len, f_out, t_out,
 			       FFTW_HC2R, FFTW_ESTIMATE);
 
   double *amp = NULL;
   double *ph_in = NULL;
-  amp = (double *)malloc (((len/2)+1) * sizeof(double));
-  ph_in     = (double *)malloc (((len/2)+1) * sizeof(double));
+  amp   = (double *)malloc (((len/2)+1) * sizeof(double));
+  ph_in = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (amp,   "pv_conventional");
+  CHECK_MALLOC (ph_in, "pv_conventional");
 
   double *l_ph_out = NULL;
   double *r_ph_out = NULL;
   l_ph_out    = (double *)malloc (((len/2)+1) * sizeof(double));
   r_ph_out    = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (l_ph_out, "pv_conventional");
+  CHECK_MALLOC (r_ph_out, "pv_conventional");
 
   double *l_ph_in_old = NULL;
   double *r_ph_in_old = NULL;
   l_ph_in_old = (double *)malloc (((len/2)+1) * sizeof(double));
   r_ph_in_old = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (l_ph_in_old, "pv_conventional");
+  CHECK_MALLOC (r_ph_in_old, "pv_conventional");
+
   for (i = 0; i < (len/2)+1; i ++)
     {
       ph_in [i]  = 0.0;
@@ -286,6 +306,8 @@ void pv_conventional (const char *file, const char *outfile,
   double *r_out = NULL;
   l_out = (double *) malloc ((hop_out + len) * sizeof(double));
   r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  CHECK_MALLOC (l_out, "pv_conventional");
+  CHECK_MALLOC (r_out, "pv_conventional");
   for (i = 0; i < (hop_out + len); i ++)
     {
       l_out [i] = 0.0;
@@ -295,6 +317,7 @@ void pv_conventional (const char *file, const char *outfile,
   // expected frequency
   double * omega = NULL;
   omega = (double *) malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (omega, "pv_conventional");
   for (k = 0; k < (len/2)+1; k ++)
     {
       omega [k] = twopi * (double)k / (double)len;

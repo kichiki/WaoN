@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.8 2007/02/25 06:38:58 kichiki Exp $
+ * $Id: pv-complex.c,v 1.9 2007/03/10 20:52:35 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -37,6 +37,8 @@
 // samplerate
 #include <samplerate.h>
 
+#include "memory-check.h" // CHECK_MALLOC() macro
+
 #include "pv-conventional.h" // pv_play_resample() for check
 #include "pv-complex.h"
 
@@ -49,11 +51,7 @@ pv_complex_init (long len, long hop_out, int flag_window)
   struct pv_complex_data *pv = NULL;
 
   pv = (struct pv_complex_data *) malloc (sizeof (struct pv_complex_data));
-  if (pv == NULL)
-    {
-      fprintf (stderr, "allocation error in pv_complex_init()\n");
-      exit (1);
-    }
+  CHECK_MALLOC (pv, "pv_complex_init");
 
   pv->len = len;
   pv->hop_out = hop_out;
@@ -64,19 +62,27 @@ pv_complex_init (long len, long hop_out, int flag_window)
 
   pv->time = (double *)fftw_malloc (len * sizeof(double));
   pv->freq = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (pv->time, "pv_complex_init");
+  CHECK_MALLOC (pv->freq, "pv_complex_init");
   pv->plan = fftw_plan_r2r_1d (len, pv->time, pv->freq,
 			       FFTW_R2HC, FFTW_ESTIMATE);
 
   pv->f_out = (double *)fftw_malloc (len * sizeof(double));
   pv->t_out = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (pv->f_out, "pv_complex_init");
+  CHECK_MALLOC (pv->t_out, "pv_complex_init");
   pv->plan_inv = fftw_plan_r2r_1d (len, pv->f_out, pv->t_out,
 				   FFTW_HC2R, FFTW_ESTIMATE);
 
   pv->l_f_old = (double *)malloc (len * sizeof(double));
   pv->r_f_old = (double *)malloc (len * sizeof(double));
+  CHECK_MALLOC (pv->l_f_old, "pv_complex_init");
+  CHECK_MALLOC (pv->r_f_old, "pv_complex_init");
 
   pv->l_out = (double *) malloc ((hop_out + len) * sizeof(double));
   pv->r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  CHECK_MALLOC (pv->l_out, "pv_complex_init");
+  CHECK_MALLOC (pv->r_out, "pv_complex_init");
   int i;
   for (i = 0; i < (hop_out + len); i ++)
     {
@@ -153,6 +159,8 @@ read_and_FFT_stereo (struct pv_complex_data *pv,
   double * right = NULL;
   left  = (double *) malloc (sizeof (double) * pv->len);
   right = (double *) malloc (sizeof (double) * pv->len);
+  CHECK_MALLOC (left,  "read_and_FFT_stereo");
+  CHECK_MALLOC (right, "read_and_FFT_stereo");
 
   long status;
   status = sndfile_read_at (pv->sf, *(pv->sfinfo), frame,
@@ -256,6 +264,8 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 
       fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_out);
       fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
+      CHECK_MALLOC (fl_in,  "pv_complex_play_resample");
+      CHECK_MALLOC (fl_out, "pv_complex_play_resample");
 
       srdata.input_frames  = pv->hop_out;
       srdata.output_frames = hop_in;
@@ -281,6 +291,8 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 
       l_out_src = (double *)malloc (sizeof (double) * hop_in);
       r_out_src = (double *)malloc (sizeof (double) * hop_in);
+      CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
+      CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
 
       for (i = 0; i < hop_in; i ++)
 	{
@@ -358,6 +370,8 @@ long pv_complex_play_step (struct pv_complex_data *pv,
   double *r_fs = NULL;
   l_fs = (double *)malloc (pv->len * sizeof (double));
   r_fs = (double *)malloc (pv->len * sizeof (double));
+  CHECK_MALLOC (l_fs, "pv_complex_play_step");
+  CHECK_MALLOC (r_fs, "pv_complex_play_step");
 
   long status;
   // read the starting frame (cur)
@@ -374,6 +388,8 @@ long pv_complex_play_step (struct pv_complex_data *pv,
   double *r_ft = NULL;
   l_ft = (double *)malloc (pv->len * sizeof (double));
   r_ft = (double *)malloc (pv->len * sizeof (double));
+  CHECK_MALLOC (l_ft, "pv_complex_play_step");
+  CHECK_MALLOC (r_ft, "pv_complex_play_step");
 
   // read the terminal frame (cur + hop_out)
   status = read_and_FFT_stereo (pv, cur + pv->hop_out, l_ft, r_ft);
@@ -414,6 +430,8 @@ long pv_complex_play_step (struct pv_complex_data *pv,
   double *r_tmp = NULL;
   l_tmp = (double *)malloc (pv->len * sizeof (double));
   r_tmp = (double *)malloc (pv->len * sizeof (double));
+  CHECK_MALLOC (l_tmp, "pv_complex_play_step");
+  CHECK_MALLOC (r_tmp, "pv_complex_play_step");
 
 
   // left channel

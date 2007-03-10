@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-freq.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-freq.c,v 1.5 2007/02/25 06:04:46 kichiki Exp $
+ * $Id: pv-freq.c,v 1.6 2007/03/10 20:52:35 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,6 +33,8 @@
 // ao device
 #include <ao/ao.h>
 #include "ao-wrapper.h"
+
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 
 /* phase vocoder by frequency domain
@@ -70,6 +72,8 @@ void pv_freq (const char *file, const char *outfile,
   double * right = NULL;
   left  = (double *) malloc (sizeof (double) * len);
   right = (double *) malloc (sizeof (double) * len);
+  CHECK_MALLOC (left,  "pv_freq");
+  CHECK_MALLOC (right, "pv_freq");
 
   // now only integer rate is working
   iscale = (int)rate;
@@ -102,18 +106,20 @@ void pv_freq (const char *file, const char *outfile,
   /* initialization plan for FFTW  */
   double *time = NULL;
   double *freq = NULL;
-  fftw_plan plan;
-
   time = (double *)fftw_malloc (len * sizeof(double));
   freq = (double *)fftw_malloc (len * sizeof(double));
+  CHECK_MALLOC (time, "pv_freq");
+  CHECK_MALLOC (freq, "pv_freq");
+  fftw_plan plan;
   plan = fftw_plan_r2r_1d (len, time, freq, FFTW_R2HC, FFTW_ESTIMATE);
 
   double *t_out = NULL;
   double *f_out = NULL;
-  fftw_plan plan_inv;
-
   f_out = (double *)fftw_malloc (len_out * sizeof(double));
   t_out = (double *)fftw_malloc (len_out * sizeof(double));
+  CHECK_MALLOC (f_out, "pv_freq");
+  CHECK_MALLOC (t_out, "pv_freq");
+  fftw_plan plan_inv;
   plan_inv = fftw_plan_r2r_1d (len_out, f_out, t_out,
 			       FFTW_HC2R, FFTW_ESTIMATE);
 
@@ -122,16 +128,22 @@ void pv_freq (const char *file, const char *outfile,
   double *r_out = NULL;
   l_out = (double *)malloc (len_out * sizeof(double));
   r_out = (double *)malloc (len_out * sizeof(double));
+  CHECK_MALLOC (l_out, "pv_freq");
+  CHECK_MALLOC (r_out, "pv_freq");
 
   double *phs = NULL;
   double *amp = NULL;
   phs = (double *)malloc (((len/2)+1) * sizeof(double));
   amp = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (phs, "pv_freq");
+  CHECK_MALLOC (amp, "pv_freq");
 
   double *p_out = NULL;
   double *a_out = NULL;
   p_out = (double *)malloc (((len/2)+1) * sizeof(double));
   a_out = (double *)malloc (((len/2)+1) * sizeof(double));
+  CHECK_MALLOC (p_out, "pv_freq");
+  CHECK_MALLOC (a_out, "pv_freq");
 
 
   int step = 0;
