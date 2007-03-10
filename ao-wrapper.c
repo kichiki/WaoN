@@ -1,6 +1,6 @@
 /* some wrapper for ao
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: ao-wrapper.c,v 1.1 2007/02/20 05:01:59 kichiki Exp $
+ * $Id: ao-wrapper.c,v 1.2 2007/03/10 20:37:21 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h> // write()
 
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 // ao device
 #include <ao/ao.h>
@@ -94,11 +95,11 @@ ao_write (ao_device *device, double *left, double *right, int len)
   int status;
 
   char *buffer = NULL;
-  buffer = (char *)calloc (len * 2 * 2, sizeof(char));
+  buffer = (char *)malloc (len * 2 * 2 * sizeof(char));
+  CHECK_MALLOC (buffer, "ao_write");
+
   short sl;
   short sr;
-
-
   for (i = 0; i < len; i ++)
     {
       sl = (short)(left  [i] * 32768.0);
