@@ -1,7 +1,7 @@
 /* header file for pv-ellis.c --
  * PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.h,v 1.2 2007/02/25 03:38:51 kichiki Exp $
+ * $Id: pv-ellis.h,v 1.3 2007/03/11 01:04:58 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,9 +25,9 @@
  *   http://www.ee.columbia.edu/~dpwe/resources/matlab/pvoc/
  */
 void pv_ellis (const char *file, const char *outfile,
-	       double rate, long len, long hop,
-	       int flag_window,
-	       int flag_pitch);
+	       double rate, double pitch_shift,
+	       long len, long hop,
+	       int flag_window);
 
 
 #endif /* !_PV_ELLIS_H_ */

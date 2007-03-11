@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.c,v 1.6 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: pv-ellis.c,v 1.7 2007/03/11 01:04:21 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -82,9 +82,9 @@ read_and_FFT_stereo (SNDFILE *sf, SF_INFO *sfinfo,
  *   http://www.ee.columbia.edu/~dpwe/resources/matlab/pvoc/
  */
 void pv_ellis (const char *file, const char *outfile,
-	       double rate, long len, long hop,
-	       int flag_window,
-	       int flag_pitch)
+	       double rate, double pitch_shift,
+	       long len, long hop,
+	       int flag_window)
 {
   double twopi = 2.0 * M_PI;
 
@@ -94,11 +94,13 @@ void pv_ellis (const char *file, const char *outfile,
   long nf;
   long nf0;
 
-  long hop_in;
-  long hop_out;
+  long hop_syn;
+  hop_syn = hop;
+  long hop_res;
+  hop_res = (long)((double)hop_syn * pow (2.0, - pitch_shift / 12.0));
 
-  hop_in  = hop;
-  hop_out = hop;
+  double corr_rate;
+  corr_rate = (double)hop_res * rate / (double)hop_syn;
 
 
   // open the input file
@@ -148,7 +150,7 @@ void pv_ellis (const char *file, const char *outfile,
 
 
   double window_scale;
-  window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
+  window_scale = get_scale_factor_for_window (len, hop_syn, flag_window);
 
 
   /* initialization plan for FFTW  */
@@ -212,11 +214,11 @@ void pv_ellis (const char *file, const char *outfile,
 
   double *l_out = NULL;
   double *r_out = NULL;
-  l_out = (double *) malloc ((hop_out + len) * sizeof(double));
-  r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  l_out = (double *) malloc ((hop_syn + len) * sizeof(double));
+  r_out = (double *) malloc ((hop_syn + len) * sizeof(double));
   CHECK_MALLOC (l_out, "pv_ellis");
   CHECK_MALLOC (r_out, "pv_ellis");
-  for (i = 0; i < (hop_out + len); i ++)
+  for (i = 0; i < (hop_syn + len); i ++)
     {
       l_out [i] = 0.0;
       r_out [i] = 0.0;
@@ -279,7 +281,7 @@ void pv_ellis (const char *file, const char *outfile,
       r_am0 [k] = r_amp [k];
       r_ph0 [k] = r_phs [k];
     }
-  read_status = read_and_FFT_stereo (sf, &sfinfo, hop_in,
+  read_status = read_and_FFT_stereo (sf, &sfinfo, hop_syn,
 				     len, flag_window,
 				     plan, time, freq,
 				     l_amp, l_phs,
@@ -288,12 +290,12 @@ void pv_ellis (const char *file, const char *outfile,
     {
       exit (1);
     }
-  nf = 1; // 1*hop_in frame
+  nf = 1; // 1*hop_syn frame
 
   double tt;
   int step;
-  //for (tt = 0.0, step = 0; ; tt += 1.0 / rate, step++)
-  for (tt = 0.0, step = 0; ; tt += rate, step++)
+  //for (tt = 0.0, step = 0; ; tt += rate, step++)
+  for (tt = 0.0, step = 0; ; tt += corr_rate, step++)
     {
       int t0, t1;
       t0 = (int)tt;
@@ -311,9 +313,9 @@ void pv_ellis (const char *file, const char *outfile,
 		}
 	      nf0 = t0;
 
-	      // read t1 * hop_in frame, the next one!
+	      // read t1 * hop_syn frame, the next one!
 	      read_status = read_and_FFT_stereo (sf, &sfinfo,
-						 (long)t1 * hop_in,
+						 (long)t1 * hop_syn,
 						 len, flag_window,
 						 plan, time, freq,
 						 l_amp, l_phs,
@@ -327,9 +329,9 @@ void pv_ellis (const char *file, const char *outfile,
 	    }
 	  else // we have to read the last data for t0 (and for t1, too)
 	    {
-	      // read t0 * hop_in frame
+	      // read t0 * hop_syn frame
 	      read_status = read_and_FFT_stereo (sf, &sfinfo,
-						 (long)t0 * hop_in,
+						 (long)t0 * hop_syn,
 						 len, flag_window,
 						 plan, time, freq,
 						 l_am0, l_ph0,
@@ -341,9 +343,9 @@ void pv_ellis (const char *file, const char *outfile,
 		}
 	      nf0 = t0;
 
-	      // read t1 * hop_in frame, the next one!
+	      // read t1 * hop_syn frame, the next one!
 	      read_status = read_and_FFT_stereo (sf, &sfinfo,
-						 (long)t1 * hop_in,
+						 (long)t1 * hop_syn,
 						 len, flag_window,
 						 plan, time, freq,
 						 l_amp, l_phs,
@@ -375,7 +377,7 @@ void pv_ellis (const char *file, const char *outfile,
       // superimpose
       for (i = 0; i < len; i ++)
 	{
-	  l_out [hop_out + i] += t_out [i];
+	  l_out [hop_syn + i] += t_out [i];
 	}
 
       polar_to_HC (len, r_mag, r_ph, 0, f_out); // (bmag, ph) -> f_out[]
@@ -385,7 +387,7 @@ void pv_ellis (const char *file, const char *outfile,
       // superimpose
       for (i = 0; i < len; i ++)
 	{
-	  r_out [hop_out + i] += t_out [i];
+	  r_out [hop_syn + i] += t_out [i];
 	}
 
 
@@ -395,37 +397,41 @@ void pv_ellis (const char *file, const char *outfile,
       for (k = 0; k < (len/2)+1; k ++)
 	{
 	  // NOTE: I don't understand why the following is working...
-	  // the phase for the next output is hop_out/rate frames ahead,
-	  // while the phase increment is for hop_out frames.
+	  // the phase for the next output is hop_syn/rate frames ahead,
+	  // while the phase increment is for hop_syn frames.
 
-	  dp = l_phs [k] - l_ph0 [k] - omega [k] * (double)hop_in;
+	  dp = l_phs [k] - l_ph0 [k] - omega [k] * (double)hop_syn;
 	  for (; dp >= M_PI; dp -= twopi);
 	  for (; dp < -M_PI; dp += twopi);
-	  l_ph [k] += (omega [k] + dp / (double)hop_in) * (double) hop_out;
+	  l_ph [k] += (omega [k] + dp / (double)hop_syn) * (double) hop_syn;
 	  l_ph [k] -= twopi * (double)((int)(l_ph [k] / twopi));
 
-	  dp = r_phs [k] - r_ph0 [k] - omega [k] * (double)hop_in;
+	  dp = r_phs [k] - r_ph0 [k] - omega [k] * (double)hop_syn;
 	  for (; dp >= M_PI; dp -= twopi);
 	  for (; dp < -M_PI; dp += twopi);
-	  r_ph [k] += (omega [k] + dp / (double)hop_in) * (double) hop_out;
+	  r_ph [k] += (omega [k] + dp / (double)hop_syn) * (double) hop_syn;
 	  r_ph [k] -= twopi * (double)((int)(r_ph [k] / twopi));
 	}
 
       // output
-      status = pv_play_resample ((long)((double)hop_out * rate),
-				 hop_out, l_out, r_out,
+      /*
+      status = pv_play_resample ((long)((double)hop_syn * rate),
+				 hop_syn, l_out, r_out,
 				 ao, sfout, &sfout_info,
 				 flag_pitch);
-      // note here hop_in is set equal to hop_out, so give the correct one
+      */
+      status = pv_play_resample (hop_res, hop_syn, l_out, r_out,
+				 ao, sfout, &sfout_info);
+      // note here hop_syn is set equal to hop_syn, so give the correct one
 
 
-      // shift acc_out by hop_out
+      // shift acc_out by hop_syn
       for (i = 0; i < len; i ++)
 	{
-	  l_out [i] = l_out [i + hop_out];
-	  r_out [i] = r_out [i + hop_out];
+	  l_out [i] = l_out [i + hop_syn];
+	  r_out [i] = r_out [i + hop_syn];
 	}
-      for (i = len; i < len + hop_out; i ++)
+      for (i = len; i < len + hop_syn; i ++)
 	{
 	  l_out [i] = 0.0;
 	  r_out [i] = 0.0;

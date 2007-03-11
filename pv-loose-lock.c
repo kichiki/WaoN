@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-loose-lock.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-loose-lock.c,v 1.7 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: pv-loose-lock.c,v 1.8 2007/03/11 01:06:36 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -44,12 +44,14 @@
  *             J.Laroche and M.Dolson (1999)
  */
 void pv_loose_lock (const char *file, const char *outfile,
-		    double rate, long len, long hop_out,
-		    int flag_window,
-		    int flag_pitch)
+		    double rate, double pitch_shift,
+		    long len, long hop_syn,
+		    int flag_window)
 {
-  long hop_in;
-  hop_in = (long)((double)hop_out * rate);
+  long hop_ana;
+  long hop_res;
+  hop_res = (long)((double)hop_syn * pow (2.0, - pitch_shift / 12.0));
+  hop_ana = (long)((double)hop_res * rate);
 
 
   double twopi = 2.0 * M_PI;
@@ -105,7 +107,7 @@ void pv_loose_lock (const char *file, const char *outfile,
 
 
   double window_scale;
-  window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
+  window_scale = get_scale_factor_for_window (len, hop_syn, flag_window);
 
 
   /* initialization plan for FFTW  */
@@ -167,11 +169,11 @@ void pv_loose_lock (const char *file, const char *outfile,
 
   double *l_out = NULL;
   double *r_out = NULL;
-  l_out = (double *) malloc ((hop_out + len) * sizeof(double));
-  r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  l_out = (double *) malloc ((hop_syn + len) * sizeof(double));
+  r_out = (double *) malloc ((hop_syn + len) * sizeof(double));
   CHECK_MALLOC (l_out, "pv_loose_lock");
   CHECK_MALLOC (r_out, "pv_loose_lock");
-  for (i = 0; i < (hop_out + len); i ++)
+  for (i = 0; i < (hop_syn + len); i ++)
     {
       l_out [i] = 0.0;
       r_out [i] = 0.0;
@@ -207,7 +209,7 @@ void pv_loose_lock (const char *file, const char *outfile,
 	  // initialize phase
 	  for (k = 0; k < (len/2)+1; k ++)
 	    {
-	      ph_out [k] = ph_in [k] * (double)hop_out / (double)hop_in;
+	      ph_out [k] = ph_in [k] * (double)hop_syn / (double)hop_ana;
 	      //ph_out [k] = ph_in [k];
 
 	      // backup for the next step
@@ -223,13 +225,13 @@ void pv_loose_lock (const char *file, const char *outfile,
 	    {
 	      // standard phase vocoder
 	      double dphi;
-	      dphi = ph_in [k] - l_ph_in_old [k] - omega [k] * (double)hop_in;
+	      dphi = ph_in [k] - l_ph_in_old [k] - omega [k] * (double)hop_ana;
 	      for (; dphi >= M_PI; dphi -= twopi);
 	      for (; dphi < -M_PI; dphi += twopi);
 
 	      ph_out [k] = l_ph_z [k]
-		+ dphi * (double)hop_out / (double)hop_in
-		+ omega [k] * (double)hop_out;
+		+ dphi * (double)hop_syn / (double)hop_ana
+		+ omega [k] * (double)hop_syn;
 
 	      // backup for the next step
 	      l_ph_in_old [k] = ph_in [k];
@@ -248,7 +250,7 @@ void pv_loose_lock (const char *file, const char *outfile,
       // superimpose
       for (i = 0; i < len; i ++)
 	{
-	  l_out [hop_out + i] += t_out [i];
+	  l_out [hop_syn + i] += t_out [i];
 	}
 
 
@@ -262,7 +264,7 @@ void pv_loose_lock (const char *file, const char *outfile,
 	  // initialize phase
 	  for (k = 0; k < (len/2)+1; k ++)
 	    {
-	      ph_out [k] = ph_in [k] * (double)hop_out / (double)hop_in;
+	      ph_out [k] = ph_in [k] * (double)hop_syn / (double)hop_ana;
 	      //ph_out [k] = ph_in [k];
 
 	      // backup for the next step
@@ -278,13 +280,13 @@ void pv_loose_lock (const char *file, const char *outfile,
 	    {
 	      // standard phase vocoder
 	      double dphi;
-	      dphi = ph_in [k] - r_ph_in_old [k] - omega [k] * (double)hop_in;
+	      dphi = ph_in [k] - r_ph_in_old [k] - omega [k] * (double)hop_ana;
 	      for (; dphi >= M_PI; dphi -= twopi);
 	      for (; dphi < -M_PI; dphi += twopi);
 
 	      ph_out [k] = r_ph_z [k]
-		+ dphi * (double)hop_out / (double)hop_in
-		+ omega [k] * (double)hop_out;
+		+ dphi * (double)hop_syn / (double)hop_ana
+		+ omega [k] * (double)hop_syn;
 
 	      // backup for the next step
 	      r_ph_in_old [k] = ph_in [k];
@@ -303,23 +305,22 @@ void pv_loose_lock (const char *file, const char *outfile,
       // superimpose
       for (i = 0; i < len; i ++)
 	{
-	  r_out [hop_out + i] += t_out [i];
+	  r_out [hop_syn + i] += t_out [i];
 	}
 
 
       // output
-      status = pv_play_resample (hop_in, hop_out, l_out, r_out,
-				 ao, sfout, &sfout_info,
-				 flag_pitch);
+      status = pv_play_resample (hop_res, hop_syn, l_out, r_out,
+				 ao, sfout, &sfout_info);
 
 
-      // shift acc_out by hop_out
+      // shift acc_out by hop_syn
       for (i = 0; i < len; i ++)
 	{
-	  l_out [i] = l_out [i + hop_out];
-	  r_out [i] = r_out [i + hop_out];
+	  l_out [i] = l_out [i + hop_syn];
+	  r_out [i] = r_out [i + hop_syn];
 	}
-      for (i = len; i < len + hop_out; i ++)
+      for (i = len; i < len + hop_syn; i ++)
 	{
 	  l_out [i] = 0.0;
 	  r_out [i] = 0.0;
@@ -327,18 +328,18 @@ void pv_loose_lock (const char *file, const char *outfile,
 
 
       // for the next step
-       for (i = 0; i < (len - hop_in); i ++)
+       for (i = 0; i < (len - hop_ana); i ++)
 	 {
-	   left  [i]  = left  [i + hop_in];
-	   right  [i] = right  [i + hop_in];
+	   left  [i]  = left  [i + hop_ana];
+	   right  [i] = right  [i + hop_ana];
 	}
 
        // read next segment
       read_status = sndfile_read (sf, sfinfo,
-				  left  + len - hop_in,
-				  right + len - hop_in,
-				  hop_in);
-      if (read_status != hop_in)
+				  left  + len - hop_ana,
+				  right + len - hop_ana,
+				  hop_ana);
+      if (read_status != hop_ana)
 	{
 	  // most likely, it is EOF.
 	  break;
