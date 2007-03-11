@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.9 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: pv.c,v 1.10 2007/03/11 01:13:22 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -52,7 +52,6 @@ void usage (char * argv0)
 	   " (default: 1.0)\n");
   fprintf (stderr, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
 	   " (default: 0)\n");
-  fprintf (stderr, "  \t\tNOTE: -rate and -pitch are exclusive\n");
   fprintf (stderr, "  -scheme    \tgive the number for PV scheme\n");
   fprintf (stderr, "\t\t0 : conventional PV (default)\n");
   fprintf (stderr, "\t\t1 : PV by complex arithmetics with fixed hops\n");
@@ -84,7 +83,6 @@ int main (int argc, char** argv)
   long hop = 256;
   double rate = 1.0;
   double pitch_shift = 0.0;
-  int flag_pitch = 0;
   int scheme = 0;
   int flag_window = 3; // hanning window
   for (i=1; i<argc; i++)
@@ -137,7 +135,6 @@ int main (int argc, char** argv)
 	  if (i+1 < argc)
 	    {
 	      pitch_shift = atof (argv [++i]);
-	      flag_pitch = 1;
 	    }
 	}
       else if (strcmp (argv[i], "-scheme" ) == 0)
@@ -162,53 +159,46 @@ int main (int argc, char** argv)
 	}
     }
 
-  // adjust the rate for pitch-shifting
-  if (flag_pitch == 1)
-    {
-      // rate means the pitch-shift scaled by the half note
-      // hop_in = hop_out * rate;
-      // rate = 2   ==> 1 octave down (12 half notes down) ==> -12
-      // rate = 1/2 ==> 1 octave up   (12 half note up)    ==> +12
-      rate = pow (2.0, - pitch_shift / 12.0);
-      fprintf (stdout, "[pv] %f pitch-shift, rate = %f\n",
-	       pitch_shift, rate);
-    }
-
   if (file_in == NULL)
     {
       usage (argv [0]);
       exit (1);
     }
 
+
   switch (scheme)
     {
     case 0:
-      pv_conventional (file_in, file_out, rate, len, hop, flag_window,
-		       flag_pitch);
+      pv_conventional (file_in, file_out, rate, pitch_shift,
+		       len, hop, flag_window);
       break;
 
     case 1:
-      pv_complex (file_in, file_out, rate, len, hop, flag_window,
-		  0 /* no phase lock */,
-		  pitch_shift);
+      pv_complex (file_in, file_out, rate, pitch_shift,
+		  len, hop, flag_window,
+		  0 /* no phase lock */
+		  );
       break;
 
     case 2:
-      pv_loose_lock (file_in, file_out, rate, len, hop, flag_window, flag_pitch);
+      pv_loose_lock (file_in, file_out, rate, pitch_shift,
+		     len, hop, flag_window);
       break;
 
     case 3:
-      pv_complex (file_in, file_out, rate, len, hop, flag_window,
-		  1 /* loose phase lock */,
-		  pitch_shift);
+      pv_complex (file_in, file_out, rate, pitch_shift,
+		  len, hop, flag_window,
+		  1 /* loose phase lock */
+		  );
       break;
 
     case 4:
-      pv_ellis (file_in, file_out, rate, len, hop, flag_window, flag_pitch);
+      pv_ellis (file_in, file_out, rate, pitch_shift,
+		len, hop, flag_window);
       break;
 
     case 5:
-      if (flag_pitch == 1)
+      if (pitch_shift != 0.0)
 	{
 	  fprintf (stderr, "pitch-shifting is not implemented yet\n");
 	  break;
