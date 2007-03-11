@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-conventional.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-conventional.c,v 1.8 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: pv-conventional.c,v 1.9 2007/03/11 00:55:50 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -44,18 +44,16 @@
 
 /*
  * INPUT
- *  hop_in :
- *  hop_out :
- *  l_out [hop_out] :
- *  r_out [hop_out] :
+ *  hop_res :
+ *  hop_syn :
+ *  l_out [hop_syn] :
+ *  r_out [hop_syn] :
  *  ao, sfout, sfout_info : properties for output
- *  flag_pitch :
  */
 int
-pv_play_resample (long hop_in, long hop_out,
+pv_play_resample (long hop_res, long hop_syn,
 		  double *l_out, double *r_out,
-		  ao_device *ao, SNDFILE *sfout, SF_INFO *sfout_info,
-		  int flag_pitch)
+		  ao_device *ao, SNDFILE *sfout, SF_INFO *sfout_info)
 {
   int status = 0;
 
@@ -69,38 +67,39 @@ pv_play_resample (long hop_in, long hop_out,
   double *r_out_src = NULL;
   SRC_DATA srdata;
 
-  if (flag_pitch != 0)
+  if (hop_res != hop_syn)
     {
-      fl_in  = (float *)malloc (sizeof (float) * 2 * hop_out);
-      fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
+      fl_in  = (float *)malloc (sizeof (float) * 2 * hop_syn);
+      fl_out = (float *)malloc (sizeof (float) * 2 * hop_res);
       CHECK_MALLOC (fl_in,  "pv_play_resample");
       CHECK_MALLOC (fl_out, "pv_play_resample");
 
-      srdata.input_frames  = hop_out;
-      srdata.output_frames = hop_in;
-      srdata.src_ratio = (double)hop_in / (double)hop_out;
+      srdata.input_frames  = hop_syn;
+      srdata.output_frames = hop_res;
+      srdata.src_ratio = (double)hop_res / (double)hop_syn;
       srdata.data_in  = fl_in;
       srdata.data_out = fl_out;
 
-      l_out_src = (double *)malloc (sizeof (double) * hop_in);
-      r_out_src = (double *)malloc (sizeof (double) * hop_in);
+      l_out_src = (double *)malloc (sizeof (double) * hop_res);
+      r_out_src = (double *)malloc (sizeof (double) * hop_res);
       CHECK_MALLOC (l_out_src, "pv_play_resample");
       CHECK_MALLOC (r_out_src, "pv_play_resample");
 
 
       // samplerate conversion (time fixed)
-      for (i = 0; i < hop_out; i ++)
+      for (i = 0; i < hop_syn; i ++)
 	{
 	  fl_in [i*2 + 0] = (float)l_out [i];
 	  fl_in [i*2 + 1] = (float)r_out [i];
 	}
       status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
+      //status = src_simple (&srdata, SRC_SINC_FASTEST, 2);
       if (status != 0)
 	{
 	  fprintf (stderr, "fail to samplerate conversion\n");
 	  exit (1);
 	}
-      for (i = 0; i < hop_in; i ++)
+      for (i = 0; i < hop_res; i ++)
 	{
 	  l_out_src [i] = (double)fl_out [i*2 + 0];
 	  r_out_src [i] = (double)fl_out [i*2 + 1];
@@ -109,13 +108,13 @@ pv_play_resample (long hop_in, long hop_out,
       // output
       if (sfout == NULL)
 	{
-	  status = ao_write (ao, l_out_src, r_out_src, hop_in);
+	  status = ao_write (ao, l_out_src, r_out_src, hop_res);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else
 	{
 	  status = sndfile_write (sfout, *sfout_info,
-				  l_out_src, r_out_src, hop_in);
+				  l_out_src, r_out_src, hop_res);
 	}
 
       free (fl_in);
@@ -130,13 +129,13 @@ pv_play_resample (long hop_in, long hop_out,
       // output
       if (sfout == NULL)
 	{
-	  status = ao_write (ao, l_out, r_out, hop_out);
+	  status = ao_write (ao, l_out, r_out, hop_syn);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else
 	{
 	  status = sndfile_write (sfout, *sfout_info,
-				  l_out, r_out, hop_out);
+				  l_out, r_out, hop_syn);
 	}
     }
 
@@ -147,7 +146,7 @@ pv_play_resample (long hop_in, long hop_out,
 /* estimate the superposing weight for the window with hop
  */
 double
-get_scale_factor_for_window (int len, long hop_out, int flag_window)
+get_scale_factor_for_window (int len, long hop_syn, int flag_window)
 {
   double *x = NULL;
   x = (double *)malloc (sizeof (double) * len);
@@ -164,10 +163,10 @@ get_scale_factor_for_window (int len, long hop_out, int flag_window)
   double acc_max;
   acc_max = 0.0;
   int j;
-  for (j = 0; j < hop_out; j++)
+  for (j = 0; j < hop_syn; j++)
     {
       acc = 0.0;
-      for (i = 0; i < len; i += hop_out)
+      for (i = 0; i < len; i += hop_syn)
 	{
 	  acc += x [j + i];
 	}
@@ -188,12 +187,14 @@ get_scale_factor_for_window (int len, long hop_out, int flag_window)
  * Ref: J.Laroche and M.Dolson (1999)
  */
 void pv_conventional (const char *file, const char *outfile,
-		      double rate, long len, long hop_out,
-		      int flag_window,
-		      int flag_pitch)
+		      double rate, double pitch_shift,
+		      long len, long hop_syn,
+		      int flag_window)
 {
-  long hop_in;
-  hop_in = (long)((double)hop_out * rate);
+  long hop_ana;
+  long hop_res;
+  hop_res = (long)((double)hop_syn * pow (2.0, - pitch_shift / 12.0));
+  hop_ana = (long)((double)hop_res * rate);
 
 
   double twopi = 2.0 * M_PI;
@@ -249,7 +250,7 @@ void pv_conventional (const char *file, const char *outfile,
 
 
   double window_scale;
-  window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
+  window_scale = get_scale_factor_for_window (len, hop_syn, flag_window);
 
 
   /* initialization plan for FFTW  */
@@ -304,11 +305,11 @@ void pv_conventional (const char *file, const char *outfile,
 
   double *l_out = NULL;
   double *r_out = NULL;
-  l_out = (double *) malloc ((hop_out + len) * sizeof(double));
-  r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  l_out = (double *) malloc ((hop_syn + len) * sizeof(double));
+  r_out = (double *) malloc ((hop_syn + len) * sizeof(double));
   CHECK_MALLOC (l_out, "pv_conventional");
   CHECK_MALLOC (r_out, "pv_conventional");
-  for (i = 0; i < (hop_out + len); i ++)
+  for (i = 0; i < (hop_syn + len); i ++)
     {
       l_out [i] = 0.0;
       r_out [i] = 0.0;
@@ -343,7 +344,7 @@ void pv_conventional (const char *file, const char *outfile,
 	  // initialize phase
 	  for (k = 0; k < (len/2)+1; k ++)
 	    {
-	      l_ph_out [k] = ph_in [k] * (double)hop_out / (double)hop_in;
+	      l_ph_out [k] = ph_in [k] * (double)hop_syn / (double)hop_ana;
 	      //l_ph_out [k] = ph_in [k];
 
 	      // backup for the next step
@@ -358,12 +359,12 @@ void pv_conventional (const char *file, const char *outfile,
 	    {
 	      double dphi;
 	      dphi = ph_in [k] - l_ph_in_old [k]
-		- omega [k] * (double)hop_in;
+		- omega [k] * (double)hop_ana;
 	      for (; dphi >= M_PI; dphi -= twopi);
 	      for (; dphi < -M_PI; dphi += twopi);
 
-	      l_ph_out [k] += dphi * (double)hop_out / (double)hop_in
-		+ omega [k] * (double)hop_out;
+	      l_ph_out [k] += dphi * (double)hop_syn / (double)hop_ana
+		+ omega [k] * (double)hop_syn;
 
 	      l_ph_in_old [k] = ph_in [k];
 	    }
@@ -375,7 +376,7 @@ void pv_conventional (const char *file, const char *outfile,
       // superimpose
       for (i = 0; i < len; i ++)
 	{
-	  l_out [hop_out + i] += t_out [i];
+	  l_out [hop_syn + i] += t_out [i];
 	}
 
       // right channel
@@ -387,7 +388,7 @@ void pv_conventional (const char *file, const char *outfile,
 	  // initialize phase
 	  for (k = 0; k < (len/2)+1; k ++)
 	    {
-	      r_ph_out [k] = ph_in [k] * (double)hop_out / (double)hop_in;
+	      r_ph_out [k] = ph_in [k] * (double)hop_syn / (double)hop_ana;
 	      //r_ph_out [k] = ph_in [k];
 
 	      // backup for the next step
@@ -402,12 +403,12 @@ void pv_conventional (const char *file, const char *outfile,
 	    {
 	      double dphi;
 	      dphi = ph_in [k] - r_ph_in_old [k]
-		- omega [k] * (double)hop_in;
+		- omega [k] * (double)hop_ana;
 	      for (; dphi >= M_PI; dphi -= twopi);
 	      for (; dphi < -M_PI; dphi += twopi);
 
-	      r_ph_out [k] += dphi * (double)hop_out / (double)hop_in
-		+ omega [k] * (double)hop_out;
+	      r_ph_out [k] += dphi * (double)hop_syn / (double)hop_ana
+		+ omega [k] * (double)hop_syn;
 
 	      r_ph_in_old [k] = ph_in [k];
 	    }
@@ -420,23 +421,22 @@ void pv_conventional (const char *file, const char *outfile,
       // superimpose
       for (i = 0; i < len; i ++)
 	{
-	  r_out [hop_out + i] += t_out [i];
+	  r_out [hop_syn + i] += t_out [i];
 	}
 
 
       // output
-      status = pv_play_resample (hop_in, hop_out, l_out, r_out,
-				 ao, sfout, &sfout_info,
-				 flag_pitch);
+      status = pv_play_resample (hop_res, hop_syn, l_out, r_out,
+				 ao, sfout, &sfout_info);
 
 
-      /* shift acc_out by hop_out */
+      /* shift acc_out by hop_syn */
       for (i = 0; i < len; i ++)
 	{
-	  l_out [i] = l_out [i + hop_out];
-	  r_out [i] = r_out [i + hop_out];
+	  l_out [i] = l_out [i + hop_syn];
+	  r_out [i] = r_out [i + hop_syn];
 	}
-      for (i = len; i < len + hop_out; i ++)
+      for (i = len; i < len + hop_syn; i ++)
 	{
 	  l_out [i] = 0.0;
 	  r_out [i] = 0.0;
@@ -444,18 +444,18 @@ void pv_conventional (const char *file, const char *outfile,
 
 
       /* for the next step */
-      for (i = 0; i < (len - hop_in); i ++)
+      for (i = 0; i < (len - hop_ana); i ++)
 	{
-	  left  [i]  = left  [i + hop_in];
-	  right  [i] = right  [i + hop_in];
+	  left  [i] = left  [i + hop_ana];
+	  right [i] = right [i + hop_ana];
 	}
 
       /* read next segment */
       read_status = sndfile_read (sf, sfinfo,
-				  left  + len - hop_in,
-				  right + len - hop_in,
-				  hop_in);
-      if (read_status != hop_in)
+				  left  + len - hop_ana,
+				  right + len - hop_ana,
+				  hop_ana);
+      if (read_status != hop_ana)
 	{
 	  // most likely, it is EOF.
 	  break;
