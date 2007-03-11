@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.10 2007/03/10 20:52:34 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.11 2007/03/11 01:25:23 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,7 +56,6 @@ int WIN_wav_mark;
 GdkPixmap *wav_pixmap = NULL;
 GtkObject *adj_cur;
 GtkObject *adj_scale;
-GtkObject *adj_pv_rate;
 
 GdkPixbuf *wav_pixbuf = NULL;
 
@@ -2136,6 +2135,16 @@ wav_pv_rate (GtkAdjustment *get, GtkAdjustment *set)
   //update_win_wav (GTK_WIDGET (set));
 }
 
+static void
+wav_pv_pitch (GtkAdjustment *get, GtkAdjustment *set)
+{
+  extern double pv_pitch;
+
+  pv_pitch = get->value;
+
+  //update_win_wav (GTK_WIDGET (set));
+}
+
 
 static void
 make_color_map (void)
@@ -2235,7 +2244,7 @@ create_wav (void)
   extern struct pv_complex_data *pv;
   pv = pv_complex_init (WIN_spec_n, WIN_spec_hop, 3 /* hanning */);
   pv_complex_set_input (pv, sf, &sfinfo);
-  pv->pitch_shift = 0.0;
+  //pv->pitch_shift = 0.0;
 
 
   extern double *spec_in;
@@ -2409,9 +2418,10 @@ create_wav (void)
 
 
 
-  // add scale for phase vocoder
+  // add scale for time-stretch
   extern double pv_rate;
-  pv_rate = 1.0; // initial value
+  pv_rate  = 1.0; // initial value
+  GtkObject *adj_pv_rate;
   adj_pv_rate = gtk_adjustment_new
     (1.0, // value
      -2.5, // lower
@@ -2422,14 +2432,39 @@ create_wav (void)
   g_signal_connect (G_OBJECT (adj_pv_rate), "value_changed",
 		    G_CALLBACK (wav_pv_rate), GTK_OBJECT (wav_win));
 
-  GtkWidget *scale2;
-  scale2 = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_rate));
-  gtk_range_set_update_policy (GTK_RANGE (scale2),
+  GtkWidget *scale_rate;
+  scale_rate = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_rate));
+  gtk_range_set_update_policy (GTK_RANGE (scale_rate),
 			       GTK_UPDATE_CONTINUOUS);
-  gtk_box_pack_start (GTK_BOX (hbox), scale2, FALSE, FALSE, 0);
-  gtk_scale_set_digits (GTK_SCALE (scale2), 2);
-  gtk_range_set_inverted (GTK_RANGE (scale2), TRUE);
-  gtk_widget_show (scale2);
+  gtk_box_pack_start (GTK_BOX (hbox), scale_rate, FALSE, FALSE, 0);
+  gtk_scale_set_digits (GTK_SCALE (scale_rate), 2);
+  gtk_range_set_inverted (GTK_RANGE (scale_rate), TRUE);
+  gtk_widget_show (scale_rate);
+
+
+  // add scale for pitch-shift
+  extern double pv_pitch;
+  pv_pitch = 1.0; // initial value
+  GtkObject *adj_pv_pitch;
+  adj_pv_pitch = gtk_adjustment_new
+    (1.0, // value
+     -12.5, // lower
+     12.5, // upper
+     0.1, // step increment
+     0.5, // page increment
+     0.5); // page size
+  g_signal_connect (G_OBJECT (adj_pv_pitch), "value_changed",
+		    G_CALLBACK (wav_pv_pitch), GTK_OBJECT (wav_win));
+
+  GtkWidget *scale_pitch;
+  scale_pitch = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_pitch));
+  gtk_range_set_update_policy (GTK_RANGE (scale_pitch),
+			       GTK_UPDATE_CONTINUOUS);
+  gtk_box_pack_start (GTK_BOX (hbox), scale_pitch, FALSE, FALSE, 0);
+  gtk_scale_set_digits (GTK_SCALE (scale_pitch), 2);
+  gtk_range_set_inverted (GTK_RANGE (scale_pitch), TRUE);
+  gtk_widget_show (scale_pitch);
+
 
   // everything is done
   gtk_widget_show (window);

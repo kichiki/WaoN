@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-freq.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-freq.c,v 1.6 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: pv-freq.c,v 1.7 2007/03/11 01:21:52 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -39,10 +39,9 @@
 
 /* phase vocoder by frequency domain
  * only integer rate is working
- * (hop_out is not used.)
  */
 void pv_freq (const char *file, const char *outfile,
-	      double rate, long len, long hop_out,
+	      double rate, long len, long hop_syn,
 	      int flag_window)
 {
   //double amp_lim = 5.0;
@@ -188,7 +187,7 @@ void pv_freq (const char *file, const char *outfile,
       // output
       if (outfile == NULL)
 	{
-	  status = ao_write (ao, l_out, r_out, hop_out);
+	  status = ao_write (ao, l_out, r_out, hop_syn);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else
