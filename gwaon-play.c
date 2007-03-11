@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.c,v 1.3 2007/02/23 07:37:21 kichiki Exp $
+ * $Id: gwaon-play.c,v 1.4 2007/03/11 01:18:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  */
 #include <gtk/gtk.h>
 #include <stdlib.h>
-
+#include <math.h> // pow()
 
 // libsndfile
 #include <sndfile.h>
@@ -39,6 +39,7 @@ int flag_play; // status: 0 = not playing, 1 = playing
 gint tag_play; // for timeout callback
 
 double pv_rate;  // time-scaling rate (0 = stop, 1 = normal, -1 = backward)
+double pv_pitch; // pitch-shift
 
 struct pv_complex_data *pv = NULL; // initialized in create_wav()
 
@@ -55,8 +56,8 @@ play_1msec (gpointer data)
   long len_1msec;
   len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
 
-  long hop_in;
-  hop_in = (long)((double)pv->hop_out * pv_rate);
+  pv->hop_res = (long)((double)pv->hop_syn * pow (2.0, - pv_pitch / 12.0));
+  pv->hop_ana = (long)((double)pv->hop_res * pv_rate);
 
 
   // draw indicator
@@ -78,8 +79,8 @@ play_1msec (gpointer data)
   long l;
   for (l = 0; l < len_1msec; l += len_play)
     {
-      len_play = pv_complex_play_step (pv, play_cur, pv_rate);
-      if (len_play < pv->hop_out)
+      len_play = pv_complex_play_step (pv, play_cur);
+      if (len_play < pv->hop_syn)
 	{
 	  flag_play = 0; // stop playing
 	  // rewind
@@ -91,11 +92,11 @@ play_1msec (gpointer data)
 	}
 
       // increment play_cur
-      play_cur += hop_in;
+      play_cur += pv->hop_ana;
 
       // check the boundary
       if (play_cur < frame0 ||
-	  play_cur + hop_in >= frame1)
+	  play_cur + pv->hop_ana >= frame1)
 	{
 	  // rewind
 	  if (pv_rate >= 0.0) play_cur = frame0;
