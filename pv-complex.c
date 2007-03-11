@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.9 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: pv-complex.c,v 1.10 2007/03/11 01:15:13 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -46,7 +46,7 @@
 /** utility routines for struct pv_omplex_data **/
 
 struct pv_complex_data *
-pv_complex_init (long len, long hop_out, int flag_window)
+pv_complex_init (long len, long hop_syn, int flag_window)
 {
   struct pv_complex_data *pv = NULL;
 
@@ -54,11 +54,11 @@ pv_complex_init (long len, long hop_out, int flag_window)
   CHECK_MALLOC (pv, "pv_complex_init");
 
   pv->len = len;
-  pv->hop_out = hop_out;
+  pv->hop_syn = hop_syn;
 
   pv->flag_window = flag_window;
 
-  pv->window_scale = get_scale_factor_for_window (len, hop_out, flag_window);
+  pv->window_scale = get_scale_factor_for_window (len, hop_syn, flag_window);
 
   pv->time = (double *)fftw_malloc (len * sizeof(double));
   pv->freq = (double *)fftw_malloc (len * sizeof(double));
@@ -79,12 +79,12 @@ pv_complex_init (long len, long hop_out, int flag_window)
   CHECK_MALLOC (pv->l_f_old, "pv_complex_init");
   CHECK_MALLOC (pv->r_f_old, "pv_complex_init");
 
-  pv->l_out = (double *) malloc ((hop_out + len) * sizeof(double));
-  pv->r_out = (double *) malloc ((hop_out + len) * sizeof(double));
+  pv->l_out = (double *) malloc ((hop_syn + len) * sizeof(double));
+  pv->r_out = (double *) malloc ((hop_syn + len) * sizeof(double));
   CHECK_MALLOC (pv->l_out, "pv_complex_init");
   CHECK_MALLOC (pv->r_out, "pv_complex_init");
   int i;
-  for (i = 0; i < (hop_out + len); i ++)
+  for (i = 0; i < (hop_syn + len); i ++)
     {
       pv->l_out [i] = 0.0;
       pv->r_out [i] = 0.0;
@@ -95,7 +95,7 @@ pv_complex_init (long len, long hop_out, int flag_window)
 
   pv->flag_lock = 0; // no phase lock (for default)
 
-  pv->pitch_shift = 0.0; // no pitch-shift
+  //pv->pitch_shift = 0.0; // no pitch-shift
 
   return (pv);
 }
@@ -195,7 +195,7 @@ read_and_FFT_stereo (struct pv_complex_data *pv,
   return (status);
 }
 
-/* the results are stored in out [i] for i = hop_out to (hop_out + len)
+/* the results are stored in out [i] for i = hop_syn to (hop_syn + len)
  * INPUT
  *  scale : for safety (give 0.5, for example)
  */
@@ -218,7 +218,7 @@ apply_invFFT_mono (struct pv_complex_data *pv,
   // superimpose
   for (i = 0; i < pv->len; i ++)
     {
-      out [pv->hop_out + i] += pv->t_out [i];
+      out [pv->hop_syn + i] += pv->t_out [i];
     }
 }
 
@@ -240,7 +240,7 @@ check_zero (int n, const double *x)
 }
 
 
-/* play the segment of pv->[lr]_out[] for pv->hop_out
+/* play the segment of pv->[lr]_out[] for pv->hop_syn
  * pv->pitch_shift is taken into account
  */
 int
@@ -256,26 +256,21 @@ pv_complex_play_resample (struct pv_complex_data *pv)
   double *r_out_src = NULL;
   SRC_DATA srdata;
 
-  if (pv->pitch_shift != 0.0)
+  if (pv->hop_syn != pv->hop_res)
     {
-      double rate_by_pitch_shift;
-      rate_by_pitch_shift = pow (2.0, - pv->pitch_shift / 12.0);
-      long hop_in = (long)((double)pv->hop_out * rate_by_pitch_shift);
-
-      fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_out);
-      fl_out = (float *)malloc (sizeof (float) * 2 * hop_in);
+      fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_syn);
+      fl_out = (float *)malloc (sizeof (float) * 2 * pv->hop_res);
       CHECK_MALLOC (fl_in,  "pv_complex_play_resample");
       CHECK_MALLOC (fl_out, "pv_complex_play_resample");
 
-      srdata.input_frames  = pv->hop_out;
-      srdata.output_frames = hop_in;
-      //srdata.src_ratio = (double)hop_in / (double)(pv->hop_out);
-      srdata.src_ratio = rate_by_pitch_shift;
+      srdata.input_frames  = pv->hop_syn;
+      srdata.output_frames = pv->hop_res;
+      srdata.src_ratio = (double)(pv->hop_res) / (double)(pv->hop_syn);
       srdata.data_in  = fl_in;
       srdata.data_out = fl_out;
 
       // samplerate conversion (time fixed)
-      for (i = 0; i < pv->hop_out; i ++)
+      for (i = 0; i < pv->hop_syn; i ++)
 	{
 	  fl_in [i*2 + 0] = (float)(pv->l_out [i]);
 	  fl_in [i*2 + 1] = (float)(pv->r_out [i]);
@@ -289,12 +284,15 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 	  exit (1);
 	}
 
-      l_out_src = (double *)malloc (sizeof (double) * hop_in);
-      r_out_src = (double *)malloc (sizeof (double) * hop_in);
+      //l_out_src = (double *)malloc (sizeof (double) * hop_in);
+      //r_out_src = (double *)malloc (sizeof (double) * hop_in);
+      l_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
+      r_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
       CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
       CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
 
-      for (i = 0; i < hop_in; i ++)
+      //for (i = 0; i < hop_in; i ++)
+      for (i = 0; i < pv->hop_res; i ++)
 	{
 	  l_out_src [i] = (double)(fl_out [i*2 + 0]);
 	  r_out_src [i] = (double)(fl_out [i*2 + 1]);
@@ -305,13 +303,18 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       // output
       if (pv->flag_out == 0)
 	{
-	  status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
+	  //status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
+	  status = ao_write (pv->ao, l_out_src, r_out_src, pv->hop_res);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else if (pv->flag_out == 1)
 	{
+	  /*
 	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
 				  l_out_src, r_out_src, hop_in);
+	  */
+	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
+				  l_out_src, r_out_src, pv->hop_res);
 	}
       else
 	{
@@ -321,20 +324,21 @@ pv_complex_play_resample (struct pv_complex_data *pv)
       free (r_out_src);
 
       // modify status
-      if (status == hop_in) status = pv->hop_out;
-      else status = (int)((double)status / rate_by_pitch_shift);
+      if (status == pv->hop_res) status = pv->hop_syn;
+      else status = (int)((double)status
+			  * (double)(pv->hop_syn) / (double)(pv->hop_res));
     }
   else
     {
       if (pv->flag_out == 0)
 	{
-	  status = ao_write (pv->ao, pv->l_out, pv->r_out, pv->hop_out);
+	  status = ao_write (pv->ao, pv->l_out, pv->r_out, pv->hop_syn);
 	  status /= 4; // 2 bytes for 2 channels
 	}
       else if (pv->flag_out == 1)
 	{
 	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
-				  pv->l_out, pv->r_out, pv->hop_out);
+				  pv->l_out, pv->r_out, pv->hop_syn);
 	}
       else
 	{
@@ -355,14 +359,13 @@ pv_complex_play_resample (struct pv_complex_data *pv)
  *  pv : struct pv_complex_data
  *  cur : current frame to play.
  *        you have to increment this by yourself.
- *  rate : time-stretch rate (larger is slower)
  *  pv->flag_lock : 0 == no phase lock
  *                  1 == loose phase lock
  * OUTPUT (returned value)
  *  status : output frame.
  */
 long pv_complex_play_step (struct pv_complex_data *pv,
-			   long cur, double rate)
+			   long cur)
 {
   int i;
 
@@ -391,8 +394,8 @@ long pv_complex_play_step (struct pv_complex_data *pv,
   CHECK_MALLOC (l_ft, "pv_complex_play_step");
   CHECK_MALLOC (r_ft, "pv_complex_play_step");
 
-  // read the terminal frame (cur + hop_out)
-  status = read_and_FFT_stereo (pv, cur + pv->hop_out, l_ft, r_ft);
+  // read the terminal frame (cur + hop_syn)
+  status = read_and_FFT_stereo (pv, cur + pv->hop_syn, l_ft, r_ft);
   if (status != pv->len)
     {
       free (l_fs);
@@ -456,7 +459,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  pv->flag_left = 1;
 	}
 
-      // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
+      // generate the frame (out_0 + (n+1) * hop_syn), that is, "u_i"
       if (pv->flag_lock == 0) // no phase lock
 	{
 	  // Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
@@ -502,7 +505,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  pv->flag_right = 1;
 	}
 
-      // generate the frame (out_0 + (n+1) * hop_out), that is, "u_i"
+      // generate the frame (out_0 + (n+1) * hop_syn), that is, "u_i"
       if (pv->flag_lock == 0) // no phase lock
 	{
 	  // Y[u_i] = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
@@ -531,13 +534,13 @@ long pv_complex_play_step (struct pv_complex_data *pv,
   status = pv_complex_play_resample (pv);
 
 
-  /* shift [lr]_out by hop_out */
+  /* shift [lr]_out by hop_syn */
   for (i = 0; i < pv->len; i ++)
     {
-      pv->l_out [i] = pv->l_out [i + pv->hop_out];
-      pv->r_out [i] = pv->r_out [i + pv->hop_out];
+      pv->l_out [i] = pv->l_out [i + pv->hop_syn];
+      pv->r_out [i] = pv->r_out [i + pv->hop_syn];
     }
-  for (i = pv->len; i < pv->len + pv->hop_out; i ++)
+  for (i = pv->len; i < pv->len + pv->hop_syn; i ++)
     {
       pv->l_out [i] = 0.0;
       pv->r_out [i] = 0.0;
@@ -562,17 +565,21 @@ long pv_complex_play_step (struct pv_complex_data *pv,
  *  pitch_shift : in the unit of half-note
  */
 void pv_complex (const char *file, const char *outfile,
-		 double rate, long len, long hop_out,
+		 double rate, double pitch_shift,
+		 long len, long hop_syn,
 		 int flag_window,
-		 int flag_lock,
-		 double pitch_shift)
+		 int flag_lock)
 {
-  long hop_in;
-  hop_in = (long)((double)hop_out * rate);
+  long hop_ana;
+  long hop_res;
+  hop_res = (long)((double)hop_syn * pow (2.0, - pitch_shift / 12.0));
+  hop_ana = (long)((double)hop_res * rate);
 
   struct pv_complex_data *pv = NULL;
-  pv = pv_complex_init (len, hop_out, flag_window);
-  pv->pitch_shift = pitch_shift;
+  pv = pv_complex_init (len, hop_syn, flag_window);
+  pv->hop_res = hop_res;
+  pv->hop_ana = hop_ana;
+  //pv->pitch_shift = pitch_shift;
 
   // open file
   SNDFILE *sf = NULL;
@@ -613,11 +620,11 @@ void pv_complex (const char *file, const char *outfile,
   pv->flag_lock = flag_lock;
 
   long cur;
-  for (cur = 0; cur < (long)sfinfo.frames; cur += hop_in)
+  for (cur = 0; cur < (long)sfinfo.frames; cur += pv->hop_ana)
     {
       long status;
-      status = pv_complex_play_step (pv, cur, rate);
-      if (status < pv->hop_out)
+      status = pv_complex_play_step (pv, cur);
+      if (status < pv->hop_syn)
 	{
 	  break;
 	}

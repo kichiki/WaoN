@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.6 2007/02/25 06:10:14 kichiki Exp $
+ * $Id: pv-complex.h,v 1.7 2007/03/11 01:16:25 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -46,7 +46,10 @@ struct pv_complex_data {
   SF_INFO *sfout_info;
 
   long len; // FFT length
-  long hop_out;
+
+  long hop_ana;
+  long hop_syn;
+  long hop_res;
 
   int flag_window;
   double window_scale;
@@ -69,8 +72,6 @@ struct pv_complex_data {
   double *r_out;
 
   int flag_lock; // 0 = no phase lock, 1 = loose phase lock
-
-  double pitch_shift;
 };
 
 
@@ -110,14 +111,13 @@ pv_complex_play_resample (struct pv_complex_data *pv);
  *  pv : struct pv_complex_data
  *  cur : current frame to play.
  *        you have to increment this by yourself.
- *  rate : time-stretch rate (larger is slower)
  *  pv->flag_lock : 0 == no phase lock
  *                  1 == loose phase lock
  * OUTPUT (returned value)
  *  status : output frame.
  */
 long pv_complex_play_step (struct pv_complex_data *pv,
-			   long cur, double rate);
+			   long cur);
 
 
 /** some wrapper routines **/
@@ -130,12 +130,14 @@ long pv_complex_play_step (struct pv_complex_data *pv,
  * INPUT
  *  flag_lock : 0 == no phase lock is applied
  *              1 == loose phase lock is applied
+ *  rate : time-streching rate
+ *  pitch_shift : in the unit of half-note
  */
 void pv_complex (const char *file, const char *outfile,
-		 double rate, long len, long hop_out,
+		 double rate, double pitch_shift,
+		 long len, long hop_syn,
 		 int flag_window,
-		 int flag_lock,
-		 double pitch_shift);
+		 int flag_lock);
 
 
 #endif /* !_PV_COMPLEX_H_ */
