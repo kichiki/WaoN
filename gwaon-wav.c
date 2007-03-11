@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.11 2007/03/11 01:25:23 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.12 2007/03/11 01:35:53 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2447,7 +2447,7 @@ create_wav (void)
   pv_pitch = 1.0; // initial value
   GtkObject *adj_pv_pitch;
   adj_pv_pitch = gtk_adjustment_new
-    (1.0, // value
+    (0.0, // value
      -12.5, // lower
      12.5, // upper
      0.1, // step increment
@@ -2461,7 +2461,6 @@ create_wav (void)
   gtk_range_set_update_policy (GTK_RANGE (scale_pitch),
 			       GTK_UPDATE_CONTINUOUS);
   gtk_box_pack_start (GTK_BOX (hbox), scale_pitch, FALSE, FALSE, 0);
-  gtk_scale_set_digits (GTK_SCALE (scale_pitch), 2);
   gtk_range_set_inverted (GTK_RANGE (scale_pitch), TRUE);
   gtk_widget_show (scale_pitch);
 
