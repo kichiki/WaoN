@@ -1,6 +1,6 @@
 /* some wrapper for ao
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: ao-wrapper.c,v 1.2 2007/03/10 20:37:21 kichiki Exp $
+ * $Id: ao-wrapper.c,v 1.3 2007/03/11 01:39:41 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -95,7 +95,7 @@ ao_write (ao_device *device, double *left, double *right, int len)
   int status;
 
   char *buffer = NULL;
-  buffer = (char *)malloc (len * 2 * 2 * sizeof(char));
+  buffer = (char *)malloc (len * 4 * sizeof(char));
   CHECK_MALLOC (buffer, "ao_write");
 
   short sl;
