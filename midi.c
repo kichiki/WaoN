@@ -1,6 +1,6 @@
 /* subroutines to write standard MIDI file
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.c,v 1.4 2007/02/11 23:37:08 kichiki Exp $
+ * $Id: midi.c,v 1.5 2007/10/11 02:18:38 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -359,7 +359,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
   n_midi = smf_header_fmt (fd, 0, 1, div);
   if (n_midi != 14)
     {
-      fprintf (stderr, "Error duing writing mid! %d (header)\n", p_midi);
+      fprintf (stderr, "Error during writing mid! %d (header)\n", p_midi);
       return;
     }
   p_midi += n_midi;
@@ -368,7 +368,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
   n_midi = smf_track_head (fd, (7+4*nmidi));
   if (n_midi != 8)
     {
-      fprintf (stderr, "Error duing writing mid! %d (track header)\n", p_midi);
+      fprintf (stderr, "Error during writing mid! %d (track header)\n", p_midi);
       return;
     }
   p_midi += n_midi;
@@ -380,7 +380,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
   n_midi = smf_tempo (fd, 500000); // 0.5 sec => 120 bpm for 4/4
   if (n_midi != 7)
     {
-      fprintf (stderr, "Error duing writing mid! %d (tempo)\n", p_midi);
+      fprintf (stderr, "Error during writing mid! %d (tempo)\n", p_midi);
       return;
     }
   p_midi += n_midi;
@@ -389,7 +389,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
   n_midi = smf_prog_change (fd, 0, 0);
   if (n_midi != 3)
     {
-      fprintf (stderr, "Error duing writing mid! %d (prog change)\n", p_midi);
+      fprintf (stderr, "Error during writing mid! %d (prog change)\n", p_midi);
       return;
     }
   p_midi += n_midi;
@@ -430,7 +430,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
 			       0);
       if (n_midi != 4)
 	{
-	  fprintf (stderr, "Error duing writing mid! %d (note)\n",
+	  fprintf (stderr, "Error during writing mid! %d (note)\n",
 		   p_midi);
 	  /*return;*/
 	}
@@ -441,7 +441,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
   n_midi = smf_track_end (fd);
   if (n_midi != 4)
     {
-      fprintf (stderr, "Error duing writing mid! %d (track end)\n",
+      fprintf (stderr, "Error during writing mid! %d (track end)\n",
 	       p_midi);
       return;
     }
@@ -452,13 +452,13 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
       /* re-calculate # of data in track  */
       if (lseek (fd, h_midi, SEEK_SET) < 0)
 	{
-	  fprintf (stderr, "Error duing lseek %d (re-calc)\n", h_midi);
+	  fprintf (stderr, "Error during lseek %d (re-calc)\n", h_midi);
 	  return;
 	}
       n_midi = smf_track_head (fd, (p_midi - dh_midi));
       if (n_midi != 8)
 	{
-	  fprintf (stderr, "Error duing write %d (re-calc)\n", p_midi);
+	  fprintf (stderr, "Error during write %d (re-calc)\n", p_midi);
 	  return;
 	}
     }
