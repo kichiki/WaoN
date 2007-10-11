@@ -1,0 +1,116 @@
+.\" $Id: waon.1,v 1.1 2007/10/11 03:40:13 kichiki Exp $
+.TH WAON "1" "October 10, 2007" "Version 0.8" "WaoN Manual"
+.SH NAME
+WaoN \- a Wave-to-Notes transcriber
+.SH SYNOPSIS
+.B waon
+[\fIoption \fR...]
+.SH DESCRIPTION
+WaoN is a Wave\-to\-Notes transcriber,
+that is, a converter from sound file to midi file.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+print this help.
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+print version information.
+.PP
+OPTIONS FOR FILES
+.TP
+\fB\-i\fR, \fB\-\-input\fR
+input wav file (default: stdin)
+.TP
+\fB\-o\fR, \fB\-\-output\fR
+output mid file (default: 'output.mid')
+.IP
+options \fB\-i\fR and \fB\-o\fR have argument '\-' as stdin/stdout
+.TP
+\fB\-p\fR, \fB\-\-patch\fR
+patch file (default: no patch)
+.PP
+FFT OPTIONS
+.TP
+\fB\-n\fR
+sampling number from WAV in 1 step (default: 2048)
+.TP
+\fB\-w\fR, \fB\-\-window\fR
+0 no window
+.RS
+1 parzen window
+.RS 0
+2 welch window
+.RS 0
+3 hanning window (default)
+.RS 0
+4 hamming window
+.RS 0
+5 blackman window
+.RS 0
+6 steeper 30\-dB/octave rolloff window
+.RE 1
+.PP
+READING WAV OPTIONS
+.TP
+\fB\-s\fR, \fB\-\-shift\fR
+shift number from WAV in 1 step
+(default: 1/4 of the value in \fB\-n\fR option)
+.PP
+PHASE\-VOCODER OPTIONS
+.TP
+\fB\-nophase\fR
+don't use phase diff to improve freq estimation.
+(default: use the correction)
+.PP
+NOTE SELECTION OPTIONS
+.TP
+\fB\-c\fR, \fB\-\-cutoff\fR
+log10 of cut\-off ratio to scale velocity of note
+(default: \fB\-5\fR.0)
+.TP
+\fB\-r\fR, \fB\-\-relative\fR
+log10 of cut\-off ratio relative to the average.
+(default: no relative cutoff
+= absolute cutoff with the value in \fB\-c\fR option)
+.TP
+\fB\-k\fR, \fB\-\-peak\fR
+peak threshold for note\-on, which ranges [0,127]
+(default: 128 = no peak\-search = search only first on\-event)
+.TP
+\fB\-t\fR, \fB\-\-top\fR
+top note [midi #] (default: 103 = G7)
+.TP
+\fB\-b\fR, \fB\-\-bottom\fR
+bottom note [midi #] (default: 28 = E1)
+.IP
+Here middle C (261 Hz) = C4 = midi 60. Midi # ranges [0,127].
+.TP
+\fB\-a\fR, \fB\-\-adjust\fR
+adjust\-pitch param, which is suggested by WaoN after analysis.
+unit is half\-note, that is, +1 is half\-note up,
+and \fB\-0\fR.5 is quater\-note down. (default: 0)
+.PP
+DRUM\-REMOVAL OPTIONS
+.TP
+\fB\-psub\-n\fR
+number of averaging bins in one side.
+that is, for n, (i\-n,...,i,...,i+n) are averaged
+(default: 0)
+.TP
+\fB\-psub\-f\fR
+factor to the average, where the power is modified as
+p[i] = (sqrt(p[i]) \- f * sqrt(ave[i]))^2
+(default: 0.0)
+.PP
+OCTAVE\-REMOVER OPTIONS
+.TP
+\fB\-oct\fR
+factor to the octave removal, where the power is modified as
+.IP
+p[i] = (sqrt(p[i]) \- f * sqrt(oct[i]))^2
+(default: 0.0)
+.SH COPYRIGHT
+Copyright \(co 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+Web: http://waon.sourceforge.net/
+.SH "SEE ALSO"
+.BR pv (1)

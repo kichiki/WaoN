@@ -1,0 +1,78 @@
+.\" $Id: pv.1,v 1.1 2007/10/11 03:40:43 kichiki Exp $
+.TH PV "1" "October 10, 2007" "Version 0.8" "WaoN Manual"
+.SH NAME
+WaoN\-pv \- yet\-another phase vocoder
+.SH SYNOPSIS
+.B pv
+[\fIoption \fR...]
+.SH DESCRIPTION
+WaoN\-pv is yet\-another phase vocoder with which you can time\-strech
+and pitch\-shift an sound file.
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+print this help.
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+print version information.
+.PP
+OPTIONS FOR FILES
+.TP
+\fB\-i\fR, \fB\-\-input\fR
+input file (default: stdin)
+.TP
+\fB\-o\fR, \fB\-\-output\fR
+output file in flac (default: play audio by ao)
+.PP
+FFT OPTIONS
+.TP
+\fB\-n\fR
+FFT data number (default: 2048)
+.TP
+\fB\-w\fR \fB\-\-window\fR
+0 no window
+.RS
+1 parzen window
+.RS 0
+2 welch window
+.RS 0
+3 hanning window (default)
+.RS 0
+4 hamming window
+.RS 0
+5 blackman window
+.RS 0
+6 steeper 30\-dB/octave rolloff window
+.RE 1
+.PP
+PHASE\-VOCODER OPTIONS
+.TP
+\fB\-hop\fR
+hop number (default: 256)
+.TP
+\fB\-rate\fR
+synthesize rate; larger is faster (default: 1.0)
+.TP
+\fB\-pitch\fR
+pitch shift. +1/\-1 is half\-note up/down (default: 0)
+.TP
+\fB\-scheme\fR
+give the number for PV scheme
+.RS
+0 : conventional PV (default)
+.RS 0
+1 : PV by complex arithmetics with fixed hops
+.RS 0
+2 : Puckette's loose\-locking PV
+.RS 0
+3 : Puckette's loose\-locking PV by complex with fixed hops
+.RS 0
+4 : PV with fixed hops by Ellis
+.RS 0
+5 : PV in freq. domain
+.RE 1
+.SH COPYRIGHT
+Copyright \(co 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+Web: http://waon.sourceforge.net/
+.SH "SEE ALSO"
+.BR waon (1)
