@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.8 2007/03/10 20:52:34 kichiki Exp $
+ * $Id: main.c,v 1.9 2007/10/11 02:17:53 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,70 +44,79 @@
 #include "VERSION.h"
 
 
-void usage (char * argv0)
+void print_version (void)
 {
-  fprintf (stderr, "WaoN - a Wave-to-Notes transcriber, Version %s\n",
+  fprintf (stdout, "WaoN - a Wave-to-Notes transcriber, Version %s\n\n",
 	   WAON_VERSION);
-  fprintf (stderr, "Copyright (C) 1998-2007 Kengo Ichiki "
+  fprintf (stdout, "Copyright (C) 1998-2007 Kengo Ichiki "
 	   "<kichiki@users.sourceforge.net>\n");
-  fprintf (stderr, "Web: http://waon.sourceforge.net/\n\n");
-  fprintf (stderr, "Usage: %s [option ...]\n", argv0);
-  fprintf (stderr, "  -h --help\tprint this help.\n");
-  fprintf (stderr, "OPTIONS FOR FILES\n");
-  fprintf (stderr, "  -i --input\tinput wav file (default: stdin)\n");
-  fprintf (stderr, "  -o --output\toutput mid file"
+  fprintf (stdout, "Web: http://waon.sourceforge.net/\n\n");
+}
+
+void print_usage (char * argv0)
+{
+  print_version ();
+  fprintf (stdout, "WaoN is a Wave-to-Notes transcriber,\n"
+	   "that is, a converter from sound file to midi file.\n\n");
+  fprintf (stdout, "Usage: %s [option ...]\n\n", argv0);
+  fprintf (stdout, "Options:\n");
+  fprintf (stdout, "  -h --help\tprint this help.\n");
+  fprintf (stdout, "  -v, --version\tprint version information.\n");
+  fprintf (stdout, "OPTIONS FOR FILES\n");
+  fprintf (stdout, "  -i --input\tinput wav file (default: stdin)\n");
+  fprintf (stdout, "  -o --output\toutput mid file"
 	   " (default: 'output.mid')\n");
-  fprintf (stderr, "\toptions -i and -o have argument '-' "
+  fprintf (stdout, "\toptions -i and -o have argument '-' "
 	   "as stdin/stdout\n");
-  fprintf (stderr, "  -p --patch\tpatch file (default: no patch)\n");
-  fprintf (stderr, "FFT OPTIONS\n");
-  fprintf (stderr, "  -n\t\tsampling number from WAV in 1 step "
+  fprintf (stdout, "  -p --patch\tpatch file (default: no patch)\n");
+  fprintf (stdout, "FFT OPTIONS\n");
+  fprintf (stdout, "  -n\t\tsampling number from WAV in 1 step "
 	   "(default: 2048)\n");
-  fprintf (stderr, "  -w --window\t0 no window\n");
-  fprintf (stderr, "\t\t1 parzen window\n");
-  fprintf (stderr, "\t\t2 welch window\n");
-  fprintf (stderr, "\t\t3 hanning window (default)\n");
-  fprintf (stderr, "\t\t4 hamming window\n");
-  fprintf (stderr, "\t\t5 blackman window\n");
-  fprintf (stderr, "\t\t6 steeper 30-dB/octave rolloff window\n");
-  fprintf (stderr, "READING WAV OPTIONS\n");
-  fprintf (stderr, "  -s --shift\tshift number from WAV in 1 step\n");
-  fprintf (stderr, "\t\t(default: 1/4 of the value in -n option)\n");
-  fprintf (stderr, "PHASE-VOCODER OPTIONS\n");
-  fprintf (stderr, "  -nophase\tdon't use phase diff to improve freq estimation.\n"
+  fprintf (stdout, "  -w --window\t0 no window\n");
+  fprintf (stdout, "\t\t1 parzen window\n");
+  fprintf (stdout, "\t\t2 welch window\n");
+  fprintf (stdout, "\t\t3 hanning window (default)\n");
+  fprintf (stdout, "\t\t4 hamming window\n");
+  fprintf (stdout, "\t\t5 blackman window\n");
+  fprintf (stdout, "\t\t6 steeper 30-dB/octave rolloff window\n");
+  fprintf (stdout, "READING WAV OPTIONS\n");
+  fprintf (stdout, "  -s --shift\tshift number from WAV in 1 step\n");
+  fprintf (stdout, "\t\t(default: 1/4 of the value in -n option)\n");
+  fprintf (stdout, "PHASE-VOCODER OPTIONS\n");
+  fprintf (stdout, "  -nophase\tdon't use phase diff to improve freq estimation.\n"
 	   "\t\t(default: use the correction)\n");
-  fprintf (stderr, "NOTE SELECTION OPTIONS\n");
-  fprintf (stderr, "  -c --cutoff\tlog10 of cut-off ratio "
+  fprintf (stdout, "NOTE SELECTION OPTIONS\n");
+  fprintf (stdout, "  -c --cutoff\tlog10 of cut-off ratio "
 	   "to scale velocity of note\n"
 	   "\t\t(default: -5.0)\n");
-  fprintf (stderr, "  -r --relative\tlog10 of cut-off ratio "
+  fprintf (stdout, "  -r --relative\tlog10 of cut-off ratio "
 	   "relative to the average.\n"
 	   "\t\t(default: no relative cutoff\n"
 	   "\t\t= absolute cutoff with the value in -c option)\n");
-  fprintf (stderr, "  -k --peak\tpeak threshold for note-on, "
+  fprintf (stdout, "  -k --peak\tpeak threshold for note-on, "
 	   "which ranges [0,127]\n"
 	   "\t\t(default: 128 = no peak-search = "
 	   "search only first on-event)\n");
-  fprintf (stderr, "  -t --top\ttop note [midi #] "
+  fprintf (stdout, "  -t --top\ttop note [midi #] "
 	   "(default: 103 = G7)\n");
-  fprintf (stderr, "  -b --bottom\tbottom note [midi #] "
+  fprintf (stdout, "  -b --bottom\tbottom note [midi #] "
 	   "(default: 28 = E1)\n");
-  fprintf (stderr, "\tHere middle C (261 Hz) = C4 = midi 60. "
+  fprintf (stdout, "\tHere middle C (261 Hz) = C4 = midi 60. "
 	   "Midi # ranges [0,127].\n");
-  fprintf (stderr, "  -a --adjust\tadjust-pitch param, "
+  fprintf (stdout, "  -a --adjust\tadjust-pitch param, "
 	   "which is suggested by WaoN after analysis.\n"
 	   "\t\tunit is half-note, that is, +1 is half-note up,\n"
 	   "\t\tand -0.5 is quater-note down. (default: 0)\n");
-  fprintf (stderr, "DRUM-REMOVAL OPTIONS\n");
-  fprintf (stderr, "  -psub-n\tnumber of averaging bins in one side.\n"
+  fprintf (stdout, "DRUM-REMOVAL OPTIONS\n");
+  fprintf (stdout, "  -psub-n\tnumber of averaging bins in one side.\n"
 	   "\t\tthat is, for n, (i-n,...,i,...,i+n) are averaged\n"
 	   "\t\t(default: 0)\n");
-  fprintf (stderr, "  -psub-f\tfactor to the average,"
+  fprintf (stdout, "  -psub-f\tfactor to the average,"
 	   " where the power is modified as\n"
 	   "\t\tp[i] = (sqrt(p[i]) - f * sqrt(ave[i]))^2\n"
 	   "\t\t(default: 0.0)\n");
-  fprintf (stderr, "OCTAVE-REMOVER OPTIONS\n");
-  fprintf (stderr, "  -oct\tfactor to the octave removal,"
+  fprintf (stdout, "OCTAVE-REMOVER OPTIONS\n");
+  fprintf (stdout, "  -oct\tfactor to the octave removal,"
 	   " where the power is modified as\n"
 	   "\t\tp[i] = (sqrt(p[i]) - f * sqrt(oct[i]))^2\n"
 	   "\t\t(default: 0.0)\n");
@@ -160,6 +169,7 @@ int main (int argc, char** argv)
 
   long hop = 0;
   int show_help = 0;
+  int show_version = 0;
   adj_pitch = 0.0;
   peak_threshold = 128; /* this means no peak search  */
 
@@ -377,14 +387,24 @@ int main (int argc, char** argv)
 	      break;
 	    }
 	}
+      else if (strcmp (argv[i], "-v") == 0 ||
+	       strcmp (argv[i], "--version") == 0)
+	{
+	  show_version = 1;
+	}
       else
 	{
 	  show_help = 1;
 	}
     }
-  if (show_help)
+  if (show_help == 1)
     {
-      usage (argv[0]);
+      print_usage (argv[0]);
+      exit (1);
+    }
+  else if (show_version == 1)
+    {
+      print_version ();
       exit (1);
     }
 

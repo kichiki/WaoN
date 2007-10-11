@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.10 2007/03/11 01:13:22 kichiki Exp $
+ * $Id: pv.c,v 1.11 2007/10/11 02:19:30 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,50 +33,61 @@
 #include "VERSION.h"
 
 
-void usage (char * argv0)
+void print_pv_version (void)
 {
-  fprintf (stderr, "WaoN-pv : phase vocoder, Version %s\n",
+  fprintf (stderr, "WaoN-pv - yet-another phase vocoder, Version %s\n\n",
 	   WAON_VERSION);
-  fprintf (stderr, "Copyright (C) 2007 Kengo Ichiki "
+  fprintf (stdout, "Copyright (C) 1998-2007 Kengo Ichiki "
 	   "<kichiki@users.sourceforge.net>\n");
-  fprintf (stderr, "Web: http://waon.sourceforge.net/\n\n");
-  fprintf (stderr, "Usage: %s [option ...]\n", argv0);
-  fprintf (stderr, "  -h, --help\tprint this help.\n");
-  fprintf (stderr, "OPTIONS FOR FILES\n");
-  fprintf (stderr, "  -i, --input\tinput file (default: stdin)\n");
-  fprintf (stderr, "  -o, --output\toutput file in flac"
+  fprintf (stdout, "Web: http://waon.sourceforge.net/\n\n");
+}
+
+
+void print_pv_usage (char * argv0)
+{
+  print_pv_version ();
+  fprintf (stdout, "WaoN-pv is yet-another phase vocoder, "
+	   "with which you can do time-strech \n"
+	   "and pitch-shift an sound file.\n\n");
+  fprintf (stdout, "Usage: %s [option ...]\n\n", argv0);
+  fprintf (stdout, "Options:\n");
+  fprintf (stdout, "  -h, --help\tprint this help.\n");
+  fprintf (stdout, "  -v, --version\tprint version information.\n");
+  fprintf (stdout, "OPTIONS FOR FILES\n");
+  fprintf (stdout, "  -i, --input\tinput file (default: stdin)\n");
+  fprintf (stdout, "  -o, --output\toutput file in flac"
 	   " (default: play audio by ao)\n");
-  fprintf (stderr, "  -n         \tFFT data number (default: 2048)\n");
-  fprintf (stderr, "  -hop       \thop number (default: 256)\n");
-  fprintf (stderr, "  -rate      \tsynthesize rate; larger is faster"
+  fprintf (stdout, "FFT OPTIONS\n");
+  fprintf (stdout, "  -n         \tFFT data number (default: 2048)\n");
+  fprintf (stdout, "  -w --window\t0 no window\n");
+  fprintf (stdout, "\t\t1 parzen window\n");
+  fprintf (stdout, "\t\t2 welch window\n");
+  fprintf (stdout, "\t\t3 hanning window (default)\n");
+  fprintf (stdout, "\t\t4 hamming window\n");
+  fprintf (stdout, "\t\t5 blackman window\n");
+  fprintf (stdout, "\t\t6 steeper 30-dB/octave rolloff window\n");
+  fprintf (stdout, "PHASE-VOCODER OPTIONS\n");
+  fprintf (stdout, "  -hop       \thop number (default: 256)\n");
+  fprintf (stdout, "  -rate      \tsynthesize rate; larger is faster"
 	   " (default: 1.0)\n");
-  fprintf (stderr, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
+  fprintf (stdout, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
 	   " (default: 0)\n");
-  fprintf (stderr, "  -scheme    \tgive the number for PV scheme\n");
-  fprintf (stderr, "\t\t0 : conventional PV (default)\n");
-  fprintf (stderr, "\t\t1 : PV by complex arithmetics with fixed hops\n");
-  fprintf (stderr, "\t\t2 : Puckette's loose-locking PV\n");
-  fprintf (stderr, "\t\t3 : Puckette's loose-locking PV by complex"
+  fprintf (stdout, "  -scheme    \tgive the number for PV scheme\n");
+  fprintf (stdout, "\t\t0 : conventional PV (default)\n");
+  fprintf (stdout, "\t\t1 : PV by complex arithmetics with fixed hops\n");
+  fprintf (stdout, "\t\t2 : Puckette's loose-locking PV\n");
+  fprintf (stdout, "\t\t3 : Puckette's loose-locking PV by complex"
 	   " with fixed hops\n");
-  fprintf (stderr, "\t\t4 : PV with fixed hops by Ellis\n");
-  fprintf (stderr, "\t\t5 : PV in freq. domain\n");
-  fprintf (stderr, "  -w --window\t0 no window\n");
-  fprintf (stderr, "\t\t1 parzen window\n");
-  fprintf (stderr, "\t\t2 welch window\n");
-  fprintf (stderr, "\t\t3 hanning window (default)\n");
-  fprintf (stderr, "\t\t4 hamming window\n");
-  fprintf (stderr, "\t\t5 blackman window\n");
-  fprintf (stderr, "\t\t6 steeper 30-dB/octave rolloff window\n");
+  fprintf (stdout, "\t\t4 : PV with fixed hops by Ellis\n");
+  fprintf (stdout, "\t\t5 : PV in freq. domain\n");
 }
 
 
 
 int main (int argc, char** argv)
 {
-  int i;
-
-  char * file_in = NULL;
-  char * file_out = NULL;
+  char *file_in = NULL;
+  char *file_out = NULL;
 
   /* option analysis */
   long len = 2048;
@@ -85,15 +96,17 @@ int main (int argc, char** argv)
   double pitch_shift = 0.0;
   int scheme = 0;
   int flag_window = 3; // hanning window
-  for (i=1; i<argc; i++)
+
+  int i;
+  for (i = 1; i < argc; i++)
     {
       if ((strcmp (argv[i], "--input" ) == 0)
 	 || (strcmp (argv[i], "-i" ) == 0))
 	{
 	  if (i+1 < argc)
 	    {
-	      file_in = (char *) malloc (sizeof (char)
-					 * (strlen (argv [++i]) + 1));
+	      file_in = (char *)malloc (sizeof (char)
+					* (strlen (argv [++i]) + 1));
 	      CHECK_MALLOC (file_in, "main");
 	      strcpy (file_in, argv[i]);
 	    }
@@ -103,7 +116,7 @@ int main (int argc, char** argv)
 	{
 	  if (i+1 < argc)
 	    {
-	      file_out = (char *) malloc (sizeof (char)
+	      file_out = (char *)malloc (sizeof (char)
 					 * (strlen (argv [++i]) + 1));
 	      CHECK_MALLOC (file_out, "main");
 	      strcpy (file_out, argv[i]);
@@ -152,16 +165,22 @@ int main (int argc, char** argv)
 	      flag_window = atoi (argv[++i]);
 	    }
 	}
+      else if ((strcmp (argv[i], "--version") == 0)
+	       || (strcmp (argv[i], "-v") == 0))
+	{
+	  print_pv_version ();
+	  exit (1);
+	}
       else
 	{
-	  usage (argv [0]);
+	  print_pv_usage (argv [0]);
 	  exit (1);
 	}
     }
 
   if (file_in == NULL)
     {
-      usage (argv [0]);
+      print_pv_usage (argv [0]);
       exit (1);
     }
 
