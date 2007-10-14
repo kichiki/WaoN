@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.12 2007/03/11 01:35:53 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.13 2007/10/14 06:22:11 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2299,7 +2299,7 @@ create_wav (void)
   ao_shutdown ();
 
   extern ao_device *ao;
-  ao = ao_init_16_stereo (sfinfo.samplerate);
+  ao = ao_init_16_stereo (sfinfo.samplerate, 0);
   pv_complex_set_output_ao (pv, ao);
 
 

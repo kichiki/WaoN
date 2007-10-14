@@ -1,6 +1,6 @@
 /* PV - phase vocoder : pv-ellis.c
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.c,v 1.7 2007/03/11 01:04:21 kichiki Exp $
+ * $Id: pv-ellis.c,v 1.8 2007/10/14 06:25:12 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -133,7 +133,7 @@ void pv_ellis (const char *file, const char *outfile,
   SF_INFO sfout_info;
   if (outfile == NULL)
     {
-      ao = ao_init_16_stereo (sfinfo.samplerate);
+      ao = ao_init_16_stereo (sfinfo.samplerate, 1 /* verbose */);
     }
   else
     {
