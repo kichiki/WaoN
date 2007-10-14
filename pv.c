@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.11 2007/10/11 02:19:30 kichiki Exp $
+ * $Id: pv.c,v 1.12 2007/10/14 06:32:24 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,6 +27,7 @@
 #include "pv-ellis.h"
 #include "pv-freq.h"
 #include "pv-loose-lock.h"
+#include "pv-complex-curses.h"
 
 #include "memory-check.h" // CHECK_MALLOC() macro
 
@@ -80,6 +81,7 @@ void print_pv_usage (char * argv0)
 	   " with fixed hops\n");
   fprintf (stdout, "\t\t4 : PV with fixed hops by Ellis\n");
   fprintf (stdout, "\t\t5 : PV in freq. domain\n");
+  fprintf (stdout, "\t\t6 : interactive PV with curses\n");
 }
 
 
@@ -223,6 +225,12 @@ int main (int argc, char** argv)
 	  break;
 	}
       pv_freq (file_in, file_out, rate, len, hop, flag_window);
+      break;
+
+    case 6:
+      pv_complex_curses (file_in,
+			 rate, pitch_shift,
+			 len, hop);
       break;
 
     default:
