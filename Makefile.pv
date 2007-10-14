@@ -1,9 +1,10 @@
 # Makefile for pv
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.pv,v 1.4 2007/02/25 07:04:57 kichiki Exp $
+# $Id: Makefile.pv,v 1.5 2007/10/14 06:31:30 kichiki Exp $
 
 
 LIBS    =\
+	-lcurses \
 	`pkg-config --libs ao` \
 	`pkg-config --libs sndfile` \
 	`pkg-config --libs fftw3` \
@@ -33,6 +34,7 @@ OBJ = \
 	pv-ellis.o \
 	pv-freq.o \
 	pv-loose-lock.o \
+	pv-complex-curses.o \
 	hc.o \
 	fft.o \
 	snd.o \
