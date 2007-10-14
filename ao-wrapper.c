@@ -1,6 +1,6 @@
 /* some wrapper for ao
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: ao-wrapper.c,v 1.3 2007/03/11 01:39:41 kichiki Exp $
+ * $Id: ao-wrapper.c,v 1.4 2007/10/14 06:19:36 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -38,9 +38,12 @@ print_ao_info (const ao_info *info,
 
 /* open ao device
  * the mode is 16-bits, stereo.
+ * INPUT
+ *  verbose : 0 == quiet
+ *            1 == print info
  */
 ao_device *
-ao_init_16_stereo (int samplerate)
+ao_init_16_stereo (int samplerate, int verbose)
 {
   ao_device *device;
   ao_sample_format format;
@@ -61,10 +64,13 @@ ao_init_16_stereo (int samplerate)
     return NULL;
   }   
 
-  // see the driver info
-  ao_info *info;
-  info = ao_driver_info (default_driver);
-  print_ao_info (info, "[ao]");
+  if (verbose == 1)
+    {
+      // see the driver info
+      ao_info *info;
+      info = ao_driver_info (default_driver);
+      print_ao_info (info, "[ao]");
+    }
 
   return (device);
 }

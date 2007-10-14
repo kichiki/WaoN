@@ -1,7 +1,7 @@
 /* header file for ao-wrapper.c --
  * some wrapper for ao
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: ao-wrapper.h,v 1.1 2007/02/20 05:03:30 kichiki Exp $
+ * $Id: ao-wrapper.h,v 1.2 2007/10/14 06:20:17 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,9 +23,12 @@
 
 /* open ao device
  * the mode is 16-bits, stereo.
+ * INPUT
+ *  verbose : 0 == quiet
+ *            1 == print info
  */
 ao_device *
-ao_init_16_stereo (int samplerate);
+ao_init_16_stereo (int samplerate, int verbose);
 
 void
 print_ao_driver_info_list (void);
