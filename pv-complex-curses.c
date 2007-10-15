@@ -1,6 +1,6 @@
 /* real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.1 2007/10/14 06:17:43 kichiki Exp $
+ * $Id: pv-complex-curses.c,v 1.2 2007/10/15 06:16:48 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,29 +26,23 @@
 #include "pv-complex.h" // struct pv_complex_data
 #include "pv-conventional.h" // get_scale_factor_for_window()
 
+#include "memory-check.h" // CHECK_MALLOC
+
 
 /* play 1 milisecond and return
  * INPUT
  *  pv        : struct pv_complex_data
  *  play_cur  : current frame
- *  pv_rate   : rate of playback speed
- *  pv_pitch  : pitch-shift
  *  frame0, frame1 : the loop range
  * OUTPUT
  */
 int
 play_1msec_curses (struct pv_complex_data *pv,
 		   long *play_cur,
-		   double pv_rate,
-		   double pv_pitch,
 		   long frame0, long frame1)
 {
   long len_1msec;
   len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
-
-  pv->hop_res = (long)((double)pv->hop_syn * pow (2.0, - pv_pitch / 12.0));
-  pv->hop_ana = (long)((double)pv->hop_res * pv_rate);
-
 
   if (*play_cur <  frame0) *play_cur = frame0;
   if (*play_cur >= frame1) *play_cur = frame1;
@@ -68,8 +62,8 @@ play_1msec_curses (struct pv_complex_data *pv,
 	  *play_cur + pv->hop_ana >= frame1)
 	{
 	  // rewind
-	  if (pv_rate >= 0.0) *play_cur = frame0;
-	  else                *play_cur = frame1;
+	  if (pv->hop_ana >= 0.0) *play_cur = frame0;
+	  else                    *play_cur = frame1;
 	}
     }
   return 1; // TRUE
@@ -83,10 +77,12 @@ play_1msec_curses (struct pv_complex_data *pv,
 #define Y_rate    (5)
 #define Y_pitch   (6)
 #define Y_lock    (8)
-#define Y_window  (9)
+#define Y_window  (10)
+#define Y_len     (11)
+#define Y_hop     (12)
 
-#define Y_status  (12)
-#define Y_comment (14)
+#define Y_status  (14)
+#define Y_comment (16)
 
 static void
 curses_print_window (int flag_window)
@@ -131,6 +127,9 @@ curses_print_pv (const char *file,
   mvprintw (Y_loop,   1, "loop       : %010ld - %010ld", frame0, frame1);
   mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
   mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
+  mvprintw (Y_len,    1, "fft-len    : %06ld", pv->len);
+  mvprintw (Y_hop,    1, "hop        : (syn) %06ld (ana) %06ld (res) %06ld",
+	    pv->hop_syn, pv->hop_ana, pv->hop_res);
 
   if (flag_play == 0) mvprintw(Y_status, 1, "status     : stop");
   else                mvprintw(Y_status, 1, "status     : play");
@@ -153,8 +152,6 @@ curses_print_pv (const char *file,
 /* phase vocoder by complex arithmetics with fixed hops.
  */
 void pv_complex_curses (const char *file,
-			double pv_rate,
-			double pv_pitch,
 			long len, long hop_syn)
 {
   // ncurses initializing
@@ -165,16 +162,10 @@ void pv_complex_curses (const char *file,
   nodelay(stdscr, TRUE); /* Don't wait the key press */
 
 
-  long hop_ana;
-  long hop_res;
-  hop_res = (long)((double)hop_syn * pow (2.0, - pv_pitch / 12.0));
-  hop_ana = (long)((double)hop_res * pv_rate);
-
-  struct pv_complex_data *pv = NULL;
   int flag_window = 3;
-  pv = pv_complex_init (len, hop_syn, flag_window);
-  pv->hop_res = hop_res;
-  pv->hop_ana = hop_ana;
+  struct pv_complex_data *pv
+    = pv_complex_init (len, hop_syn, flag_window);
+  CHECK_MALLOC (pv, "pv_complex_curses");
 
   // open input file
   SNDFILE *sf = NULL;
@@ -195,6 +186,11 @@ void pv_complex_curses (const char *file,
   pv_complex_set_output_ao (pv, ao);
 
 
+  // initial values
+  double pv_rate  = 1.0;
+  double pv_pitch = 0.0;
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+
   long frame0 = 0;
   long frame1 = (long)pv->sfinfo->frames - 1;
   pv->flag_lock = 0; // no phase-lock
@@ -208,13 +204,13 @@ void pv_complex_curses (const char *file,
   curses_print_pv (file, pv, flag_play, frame0, frame1,
 		   pv_pitch, pv_rate);
 
+  // main loop
   long status = 1; // TRUE
   do
     {
       if (flag_play != 0)
 	{
 	  status = play_1msec_curses (pv, &play_cur,
-				      pv_rate, pv_pitch,
 				      frame0, frame1);
 	}
       // scan keyboard
@@ -294,24 +290,60 @@ void pv_complex_curses (const char *file,
 	  curses_print_window (pv->flag_window);
 	  break;
 
+	case 'H':
+	  pv->hop_syn *= 2;
+	  if (pv->hop_syn > len) pv->hop_syn = len;
+	  // hop_res, hop_ana depend on hop_syn
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+	  mvprintw (Y_hop,    1, "hop        :"
+		    " (syn) %06ld (ana) %06ld (res) %06ld",
+		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  break;
+
+	case 'h':
+	  pv->hop_syn /= 2;
+	  if (pv->hop_syn < 1) pv->hop_syn = 1;
+	  // hop_res, hop_ana depend on hop_syn
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+	  mvprintw (Y_hop,    1, "hop        :"
+		    " (syn) %06ld (ana) %06ld (res) %06ld",
+		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  break;
+
 	case KEY_UP:
 	  pv_pitch += 1.0;
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
+	  mvprintw (Y_hop,    1, "hop        :"
+		    " (syn) %06ld (ana) %06ld (res) %06ld",
+		    pv->hop_syn, pv->hop_ana, pv->hop_res);
 	  break;
 
 	case KEY_DOWN:
 	  pv_pitch -= 1.0;
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
+	  mvprintw (Y_hop,    1, "hop        :"
+		    " (syn) %06ld (ana) %06ld (res) %06ld",
+		    pv->hop_syn, pv->hop_ana, pv->hop_res);
 	  break;
 
 	case KEY_LEFT:
 	  pv_rate -= 0.1;
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
+	  mvprintw (Y_hop,    1, "hop        :"
+		    " (syn) %06ld (ana) %06ld (res) %06ld",
+		    pv->hop_syn, pv->hop_ana, pv->hop_res);
 	  break;
 
 	case KEY_RIGHT:
 	  pv_rate += 0.1;
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
+	  mvprintw (Y_hop,    1, "hop        :"
+		    " (syn) %06ld (ana) %06ld (res) %06ld",
+		    pv->hop_syn, pv->hop_ana, pv->hop_res);
 	  break;
 
 	case KEY_HOME:
@@ -321,6 +353,8 @@ void pv_complex_curses (const char *file,
 	  frame1 = (long)pv->sfinfo->frames - 1;
 	  pv_rate = 1.0;
 	  pv_pitch = 0.0;
+	  pv->hop_syn = hop_syn; // value in the argument
+	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  curses_print_pv (file, pv, flag_play, frame0, frame1,
 			   pv_pitch, pv_rate);
 	  mvprintw(Y_comment, 1, "reset everything");
