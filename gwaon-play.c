@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.c,v 1.4 2007/03/11 01:18:27 kichiki Exp $
+ * $Id: gwaon-play.c,v 1.5 2007/10/15 06:19:13 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,6 +38,10 @@ long play_cur; // current frame to play
 int flag_play; // status: 0 = not playing, 1 = playing
 gint tag_play; // for timeout callback
 
+/* rate and pitch are taken care at wav_pv_rate() and wav_pv_pitch 
+ * in gwaon-wav.c by pv_complex_change_rate_pitch() through 
+ * struct pv_complex_data *pv.
+ */
 double pv_rate;  // time-scaling rate (0 = stop, 1 = normal, -1 = backward)
 double pv_pitch; // pitch-shift
 
@@ -51,14 +55,9 @@ play_1msec (gpointer data)
 {
   extern struct pv_complex_data *pv;
   extern long play_cur;
-  extern double pv_rate;
 
   long len_1msec;
   len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
-
-  pv->hop_res = (long)((double)pv->hop_syn * pow (2.0, - pv_pitch / 12.0));
-  pv->hop_ana = (long)((double)pv->hop_res * pv_rate);
-
 
   // draw indicator
   draw_play_indicator ((GtkWidget *)data);
@@ -84,8 +83,8 @@ play_1msec (gpointer data)
 	{
 	  flag_play = 0; // stop playing
 	  // rewind
-	  if (pv_rate >= 0.0) play_cur = frame0;
-	  else                play_cur = frame1;
+	  if (pv->hop_ana >= 0.0) play_cur = frame0;
+	  else                    play_cur = frame1;
 
 	  // if FAIL is returned, this timeout is removed
 	  return FALSE;
@@ -99,8 +98,8 @@ play_1msec (gpointer data)
 	  play_cur + pv->hop_ana >= frame1)
 	{
 	  // rewind
-	  if (pv_rate >= 0.0) play_cur = frame0;
-	  else                play_cur = frame1;
+	  if (pv->hop_ana >= 0.0) play_cur = frame0;
+	  else                    play_cur = frame1;
 	}
     }
   return TRUE;
