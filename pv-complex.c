@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.11 2007/10/14 06:29:07 kichiki Exp $
+ * $Id: pv-complex.c,v 1.12 2007/10/15 06:10:57 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -99,6 +99,25 @@ pv_complex_init (long len, long hop_syn, int flag_window)
 
   return (pv);
 }
+
+/* change rate and pitch (note that hop_syn is fixed)
+ * INPUT
+ *  pv : struct pv_complex_data
+ *  rate  : rate of speed (1 == same speed, negative == backward)
+ *  pitch : pitch-shift (0 == no-shift, +1(-1) = half-note up(down))
+ * OUTPUT
+ *  pv->hop_res : 
+ *  pv->hop_ana : 
+ */
+void
+pv_complex_change_rate_pitch (struct pv_complex_data *pv,
+			      double rate,
+			      double pitch)
+{
+  pv->hop_res = (long)((double)pv->hop_syn * pow (2.0, - pitch / 12.0));
+  pv->hop_ana = (long)((double)pv->hop_res * rate);
+}
+
 
 void
 pv_complex_set_input (struct pv_complex_data *pv,
