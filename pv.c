@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.12 2007/10/14 06:32:24 kichiki Exp $
+ * $Id: pv.c,v 1.13 2007/10/15 06:17:56 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -229,7 +229,6 @@ int main (int argc, char** argv)
 
     case 6:
       pv_complex_curses (file_in,
-			 rate, pitch_shift,
 			 len, hop);
       break;
 
