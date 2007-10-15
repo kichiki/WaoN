@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.13 2007/10/14 06:22:11 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.14 2007/10/15 06:20:52 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1748,7 +1748,10 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
   extern int flag_play;
   extern gint tag_play;
 
+  // defined in gwaon-play.c
   extern struct pv_complex_data *pv;
+  extern double pv_rate;
+  extern double pv_pitch;
 
 
   //fprintf (stderr, "key_press_event\n");
@@ -1780,6 +1783,8 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       CHECK_MALLOC (spec_right, "wav_key_press_event");
 
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
+      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 
       update_win_wav (widget,
 		      1, // spec
@@ -1807,6 +1812,8 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       CHECK_MALLOC (spec_right, "wav_key_press_event");
 
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
+      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 
       update_win_wav (widget,
 		      1, // spec
@@ -1819,6 +1826,9 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       WIN_spec_hop_scale /= 2;
       if (WIN_spec_hop_scale <= 1) WIN_spec_hop_scale = 1;
       WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
+      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+
       update_win_wav (widget,
 		      1, // spec
 		      0, // wav
@@ -1834,6 +1844,9 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 	  WIN_spec_hop = 1;
 	  WIN_spec_hop_scale = WIN_spec_n / WIN_spec_hop;
 	}
+      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+
       update_win_wav (widget,
 		      1, // spec
 		      0, // wav
@@ -2129,20 +2142,22 @@ static void
 wav_pv_rate (GtkAdjustment *get, GtkAdjustment *set)
 {
   extern double pv_rate;
-
   pv_rate = get->value;
 
-  //update_win_wav (GTK_WIDGET (set));
+  extern struct pv_complex_data *pv;
+  extern double pv_pitch;
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 }
 
 static void
 wav_pv_pitch (GtkAdjustment *get, GtkAdjustment *set)
 {
   extern double pv_pitch;
-
   pv_pitch = get->value;
 
-  //update_win_wav (GTK_WIDGET (set));
+  extern struct pv_complex_data *pv;
+  extern double pv_rate;
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 }
 
 
@@ -2244,7 +2259,6 @@ create_wav (void)
   extern struct pv_complex_data *pv;
   pv = pv_complex_init (WIN_spec_n, WIN_spec_hop, 3 /* hanning */);
   pv_complex_set_input (pv, sf, &sfinfo);
-  //pv->pitch_shift = 0.0;
 
 
   extern double *spec_in;
