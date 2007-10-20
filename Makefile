@@ -1,6 +1,6 @@
 # Makefile for waon package
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
-# $Id: Makefile,v 1.1 2007/10/14 06:33:48 kichiki Exp $
+# $Id: Makefile,v 1.2 2007/10/20 20:16:42 kichiki Exp $
 
 RM = rm -f
 
@@ -40,7 +40,7 @@ waon: $(waon_OBJS)
 pv_LDFLAGS = $(LDFLAGS)
 
 pv_LIBS = $(LIBS) \
-	-lcurses \
+	-lncurses \
 	`pkg-config --libs ao` \
 	`pkg-config --libs sndfile` \
 	`pkg-config --libs fftw3` \
