@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.13 2007/10/15 06:17:56 kichiki Exp $
+ * $Id: pv.c,v 1.14 2007/10/20 20:04:19 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -74,14 +74,14 @@ void print_pv_usage (char * argv0)
   fprintf (stdout, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
 	   " (default: 0)\n");
   fprintf (stdout, "  -scheme    \tgive the number for PV scheme\n");
-  fprintf (stdout, "\t\t0 : conventional PV (default)\n");
+  fprintf (stdout, "\t\t0 : conventional PV\n");
   fprintf (stdout, "\t\t1 : PV by complex arithmetics with fixed hops\n");
   fprintf (stdout, "\t\t2 : Puckette's loose-locking PV\n");
   fprintf (stdout, "\t\t3 : Puckette's loose-locking PV by complex"
 	   " with fixed hops\n");
   fprintf (stdout, "\t\t4 : PV with fixed hops by Ellis\n");
   fprintf (stdout, "\t\t5 : PV in freq. domain\n");
-  fprintf (stdout, "\t\t6 : interactive PV with curses\n");
+  fprintf (stdout, "\t\t6 : interactive PV with curses (default)\n");
 }
 
 
@@ -93,10 +93,10 @@ int main (int argc, char** argv)
 
   /* option analysis */
   long len = 2048;
-  long hop = 256;
+  long hop = 512;
   double rate = 1.0;
   double pitch_shift = 0.0;
-  int scheme = 0;
+  int scheme = 6;
   int flag_window = 3; // hanning window
 
   int i;
