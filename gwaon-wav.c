@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.14 2007/10/15 06:20:52 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.15 2007/10/20 20:08:41 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 #include <ao/ao.h>
 #include "ao-wrapper.h"
 
-#include "pv-complex.h" // struct pv_complex_data
+#include "pv-complex.h" // struct pv_complex
 #include "gtk-color.h" /* get_color() */
 #include "memory-check.h" // CHECK_MALLOC() macro
 
@@ -457,7 +457,7 @@ void draw_infos (GtkWidget *widget,
   extern int flag_window;
   extern double amp2_min, amp2_max;
   extern int oct_min, oct_max;
-  //extern struct pv_complex_data *pv;
+  //extern struct pv_complex *pv;
 
   gchar string [256];
 
@@ -1749,7 +1749,7 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
   extern gint tag_play;
 
   // defined in gwaon-play.c
-  extern struct pv_complex_data *pv;
+  extern struct pv_complex *pv;
   extern double pv_rate;
   extern double pv_pitch;
 
@@ -2144,7 +2144,7 @@ wav_pv_rate (GtkAdjustment *get, GtkAdjustment *set)
   extern double pv_rate;
   pv_rate = get->value;
 
-  extern struct pv_complex_data *pv;
+  extern struct pv_complex *pv;
   extern double pv_pitch;
   pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 }
@@ -2155,7 +2155,7 @@ wav_pv_pitch (GtkAdjustment *get, GtkAdjustment *set)
   extern double pv_pitch;
   pv_pitch = get->value;
 
-  extern struct pv_complex_data *pv;
+  extern struct pv_complex *pv;
   extern double pv_rate;
   pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 }
@@ -2256,7 +2256,7 @@ create_wav (void)
   extern int WIN_spec_mode;
   WIN_spec_mode = 0;
 
-  extern struct pv_complex_data *pv;
+  extern struct pv_complex *pv;
   pv = pv_complex_init (WIN_spec_n, WIN_spec_hop, 3 /* hanning */);
   pv_complex_set_input (pv, sf, &sfinfo);
 
@@ -2478,6 +2478,8 @@ create_wav (void)
   gtk_range_set_inverted (GTK_RANGE (scale_pitch), TRUE);
   gtk_widget_show (scale_pitch);
 
+
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 
   // everything is done
   gtk_widget_show (window);

@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.c,v 1.5 2007/10/15 06:19:13 kichiki Exp $
+ * $Id: gwaon-play.c,v 1.6 2007/10/20 20:09:11 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 // ao sound device
 #include <ao/ao.h>
 
-#include "pv-complex.h" // struct pv_complex_data, pv_complex_play_step()
+#include "pv-complex.h" // struct pv_complex, pv_complex_play_step()
 #include "gwaon-wav.h" // draw_play_indicator()
 
 
@@ -40,12 +40,12 @@ gint tag_play; // for timeout callback
 
 /* rate and pitch are taken care at wav_pv_rate() and wav_pv_pitch 
  * in gwaon-wav.c by pv_complex_change_rate_pitch() through 
- * struct pv_complex_data *pv.
+ * struct pv_complex *pv.
  */
 double pv_rate;  // time-scaling rate (0 = stop, 1 = normal, -1 = backward)
 double pv_pitch; // pitch-shift
 
-struct pv_complex_data *pv = NULL; // initialized in create_wav()
+struct pv_complex *pv = NULL; // initialized in create_wav()
 
 
 /* play 1 milisecond and return
@@ -53,7 +53,7 @@ struct pv_complex_data *pv = NULL; // initialized in create_wav()
 gint
 play_1msec (gpointer data)
 {
-  extern struct pv_complex_data *pv;
+  extern struct pv_complex *pv;
   extern long play_cur;
 
   long len_1msec;
