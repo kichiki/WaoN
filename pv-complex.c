@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.12 2007/10/15 06:10:57 kichiki Exp $
+ * $Id: pv-complex.c,v 1.13 2007/10/20 19:59:19 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -45,12 +45,11 @@
 
 /** utility routines for struct pv_omplex_data **/
 
-struct pv_complex_data *
+struct pv_complex *
 pv_complex_init (long len, long hop_syn, int flag_window)
 {
-  struct pv_complex_data *pv = NULL;
-
-  pv = (struct pv_complex_data *) malloc (sizeof (struct pv_complex_data));
+  struct pv_complex *pv
+    = (struct pv_complex *) malloc (sizeof (struct pv_complex));
   CHECK_MALLOC (pv, "pv_complex_init");
 
   pv->len = len;
@@ -102,7 +101,7 @@ pv_complex_init (long len, long hop_syn, int flag_window)
 
 /* change rate and pitch (note that hop_syn is fixed)
  * INPUT
- *  pv : struct pv_complex_data
+ *  pv : struct pv_complex
  *  rate  : rate of speed (1 == same speed, negative == backward)
  *  pitch : pitch-shift (0 == no-shift, +1(-1) = half-note up(down))
  * OUTPUT
@@ -110,7 +109,7 @@ pv_complex_init (long len, long hop_syn, int flag_window)
  *  pv->hop_ana : 
  */
 void
-pv_complex_change_rate_pitch (struct pv_complex_data *pv,
+pv_complex_change_rate_pitch (struct pv_complex *pv,
 			      double rate,
 			      double pitch)
 {
@@ -120,7 +119,7 @@ pv_complex_change_rate_pitch (struct pv_complex_data *pv,
 
 
 void
-pv_complex_set_input (struct pv_complex_data *pv,
+pv_complex_set_input (struct pv_complex *pv,
 		      SNDFILE *sf, SF_INFO *sfinfo)
 {
   pv->sf = sf;
@@ -128,7 +127,7 @@ pv_complex_set_input (struct pv_complex_data *pv,
 }
 
 void
-pv_complex_set_output_ao (struct pv_complex_data *pv,
+pv_complex_set_output_ao (struct pv_complex *pv,
 			  ao_device *ao)
 {
   pv->flag_out = 0;
@@ -136,7 +135,7 @@ pv_complex_set_output_ao (struct pv_complex_data *pv,
 }
 
 void
-pv_complex_set_output_sf (struct pv_complex_data *pv,
+pv_complex_set_output_sf (struct pv_complex *pv,
 			  SNDFILE *sf, SF_INFO *sfinfo)
 {
   pv->flag_out = 1;
@@ -145,7 +144,7 @@ pv_complex_set_output_sf (struct pv_complex_data *pv,
 }
 
 void
-pv_complex_free (struct pv_complex_data *pv)
+pv_complex_free (struct pv_complex *pv)
 {
   if (pv == NULL) return;
 
@@ -168,33 +167,32 @@ pv_complex_free (struct pv_complex_data *pv)
 
 
 static long
-read_and_FFT_stereo (struct pv_complex_data *pv,
+read_and_FFT_stereo (struct pv_complex *pv,
 		     long frame,
 		     double *f_left, double *f_right)
 {
-  int i;
-
-  double * left = NULL;
-  double * right = NULL;
-  left  = (double *) malloc (sizeof (double) * pv->len);
-  right = (double *) malloc (sizeof (double) * pv->len);
-  CHECK_MALLOC (left,  "read_and_FFT_stereo");
-  CHECK_MALLOC (right, "read_and_FFT_stereo");
+  static double *left  = NULL;
+  static double *right = NULL;
+  if (left == NULL)
+    {
+      left  = (double *)malloc (sizeof (double) * pv->len);
+      right = (double *)malloc (sizeof (double) * pv->len);
+      CHECK_MALLOC (left,  "read_and_FFT_stereo");
+      CHECK_MALLOC (right, "read_and_FFT_stereo");
+    }
 
   long status;
   status = sndfile_read_at (pv->sf, *(pv->sfinfo), frame,
 			    left, right, pv->len);
   if (status != pv->len)
     {
-      free (left);
-      free (right);
-
       return (status);
     }
 
   // FFT for left channel
   windowing (pv->len, left, pv->flag_window, 1.0, pv->time);
   fftw_execute (pv->plan); // FFT: time[] -> freq[]
+  int i;
   for (i = 0; i < pv->len; i ++)
     {
       f_left [i] = pv->freq [i];
@@ -208,9 +206,6 @@ read_and_FFT_stereo (struct pv_complex_data *pv,
       f_right [i] = pv->freq [i];
     }
 
-  free (left);
-  free (right);
-
   return (status);
 }
 
@@ -219,7 +214,7 @@ read_and_FFT_stereo (struct pv_complex_data *pv,
  *  scale : for safety (give 0.5, for example)
  */
 static void
-apply_invFFT_mono (struct pv_complex_data *pv,
+apply_invFFT_mono (struct pv_complex *pv,
 		   const double *f, double scale,
 		   double *out)
 {
@@ -263,25 +258,55 @@ check_zero (int n, const double *x)
  * pv->pitch_shift is taken into account
  */
 int
-pv_complex_play_resample (struct pv_complex_data *pv)
+pv_complex_play_resample (struct pv_complex *pv)
 {
-  int status = 0;
-  int i;
-
   // samplerate conversion
-  float *fl_in  = NULL;
-  float *fl_out = NULL;
-  double *l_out_src = NULL;
-  double *r_out_src = NULL;
   SRC_DATA srdata;
-
-  if (pv->hop_syn != pv->hop_res)
+  static float  *fl_in  = NULL;
+  static float  *fl_out = NULL;
+  static double *l_out_src = NULL;
+  static double *r_out_src = NULL;
+  static int hop_syn0 = 0;
+  static int hop_res0 = 0;
+  if (fl_in == NULL)
     {
       fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_syn);
       fl_out = (float *)malloc (sizeof (float) * 2 * pv->hop_res);
       CHECK_MALLOC (fl_in,  "pv_complex_play_resample");
       CHECK_MALLOC (fl_out, "pv_complex_play_resample");
 
+      l_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
+      r_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
+      CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
+      CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
+
+      hop_syn0 = pv->hop_syn;
+      hop_res0 = pv->hop_res;
+    }
+  if (hop_syn0 < pv->hop_syn)
+    {
+      fl_in = (float *)realloc (fl_in, sizeof (float) * 2 * pv->hop_syn);
+      CHECK_MALLOC (fl_in,  "pv_complex_play_resample");
+
+      hop_syn0 = pv->hop_syn;
+    }
+  if (hop_res0 < pv->hop_res)
+    {
+      fl_out    = (float *)realloc (fl_out, sizeof (float) * 2 * pv->hop_res);
+      l_out_src = (double *)realloc (l_out_src, sizeof (double) * pv->hop_res);
+      r_out_src = (double *)realloc (r_out_src, sizeof (double) * pv->hop_res);
+      CHECK_MALLOC (fl_out, "pv_complex_play_resample");
+      CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
+      CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
+
+      hop_res0 = pv->hop_res;
+    }
+
+  int status = 0;
+  int i;
+
+  if (pv->hop_syn != pv->hop_res)
+    {
       srdata.input_frames  = pv->hop_syn;
       srdata.output_frames = pv->hop_res;
       srdata.src_ratio = (double)(pv->hop_res) / (double)(pv->hop_syn);
@@ -303,21 +328,12 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 	  exit (1);
 	}
 
-      //l_out_src = (double *)malloc (sizeof (double) * hop_in);
-      //r_out_src = (double *)malloc (sizeof (double) * hop_in);
-      l_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
-      r_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
-      CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
-      CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
-
       //for (i = 0; i < hop_in; i ++)
       for (i = 0; i < pv->hop_res; i ++)
 	{
 	  l_out_src [i] = (double)(fl_out [i*2 + 0]);
 	  r_out_src [i] = (double)(fl_out [i*2 + 1]);
 	}
-      free (fl_in);
-      free (fl_out);
 
       // output
       if (pv->flag_out == 0)
@@ -339,8 +355,6 @@ pv_complex_play_resample (struct pv_complex_data *pv)
 	{
 	  fprintf (stderr, "invalid output device\n");
 	}
-      free (l_out_src);
-      free (r_out_src);
 
       // modify status
       if (status == pv->hop_res) status = pv->hop_syn;
@@ -375,7 +389,7 @@ pv_complex_play_resample (struct pv_complex_data *pv)
  *   and u_i is the time for the synthesis FFT at step i
  * Reference: M.Puckette (1995)
  * INPUT
- *  pv : struct pv_complex_data
+ *  pv : struct pv_complex
  *  cur : current frame to play.
  *        you have to increment this by yourself.
  *  pv->flag_lock : 0 == no phase lock
@@ -383,45 +397,46 @@ pv_complex_play_resample (struct pv_complex_data *pv)
  * OUTPUT (returned value)
  *  status : output frame.
  */
-long pv_complex_play_step (struct pv_complex_data *pv,
+long pv_complex_play_step (struct pv_complex *pv,
 			   long cur)
 {
-  int i;
+  static double *l_fs  = NULL;
+  static double *r_fs  = NULL;
+  static double *l_ft  = NULL;
+  static double *r_ft  = NULL;
+  static double *l_tmp = NULL;
+  static double *r_tmp = NULL;
 
-  double *l_fs = NULL;
-  double *r_fs = NULL;
-  l_fs = (double *)malloc (pv->len * sizeof (double));
-  r_fs = (double *)malloc (pv->len * sizeof (double));
-  CHECK_MALLOC (l_fs, "pv_complex_play_step");
-  CHECK_MALLOC (r_fs, "pv_complex_play_step");
+  if (l_fs == NULL)
+    {
+      l_fs = (double *)malloc (pv->len * sizeof (double));
+      r_fs = (double *)malloc (pv->len * sizeof (double));
+      CHECK_MALLOC (l_fs, "pv_complex_play_step");
+      CHECK_MALLOC (r_fs, "pv_complex_play_step");
+
+      l_ft = (double *)malloc (pv->len * sizeof (double));
+      r_ft = (double *)malloc (pv->len * sizeof (double));
+      CHECK_MALLOC (l_ft, "pv_complex_play_step");
+      CHECK_MALLOC (r_ft, "pv_complex_play_step");
+
+      l_tmp = (double *)malloc (pv->len * sizeof (double));
+      r_tmp = (double *)malloc (pv->len * sizeof (double));
+      CHECK_MALLOC (l_tmp, "pv_complex_play_step");
+      CHECK_MALLOC (r_tmp, "pv_complex_play_step");
+    }
 
   long status;
   // read the starting frame (cur)
   status = read_and_FFT_stereo (pv, cur, l_fs, r_fs);
   if (status != pv->len)
     {
-      free (l_fs);
-      free (r_fs);
-
       return 0; // no output
     }
-
-  double *l_ft = NULL;
-  double *r_ft = NULL;
-  l_ft = (double *)malloc (pv->len * sizeof (double));
-  r_ft = (double *)malloc (pv->len * sizeof (double));
-  CHECK_MALLOC (l_ft, "pv_complex_play_step");
-  CHECK_MALLOC (r_ft, "pv_complex_play_step");
 
   // read the terminal frame (cur + hop_syn)
   status = read_and_FFT_stereo (pv, cur + pv->hop_syn, l_ft, r_ft);
   if (status != pv->len)
     {
-      free (l_fs);
-      free (r_fs);
-      free (l_ft);
-      free (r_ft);
-
       return 0; // no output
     }
 
@@ -448,13 +463,7 @@ long pv_complex_play_step (struct pv_complex_data *pv,
     }
 
 
-  double *l_tmp = NULL;
-  double *r_tmp = NULL;
-  l_tmp = (double *)malloc (pv->len * sizeof (double));
-  r_tmp = (double *)malloc (pv->len * sizeof (double));
-  CHECK_MALLOC (l_tmp, "pv_complex_play_step");
-  CHECK_MALLOC (r_tmp, "pv_complex_play_step");
-
+  int i;
 
   // left channel
   if (flag_left_cur == 1)
@@ -498,9 +507,6 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  apply_invFFT_mono (pv, l_tmp, pv->window_scale, pv->l_out);
 	}
     }
-  free (l_fs);
-  free (l_ft);
-  free (l_tmp);
 
 
   // right channel
@@ -544,9 +550,6 @@ long pv_complex_play_step (struct pv_complex_data *pv,
 	  apply_invFFT_mono (pv, r_tmp, pv->window_scale, pv->r_out);
 	}
     }
-  free (r_fs);
-  free (r_ft);
-  free (r_tmp);
 
 
   // output
@@ -584,18 +587,15 @@ long pv_complex_play_step (struct pv_complex_data *pv,
  *  pitch_shift : in the unit of half-note
  */
 void pv_complex (const char *file, const char *outfile,
-		 double rate, double pitch_shift,
-		 long len, long hop_syn,
-		 int flag_window,
-		 int flag_lock)
+		  double rate, double pitch_shift,
+		  long len, long hop_syn,
+		  int flag_window,
+		  int flag_lock)
 {
-  long hop_ana;
-  long hop_res;
-  hop_res = (long)((double)hop_syn * pow (2.0, - pitch_shift / 12.0));
-  hop_ana = (long)((double)hop_res * rate);
+  long hop_res = (long)((double)hop_syn * pow (2.0, - pitch_shift / 12.0));
+  long hop_ana = (long)((double)hop_res * rate);
 
-  struct pv_complex_data *pv = NULL;
-  pv = pv_complex_init (len, hop_syn, flag_window);
+  struct pv_complex *pv = pv_complex_init (len, hop_syn, flag_window);
   pv->hop_res = hop_res;
   pv->hop_ana = hop_ana;
   //pv->pitch_shift = pitch_shift;

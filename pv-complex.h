@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.8 2007/10/15 06:12:11 kichiki Exp $
+ * $Id: pv-complex.h,v 1.9 2007/10/20 20:01:56 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -32,7 +32,7 @@
 #include <ao/ao.h>
 
 
-struct pv_complex_data {
+struct pv_complex {
   // input (just reference purpose only)
   SNDFILE *sf;
   SF_INFO *sfinfo;
@@ -77,12 +77,12 @@ struct pv_complex_data {
 
 /** utility routines for struct pv_omplex_data **/
 
-struct pv_complex_data *
-pv_complex_init (long len, long hop_out, int flag_window);
+struct pv_complex *
+pv_complex_init (long len, long hop_syn, int flag_window);
 
 /* change rate and pitch (note that hop_syn is fixed)
  * INPUT
- *  pv : struct pv_complex_data
+ *  pv : struct pv_complex
  *  rate  : rate of speed (1 == same speed, negative == backward)
  *  pitch : pitch-shift (0 == no-shift, +1(-1) = half-note up(down))
  * OUTPUT
@@ -90,29 +90,29 @@ pv_complex_init (long len, long hop_out, int flag_window);
  *  pv->hop_ana : 
  */
 void
-pv_complex_change_rate_pitch (struct pv_complex_data *pv,
+pv_complex_change_rate_pitch (struct pv_complex *pv,
 			      double rate,
 			      double pitch);
 
 void
-pv_complex_set_input (struct pv_complex_data *pv,
+pv_complex_set_input (struct pv_complex *pv,
 		      SNDFILE *sf, SF_INFO *sfinfo);
 void
-pv_complex_set_output_sf (struct pv_complex_data *pv,
+pv_complex_set_output_sf (struct pv_complex *pv,
 			  SNDFILE *sf, SF_INFO *sfinfo);
 void
-pv_complex_set_output_ao (struct pv_complex_data *pv,
+pv_complex_set_output_ao (struct pv_complex *pv,
 			  ao_device *ao);
 
 void
-pv_complex_free (struct pv_complex_data *pv);
+pv_complex_free (struct pv_complex *pv);
 
 
 /* play the segment of pv->[lr]_out[] for pv->hop_out
  * pv->pitch_shift is taken into account
  */
 int
-pv_complex_play_resample (struct pv_complex_data *pv);
+pv_complex_play_resample (struct pv_complex *pv);
 
 
 /* play one hop_in by the phase vocoder:
@@ -122,7 +122,7 @@ pv_complex_play_resample (struct pv_complex_data *pv);
  *   and u_i is the time for the synthesis FFT at step i
  * Reference: M.Puckette (1995)
  * INPUT
- *  pv : struct pv_complex_data
+ *  pv : struct pv_complex
  *  cur : current frame to play.
  *        you have to increment this by yourself.
  *  pv->flag_lock : 0 == no phase lock
@@ -130,7 +130,7 @@ pv_complex_play_resample (struct pv_complex_data *pv);
  * OUTPUT (returned value)
  *  status : output frame.
  */
-long pv_complex_play_step (struct pv_complex_data *pv,
+long pv_complex_play_step (struct pv_complex *pv,
 			   long cur);
 
 
