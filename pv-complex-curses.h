@@ -1,7 +1,7 @@
 /* header file for pv-complex-curses.c --
  * real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.h,v 1.2 2007/10/15 06:17:11 kichiki Exp $
+ * $Id: pv-complex-curses.h,v 1.3 2007/10/20 20:07:32 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,18 +20,18 @@
 #ifndef	_PV_COMPLEX_CURSES_H_
 #define	_PV_COMPLEX_CURSES_H_
 
-#include "pv-complex.h" // struct pv_complex_data
+#include "pv-complex.h" // struct pv_complex
 
 
 /* play 1 milisecond and return
  * INPUT
- *  pv        : struct pv_complex_data
+ *  pv        : struct pv_complex
  *  play_cur  : current frame
  *  frame0, frame1 : the loop range
  * OUTPUT
  */
 int
-play_1msec_curses (struct pv_complex_data *pv,
+play_1msec_curses (struct pv_complex *pv,
 		   long *play_cur,
 		   long frame0, long frame1);
 

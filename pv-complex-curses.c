@@ -1,6 +1,6 @@
 /* real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.2 2007/10/15 06:16:48 kichiki Exp $
+ * $Id: pv-complex-curses.c,v 1.3 2007/10/20 20:06:45 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,7 +23,7 @@
 
 #include <ao/ao.h>
 #include "ao-wrapper.h" // ao_init_16_stereo()
-#include "pv-complex.h" // struct pv_complex_data
+#include "pv-complex.h" // struct pv_complex
 #include "pv-conventional.h" // get_scale_factor_for_window()
 
 #include "memory-check.h" // CHECK_MALLOC
@@ -31,18 +31,17 @@
 
 /* play 1 milisecond and return
  * INPUT
- *  pv        : struct pv_complex_data
+ *  pv        : struct pv_complex
  *  play_cur  : current frame
  *  frame0, frame1 : the loop range
  * OUTPUT
  */
 int
-play_1msec_curses (struct pv_complex_data *pv,
+play_1msec_curses (struct pv_complex *pv,
 		   long *play_cur,
 		   long frame0, long frame1)
 {
-  long len_1msec;
-  len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
+  long len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
 
   if (*play_cur <  frame0) *play_cur = frame0;
   if (*play_cur >= frame1) *play_cur = frame1;
@@ -79,10 +78,12 @@ play_1msec_curses (struct pv_complex_data *pv,
 #define Y_lock    (8)
 #define Y_window  (10)
 #define Y_len     (11)
-#define Y_hop     (12)
+#define Y_hop_syn (12)
+#define Y_hop_ana (13)
+#define Y_hop_res (14)
 
-#define Y_status  (14)
-#define Y_comment (16)
+#define Y_status  (16)
+#define Y_comment (18)
 
 static void
 curses_print_window (int flag_window)
@@ -115,7 +116,7 @@ curses_print_window (int flag_window)
 
 static void
 curses_print_pv (const char *file,
-		 struct pv_complex_data *pv,
+		 struct pv_complex *pv,
 		 int flag_play,
 		 long frame0, long frame1,
 		 double pv_pitch,
@@ -128,8 +129,9 @@ curses_print_pv (const char *file,
   mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
   mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
   mvprintw (Y_len,    1, "fft-len    : %06ld", pv->len);
-  mvprintw (Y_hop,    1, "hop        : (syn) %06ld (ana) %06ld (res) %06ld",
-	    pv->hop_syn, pv->hop_ana, pv->hop_res);
+  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 
   if (flag_play == 0) mvprintw(Y_status, 1, "status     : stop");
   else                mvprintw(Y_status, 1, "status     : play");
@@ -139,12 +141,13 @@ curses_print_pv (const char *file,
   curses_print_window (pv->flag_window);
 
   // help message
-  mvprintw (Y_loop,   41, "< > by cur, shrink { }, extend [ ]");
-  mvprintw (Y_pitch,  41, "UP   / DOWN");
-  mvprintw (Y_rate,   41, "LEFT / RIGHT");
-  mvprintw (Y_status, 41, "SPACE");
-  mvprintw (Y_lock,   41, "L");
-  mvprintw (Y_window, 41, "W");
+  mvprintw (Y_loop,    41, "< > by cur, [ { expand } ]");
+  mvprintw (Y_pitch,   41, "UP   / DOWN");
+  mvprintw (Y_rate,    41, "LEFT / RIGHT");
+  mvprintw (Y_hop_syn, 41, "H / h");
+  mvprintw (Y_status,  41, "SPACE");
+  mvprintw (Y_lock,    41, "L");
+  mvprintw (Y_window,  41, "W");
 
   mvprintw (Y_comment-1, 0, "----------------------------------------");
 }
@@ -163,7 +166,7 @@ void pv_complex_curses (const char *file,
 
 
   int flag_window = 3;
-  struct pv_complex_data *pv
+  struct pv_complex *pv
     = pv_complex_init (len, hop_syn, flag_window);
   CHECK_MALLOC (pv, "pv_complex_curses");
 
@@ -197,8 +200,8 @@ void pv_complex_curses (const char *file,
   int flag_play = 1;
   long play_cur = 0;
 
-  long len_1msec;
-  len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
+  long len_1sec  = (long)(pv->sfinfo->samplerate /* Hz */);
+  long len_10sec = (long)(10 * pv->sfinfo->samplerate /* Hz */);
 
   mvprintw (Y_comment, 1, "Welcome WaoN-pv in curses mode.");
   curses_print_pv (file, pv, flag_play, frame0, frame1,
@@ -234,20 +237,6 @@ void pv_complex_curses (const char *file,
 		    frame0, frame1);
 	  break;
 
-	case ']':
-	  frame1 += len_1msec;
-	  if (frame1 >= pv->sfinfo->frames - 1) frame1 = pv->sfinfo->frames - 1;
-	  mvprintw (Y_loop,   1, "loop       : %010ld - %010ld",
-		    frame0, frame1);
-	  break;
-
-	case '}':
-	  frame1 -= len_1msec;
-	  if (frame0 > frame1) frame1 = frame0;
-	  mvprintw (Y_loop,   1, "loop       : %010ld - %010ld",
-		    frame0, frame1);
-	  break;
-
 	case '<':
 	case ',':
 	  frame0 = play_cur;
@@ -255,16 +244,30 @@ void pv_complex_curses (const char *file,
 		    frame0, frame1);
 	  break;
 
+	case ']':
+	  frame1 += len_10sec;
+	  if (frame1 >= pv->sfinfo->frames - 1) frame1 = pv->sfinfo->frames - 1;
+	  mvprintw (Y_loop,   1, "loop       : %010ld - %010ld",
+		    frame0, frame1);
+	  break;
+
+	case '}':
+	  frame1 += len_1sec;
+	  if (frame1 >= pv->sfinfo->frames - 1) frame1 = pv->sfinfo->frames - 1;
+	  mvprintw (Y_loop,   1, "loop       : %010ld - %010ld",
+		    frame0, frame1);
+	  break;
+
 	case '[':
-	  frame0 -= len_1msec;
+	  frame0 -= len_10sec;
 	  if (frame0 < 0) frame0 = 0;
 	  mvprintw (Y_loop,   1, "loop       : %010ld - %010ld",
 		    frame0, frame1);
 	  break;
 
 	case '{':
-	  frame0 += len_1msec;
-	  if (frame0 > frame1) frame0 = frame1;
+	  frame0 -= len_1sec;
+	  if (frame0 < 0) frame0 = 0;
 	  mvprintw (Y_loop,   1, "loop       : %010ld - %010ld",
 		    frame0, frame1);
 	  break;
@@ -295,9 +298,9 @@ void pv_complex_curses (const char *file,
 	  if (pv->hop_syn > len) pv->hop_syn = len;
 	  // hop_res, hop_ana depend on hop_syn
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-	  mvprintw (Y_hop,    1, "hop        :"
-		    " (syn) %06ld (ana) %06ld (res) %06ld",
-		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 	  break;
 
 	case 'h':
@@ -305,45 +308,45 @@ void pv_complex_curses (const char *file,
 	  if (pv->hop_syn < 1) pv->hop_syn = 1;
 	  // hop_res, hop_ana depend on hop_syn
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-	  mvprintw (Y_hop,    1, "hop        :"
-		    " (syn) %06ld (ana) %06ld (res) %06ld",
-		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 	  break;
 
 	case KEY_UP:
 	  pv_pitch += 1.0;
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
-	  mvprintw (Y_hop,    1, "hop        :"
-		    " (syn) %06ld (ana) %06ld (res) %06ld",
-		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 	  break;
 
 	case KEY_DOWN:
 	  pv_pitch -= 1.0;
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
-	  mvprintw (Y_hop,    1, "hop        :"
-		    " (syn) %06ld (ana) %06ld (res) %06ld",
-		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 	  break;
 
 	case KEY_LEFT:
 	  pv_rate -= 0.1;
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
-	  mvprintw (Y_hop,    1, "hop        :"
-		    " (syn) %06ld (ana) %06ld (res) %06ld",
-		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 	  break;
 
 	case KEY_RIGHT:
 	  pv_rate += 0.1;
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
-	  mvprintw (Y_hop,    1, "hop        :"
-		    " (syn) %06ld (ana) %06ld (res) %06ld",
-		    pv->hop_syn, pv->hop_ana, pv->hop_res);
+	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
+	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
+	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
 	  break;
 
 	case KEY_HOME:
