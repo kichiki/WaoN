@@ -1,10 +1,10 @@
 # Makefile for pv
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.pv,v 1.5 2007/10/14 06:31:30 kichiki Exp $
+# $Id: Makefile.pv,v 1.6 2007/10/20 20:27:31 kichiki Exp $
 
 
 LIBS    =\
-	-lcurses \
+	-lncurses \
 	`pkg-config --libs ao` \
 	`pkg-config --libs sndfile` \
 	`pkg-config --libs fftw3` \
