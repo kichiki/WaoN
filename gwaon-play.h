@@ -1,7 +1,7 @@
 /* header file for gwaon-play.c --
  * gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.h,v 1.1 2007/02/23 02:14:51 kichiki Exp $
+ * $Id: gwaon-play.h,v 1.2 2007/10/21 04:02:23 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,10 +21,10 @@
 #define	_GWAON_PLAY_H_
 
 
-/* play 1 milisecond and return
+/* play 100 milisecond and return
  */
 gint
-play_1msec (gpointer data);
+play_100msec (gpointer data);
 
 
 #endif /* !_GWAON_PLAY_H_ */

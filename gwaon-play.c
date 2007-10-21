@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : playback
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.c,v 1.6 2007/10/20 20:09:11 kichiki Exp $
+ * $Id: gwaon-play.c,v 1.7 2007/10/21 04:01:56 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 
 
 // global variables
-ao_device *ao;
+ao_device *ao = NULL;
 
 long play_cur; // current frame to play
 int flag_play; // status: 0 = not playing, 1 = playing
@@ -48,16 +48,15 @@ double pv_pitch; // pitch-shift
 struct pv_complex *pv = NULL; // initialized in create_wav()
 
 
-/* play 1 milisecond and return
+/* play 100 milisecond and return
  */
 gint
-play_1msec (gpointer data)
+play_100msec (gpointer data)
 {
   extern struct pv_complex *pv;
   extern long play_cur;
 
-  long len_1msec;
-  len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
+  long len_100msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
 
   // draw indicator
   draw_play_indicator ((GtkWidget *)data);
@@ -76,7 +75,7 @@ play_1msec (gpointer data)
 
   long len_play;
   long l;
-  for (l = 0; l < len_1msec; l += len_play)
+  for (l = 0; l < len_100msec; l += len_play)
     {
       len_play = pv_complex_play_step (pv, play_cur);
       if (len_play < pv->hop_syn)
