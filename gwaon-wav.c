@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.16 2007/10/20 20:25:37 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.17 2007/10/21 04:44:52 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1735,23 +1735,245 @@ wav_expose_event (GtkWidget *widget, GdkEventExpose *event)
   return FALSE;
 }
 
+
+static void
+WIN_spec_n_update (void)
+{
+  extern int WIN_spec_n;
+  extern double *spec_in;
+  extern double *spec_out;
+  extern fftw_plan plan;
+
+  free (spec_in);
+  free (spec_out);
+  fftw_destroy_plan (plan);
+  spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
+  spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
+  CHECK_MALLOC (spec_in,  "wav_key_press_event");
+  CHECK_MALLOC (spec_out, "wav_key_press_event");
+  plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
+			   FFTW_R2HC, FFTW_ESTIMATE);
+
+  extern double *spec_left;
+  extern double *spec_right;
+  spec_left  = (double *)realloc (spec_left, sizeof(double) * WIN_spec_n);
+  spec_right = (double *)realloc (spec_right, sizeof(double) * WIN_spec_n);
+  CHECK_MALLOC (spec_left,  "wav_key_press_event");
+  CHECK_MALLOC (spec_right, "wav_key_press_event");
+
+  extern int WIN_spec_hop_scale;
+  extern int WIN_spec_hop;
+  WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
+
+  // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+  extern struct pv_complex *pv;
+  extern double pv_rate;
+  extern double pv_pitch;
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+}
+
+static gint
+b_fft_up_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int WIN_spec_n;
+  WIN_spec_n *= 2;
+
+  WIN_spec_n_update ();
+
+  extern GdkPixmap *wav_pixmap;
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_fft_down_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int WIN_spec_n;
+  WIN_spec_n /= 2;
+  if (WIN_spec_n < 16) WIN_spec_n = 16; // is it enough?
+
+  WIN_spec_n_update ();
+
+  extern GdkPixmap *wav_pixmap;
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_hop_up_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int WIN_spec_hop_scale;
+  extern int WIN_spec_hop;
+  WIN_spec_hop_scale /= 2;
+  if (WIN_spec_hop_scale <= 1) WIN_spec_hop_scale = 1;
+  WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
+
+  // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+  extern struct pv_complex *pv;
+  extern double pv_rate;
+  extern double pv_pitch;
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_hop_down_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int WIN_spec_hop_scale;
+  extern int WIN_spec_hop;
+  WIN_spec_hop_scale *= 2;
+  WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
+
+  // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
+  extern struct pv_complex *pv;
+  extern double pv_rate;
+  extern double pv_pitch;
+  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
+
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_mode_up_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int WIN_spec_mode;
+  WIN_spec_mode ++;
+  if (WIN_spec_mode > 2) WIN_spec_mode = 0;
+
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_mode_down_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int WIN_spec_mode;
+  WIN_spec_mode --;
+  if (WIN_spec_mode < 0) WIN_spec_mode = 2;
+
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_window_up_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int flag_window;
+  flag_window ++;
+  if (flag_window > 6) flag_window = 0;
+
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_window_down_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int flag_window;
+  flag_window --;
+  if (flag_window < 0) flag_window = 6;
+
+  //update_win_wav (widget,
+  update_win_wav (GTK_WIDGET (data),
+		  1, // spec
+		  0, // wav
+		  1  // spg
+		  );
+  
+  return TRUE;
+}
+
+static gint
+b_lock_press_event (GtkWidget *widget, gpointer data)
+{
+  extern struct pv_complex *pv;
+
+  if (pv->flag_lock == 0)
+    {
+      pv->flag_lock = 1;
+    }
+  else
+    {
+      pv->flag_lock = 0;
+    }
+  
+  return TRUE;
+}
+
+static gint
+b_play_press_event (GtkWidget *widget, gpointer data)
+{
+  extern int flag_play;
+  extern gint tag_play;
+  flag_play ++;
+  if (flag_play > 1)
+    {
+      flag_play = 0;
+      // gtk_timeout_remove is deprecated
+      g_source_remove (tag_play);
+    }
+  else
+    {
+      // gtk_timeout_add is deprecated
+      tag_play = g_timeout_add (100, // miliseconds
+				play_100msec, widget);
+    }
+  
+  return TRUE;
+}
+
 static gint
 wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
 {
   extern GdkPixmap *wav_pixmap;
-  extern gint WIN_wav_width;
-  extern int flag_window;
   extern double amp2_min, amp2_max;
   extern int oct_min, oct_max;
   extern double logf_min, logf_max;
-
-  extern int flag_play;
-  extern gint tag_play;
-
-  // defined in gwaon-play.c
-  extern struct pv_complex *pv;
-  extern double pv_rate;
-  extern double pv_pitch;
 
 
   //fprintf (stderr, "key_press_event\n");
@@ -1766,133 +1988,39 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       break;
 
     case GDK_Right:
-      WIN_spec_n *= 2;
-      //fprintf (stdout, "Win_spec_n = %d\n", WIN_spec_n);
-      free (spec_in);
-      free (spec_out);
-      fftw_destroy_plan (plan);
-      spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
-      spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
-      CHECK_MALLOC (spec_in,  "wav_key_press_event");
-      CHECK_MALLOC (spec_out, "wav_key_press_event");
-      plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
-			       FFTW_R2HC, FFTW_ESTIMATE);
-      spec_left  = (double *)realloc (spec_left, sizeof(double) * WIN_spec_n);
-      spec_right = (double *)realloc (spec_right, sizeof(double) * WIN_spec_n);
-      CHECK_MALLOC (spec_left,  "wav_key_press_event");
-      CHECK_MALLOC (spec_right, "wav_key_press_event");
-
-      WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
-      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
-      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_fft_up_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
-
     case GDK_Left:
-      WIN_spec_n /= 2;
-      if (WIN_spec_n < 16) WIN_spec_n = 16; // is it enough?
-      //fprintf (stdout, "Win_spec_n = %d\n", WIN_spec_n);
-      free (spec_in);
-      free (spec_out);
-      fftw_destroy_plan (plan);
-      spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
-      spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
-      CHECK_MALLOC (spec_in,  "wav_key_press_event");
-      CHECK_MALLOC (spec_out, "wav_key_press_event");
-      plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
-			       FFTW_R2HC, FFTW_ESTIMATE);
-      spec_left  = (double *)realloc (spec_left, sizeof(double) * WIN_spec_n);
-      spec_right = (double *)realloc (spec_right, sizeof(double) * WIN_spec_n);
-      CHECK_MALLOC (spec_left,  "wav_key_press_event");
-      CHECK_MALLOC (spec_right, "wav_key_press_event");
-
-      WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
-      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
-      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_fft_down_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
 
     case GDK_h:
-      WIN_spec_hop_scale /= 2;
-      if (WIN_spec_hop_scale <= 1) WIN_spec_hop_scale = 1;
-      WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
-      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
-      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_hop_up_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
-
     case GDK_H:
-      WIN_spec_hop_scale *= 2;
-      WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
-      if (WIN_spec_hop == 0)
-	{
-	  WIN_spec_hop = 1;
-	  WIN_spec_hop_scale = WIN_spec_n / WIN_spec_hop;
-	}
-      // hop_res and hop_ana depend on hop_syn ( = WIN_spec_hop)
-      pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_hop_down_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
 
     case GDK_p:
-      WIN_spec_mode ++;
-      if (WIN_spec_mode > 2) WIN_spec_mode = 0;
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_mode_up_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
-
     case GDK_P:
-      WIN_spec_mode --;
-      if (WIN_spec_mode < 0) WIN_spec_mode = 2;
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_mode_down_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
 
     case GDK_W:
-      flag_window --;
-      if (flag_window < 0) flag_window = 6;
-      //fprint_window_name (stdout, flag_window);
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_window_down_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
     case GDK_w:
-      flag_window ++;
-      if (flag_window > 6) flag_window = 0;
-      //fprint_window_name (stdout, flag_window);
-      update_win_wav (widget,
-		      1, // spec
-		      0, // wav
-		      1  // spg
-		      );
+      b_window_up_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
 
     case GDK_o:
@@ -1972,35 +2100,14 @@ wav_key_press_event (GtkWidget *widget, GdkEventKey *event)
       break;
 
     case GDK_space:
-      flag_play ++;
-      if (flag_play > 1)
-	{
-	  fprintf (stderr, "# STOP\n");
-	  flag_play = 0;
-	  // gtk_timeout_remove is deprecated
-	  g_source_remove (tag_play);
-	}
-      else
-	{
-	  fprintf (stderr, "# PLAY\n");
-	  // gtk_timeout_add is deprecated
-	  tag_play = g_timeout_add (100, // miliseconds
-				    play_1msec, widget);
-	}
+      b_play_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
 
     case GDK_Q:
     case GDK_q:
-      if (pv->flag_lock == 0)
-	{
-	  pv->flag_lock = 1;
-	  fprintf (stderr, "# loose phase lock\n");
-	}
-      else
-	{
-	  pv->flag_lock = 0;
-	  fprintf (stderr, "# no phase lock\n");
-	}
+      b_lock_press_event (widget, widget);
+      // second pointer is passed to update_win_wav()
       break;
 
     default:
@@ -2089,6 +2196,7 @@ wav_motion_notify_event (GtkWidget *widget, GdkEventMotion *event)
 
   return TRUE;
 }
+
 
 static void
 wav_adj_cur (GtkAdjustment *get, GtkAdjustment *set)
@@ -2210,29 +2318,61 @@ make_color_map (void)
   colormap_power_b[255] = 0;
 }
 
-
 static gboolean
 wav_delete (GtkWidget *widget,
 	    GdkEvent *event,
 	    gpointer data)
 {
+  // stop playing
+  extern int flag_play;
+  extern gint tag_play;
+  if (flag_play == 1)
+    {
+      flag_play = 0;
+      g_source_remove (tag_play);
+    }
+
+  extern struct pv_complex *pv;
+  if (pv != NULL)
+    {
+      pv_complex_free (pv);
+      pv = NULL;
+    }
+
+  // sndfile device
+  extern SNDFILE *sf;
+  if (sf != NULL)
+    {
+      sf_close (sf);
+      sf = NULL;
+    }
+
+  // ao device
+  extern ao_device *ao;
+  if (ao != NULL)
+    {
+      ao_close (ao);
+      ao = NULL;
+    }
+
+
   /* If you return FALSE in the "delete_event" signal handler,
    * GTK will emit the "destroy" signal. Returning TRUE means
    * you don't want the window to be destroyed.
    * This is useful for popping up 'are you sure you want to quit?'
    * type dialogs. */
-
-  // sndfile device
-  extern SNDFILE *sf;
-  sf_close (sf);
-
-  // ao device
-  extern ao_device *ao;
-  ao_close (ao);
-
-
   return FALSE;
 }
+
+static gint
+b_close_press_event (GtkWidget *widget, gpointer data)
+{
+  wav_delete (widget, NULL, data);
+
+  gtk_widget_destroy (GTK_WIDGET(data));
+  return TRUE;
+}
+
 
 /** **/
 void
@@ -2340,14 +2480,88 @@ create_wav (void)
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
 		      GTK_SIGNAL_FUNC (wav_delete), NULL);
 
+  /* main vertical box
+   *   <bottuns>
+   *   <main hbox>
+   */
+  GtkWidget *main_vbox = gtk_vbox_new (FALSE, 0);
+  gtk_container_add (GTK_CONTAINER (window), main_vbox);
+  gtk_widget_show (main_vbox);
 
+  /* horizontal box for buttons */
+  GtkWidget *b_hbox = gtk_hbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (main_vbox), b_hbox, FALSE, FALSE, 0);
+  gtk_widget_show (b_hbox);
+
+  GtkWidget *b_play = gtk_button_new_with_label (" play ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_play, FALSE, FALSE, 0);
+  gtk_widget_show (b_play);
+  gtk_signal_connect (GTK_OBJECT (b_play), "clicked",
+                      (GtkSignalFunc) b_play_press_event, NULL);
+
+  GtkWidget *b_stop = gtk_button_new_with_label (" stop ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_stop, FALSE, FALSE, 0);
+  gtk_widget_show (b_stop);
+  gtk_signal_connect (GTK_OBJECT (b_stop), "clicked",
+                      (GtkSignalFunc) b_play_press_event, NULL);
+
+  GtkWidget *b_mode_up = gtk_button_new_with_label (" mode ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_mode_up, FALSE, FALSE, 0);
+  gtk_widget_show (b_mode_up);
+
+  GtkWidget *b_fft_down = gtk_button_new_with_label (" FFT- ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_fft_down, FALSE, FALSE, 0);
+  gtk_widget_show (b_fft_down);
+
+  GtkWidget *b_fft_up = gtk_button_new_with_label (" FFT+ ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_fft_up, FALSE, FALSE, 0);
+  gtk_widget_show (b_fft_up);
+
+  GtkWidget *b_window_up = gtk_button_new_with_label (" window ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_window_up, FALSE, FALSE, 0);
+  gtk_widget_show (b_window_up);
+
+  GtkWidget *b_hop_down = gtk_button_new_with_label (" hop- ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_hop_down, FALSE, FALSE, 0);
+  gtk_widget_show (b_hop_down);
+
+  GtkWidget *b_hop_up = gtk_button_new_with_label (" hop+ ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_hop_up, FALSE, FALSE, 0);
+  gtk_widget_show (b_hop_up);
+
+  GtkWidget *b_lock = gtk_button_new_with_label (" lock ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_lock, FALSE, FALSE, 0);
+  gtk_widget_show (b_lock);
+
+
+  GtkWidget *b_spacing = gtk_vbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_spacing, TRUE, TRUE, 0);
+  gtk_widget_show (b_spacing);
+
+  GtkWidget *b_close = gtk_button_new_with_label (" close ");
+  gtk_box_pack_start (GTK_BOX (b_hbox), b_close, FALSE, FALSE, 0);
+  gtk_widget_show (b_close);
+  gtk_signal_connect (GTK_OBJECT (b_close), "clicked",
+                      (GtkSignalFunc) b_close_press_event, window);
+
+
+  /* main horizontal box
+   *   <main win> <rate scale> <pitch scale>
+   */
   GtkWidget *hbox;
   hbox = gtk_hbox_new (FALSE, 0);
-  gtk_container_set_border_width (GTK_CONTAINER (hbox), 10);
-  gtk_container_add (GTK_CONTAINER (window), hbox);
+  //gtk_container_set_border_width (GTK_CONTAINER (hbox), 10);
+  gtk_container_set_border_width (GTK_CONTAINER (hbox), 2);
+  //gtk_container_add (GTK_CONTAINER (window), hbox);
+  gtk_box_pack_start (GTK_BOX (main_vbox), hbox, TRUE, TRUE, 0);
   gtk_widget_show (hbox);
 
 
+  /* vertical box for <main win>
+   *   <wav>
+   *   <range>
+   *   <scale>
+   */
   GtkWidget *vbox;
   vbox = gtk_vbox_new (FALSE, 0);
   gtk_container_set_border_width (GTK_CONTAINER (vbox), 10);
@@ -2433,6 +2647,15 @@ create_wav (void)
 
 
   // add scale for time-stretch
+  GtkWidget *rate_vbox = gtk_vbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), rate_vbox, FALSE, FALSE, 0);
+  gtk_widget_show (rate_vbox);
+
+  GtkWidget *rate_label = gtk_label_new (" rate ");
+  gtk_misc_set_alignment (GTK_MISC (rate_label), 0, 0);
+  gtk_box_pack_start (GTK_BOX (rate_vbox), rate_label, FALSE, FALSE, 0);
+  gtk_widget_show (rate_label);
+
   extern double pv_rate;
   pv_rate  = 1.0; // initial value
   GtkObject *adj_pv_rate;
@@ -2450,13 +2673,23 @@ create_wav (void)
   scale_rate = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_rate));
   gtk_range_set_update_policy (GTK_RANGE (scale_rate),
 			       GTK_UPDATE_CONTINUOUS);
-  gtk_box_pack_start (GTK_BOX (hbox), scale_rate, FALSE, FALSE, 0);
+  //gtk_box_pack_start (GTK_BOX (hbox), scale_rate, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (rate_vbox), scale_rate, TRUE, TRUE, 0);
   gtk_scale_set_digits (GTK_SCALE (scale_rate), 2);
   gtk_range_set_inverted (GTK_RANGE (scale_rate), TRUE);
   gtk_widget_show (scale_rate);
 
 
   // add scale for pitch-shift
+  GtkWidget *pitch_vbox = gtk_vbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), pitch_vbox, FALSE, FALSE, 0);
+  gtk_widget_show (pitch_vbox);
+
+  GtkWidget *pitch_label = gtk_label_new (" pitch ");
+  gtk_misc_set_alignment (GTK_MISC (pitch_label), 0, 0);
+  gtk_box_pack_start (GTK_BOX (pitch_vbox), pitch_label, FALSE, FALSE, 0);
+  gtk_widget_show (pitch_label);
+
   extern double pv_pitch;
   pv_pitch = 0.0; // initial value
   GtkObject *adj_pv_pitch;
@@ -2474,9 +2707,26 @@ create_wav (void)
   scale_pitch = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_pitch));
   gtk_range_set_update_policy (GTK_RANGE (scale_pitch),
 			       GTK_UPDATE_CONTINUOUS);
-  gtk_box_pack_start (GTK_BOX (hbox), scale_pitch, FALSE, FALSE, 0);
+  //gtk_box_pack_start (GTK_BOX (hbox), scale_pitch, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (pitch_vbox), scale_pitch, TRUE, TRUE, 0);
   gtk_range_set_inverted (GTK_RANGE (scale_pitch), TRUE);
   gtk_widget_show (scale_pitch);
+
+  // some signals (related to wav_win)
+  gtk_signal_connect (GTK_OBJECT (b_fft_up), "clicked",
+                      (GtkSignalFunc) b_fft_up_press_event, wav_win);
+  gtk_signal_connect (GTK_OBJECT (b_fft_down), "clicked",
+                      (GtkSignalFunc) b_fft_down_press_event, wav_win);
+  gtk_signal_connect (GTK_OBJECT (b_hop_up), "clicked",
+                      (GtkSignalFunc) b_hop_up_press_event, wav_win);
+  gtk_signal_connect (GTK_OBJECT (b_hop_down), "clicked",
+                      (GtkSignalFunc) b_hop_down_press_event, wav_win);
+  gtk_signal_connect (GTK_OBJECT (b_mode_up), "clicked",
+                      (GtkSignalFunc) b_mode_up_press_event, wav_win);
+  gtk_signal_connect (GTK_OBJECT (b_window_up), "clicked",
+                      (GtkSignalFunc) b_window_up_press_event, wav_win);
+  gtk_signal_connect (GTK_OBJECT (b_lock), "clicked",
+                      (GtkSignalFunc) b_lock_press_event, wav_win);
 
 
   pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
