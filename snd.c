@@ -1,6 +1,6 @@
 /* some wrapper for libsndfile
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: snd.c,v 1.3 2007/03/10 20:52:35 kichiki Exp $
+ * $Id: snd.c,v 1.4 2007/10/21 04:03:30 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,6 +27,22 @@ long sndfile_read (SNDFILE *sf, SF_INFO sfinfo,
 		   double * left, double * right,
 		   int len)
 {
+  static double *buf = NULL;
+  static int nbuf = 0;
+
+  if (buf == NULL)
+    {
+      buf = (double *)malloc (sizeof (double) * len * sfinfo.channels);
+      CHECK_MALLOC (buf, "sndfile_read");
+      nbuf = len * sfinfo.channels;
+    }
+  if (len * sfinfo.channels > nbuf)
+    {
+      buf = (double *)realloc (buf, sizeof (double) * len * sfinfo.channels);
+      CHECK_MALLOC (buf, "sndfile_read");
+      nbuf = len * sfinfo.channels;
+    }
+
   sf_count_t status;
 
   if (sfinfo.channels == 1)
@@ -35,9 +51,6 @@ long sndfile_read (SNDFILE *sf, SF_INFO sfinfo,
     }
   else
     {
-      double *buf = NULL;
-      buf = (double *) malloc (sizeof (double) * len * sfinfo.channels);
-      CHECK_MALLOC (buf, "sndfile_read");
       status = sf_readf_double (sf, buf, (sf_count_t)len);
       int i;
       for (i = 0; i < len; i ++)
@@ -45,7 +58,6 @@ long sndfile_read (SNDFILE *sf, SF_INFO sfinfo,
 	  left  [i] = buf [i * sfinfo.channels];
 	  right [i] = buf [i * sfinfo.channels + 1];
 	}
-      free (buf);
     }
 
   return ((long) status);
