@@ -1,0 +1,38 @@
+.\" $Id: gwaon.1,v 1.1 2007/10/21 04:46:54 kichiki Exp $
+.TH GWAON "1" "October 20, 2007" "Version 0.8" "WaoN Manual"
+.SH NAME
+gWaoN \- gtk+ GUI frontend for WaoN
+.SH SYNOPSIS
+.B gwaon
+.SH DESCRIPTION
+gWaoN is a gtk+ GUI frontend for WaoN. 
+Right now, gWaoN can do the following:
+1) read an audio file (wav or flac) and analyze its spectrogram,
+2) play the file through libao,
+3) change the playback speed and pitch by phase vocoder in real-time!
+.SH KEY BINDINGS
+.TP
+\fBSpace\fR            : toggle play and stop.
+.TP
+\fBp\fR, \fBP\fR             : change the analysis mode.
+.TP
+\fBw\fR, \fBW\fR             : change the window function.
+.TP
+\fBLeft\fR, \fBRight\fR      : change the FFT size by factor 2.
+.TP
+\fBq\fR, \fBQ\fR             : toggle PV mode (no phase lock/loose phase lock).
+.TP
+\fBh\fR, \fBH\fR             : change hop size for the Phase-Vocoder correction.
+.TP
+\fBo\fR, \fBO\fR             : change the upper octave limit.
+.TP
+\fBl\fR, \fBL\fR             : change the lower octave limit.
+.TP
+\fBUp\fR, \fBDown\fR         : change the upper limit for the power spectrum.
+.TP
+\fBPageUp\fR, \fBPageDown\fR : change the lower limit for the power spectrum.
+.SH COPYRIGHT
+Copyright \(co 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+Web: http://waon.sourceforge.net/
+.SH "SEE ALSO"
+.BR waon (1), pv (1)
