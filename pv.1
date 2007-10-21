@@ -1,5 +1,5 @@
-.\" $Id: pv.1,v 1.1 2007/10/11 03:40:43 kichiki Exp $
-.TH PV "1" "October 10, 2007" "Version 0.8" "WaoN Manual"
+.\" $Id: pv.1,v 1.2 2007/10/21 04:46:20 kichiki Exp $
+.TH PV "1" "October 20, 2007" "Version 0.8" "WaoN Manual"
 .SH NAME
 WaoN\-pv \- yet\-another phase vocoder
 .SH SYNOPSIS
@@ -71,8 +71,31 @@ give the number for PV scheme
 .RS 0
 5 : PV in freq. domain
 .RE 1
+.PP
+.SH KEY BINDINGS IN CURSES MODE
+.TP
+\fBSPACE\fR        : play / stop
+.TP
+\fB< >\fR          : set loop range
+.TP
+\fB[{ }]\fR        : expand the loop range
+.TP
+\fBL l\fR          : phase\-lock on / off
+.TP
+\fBW w\fR          : change window
+.TP
+\fBH h\fR          : hop\-size up / down
+.TP
+\fBUP\fR / \fBDOWN\fR    : pitch up / down
+.TP
+\fBLEFT\fR / \fBRIGHT\fR : pitch up / down
+.TP
+\fBR r HOME\fR     : reset parameters
+.TP
+\fBQ q\fR          : quit
+.PP
 .SH COPYRIGHT
 Copyright \(co 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
 Web: http://waon.sourceforge.net/
 .SH "SEE ALSO"
-.BR waon (1)
+.BR waon (1), gwaon (1)
