@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.14 2007/10/20 20:04:19 kichiki Exp $
+ * $Id: pv.c,v 1.15 2007/10/21 04:42:42 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -68,7 +68,7 @@ void print_pv_usage (char * argv0)
   fprintf (stdout, "\t\t5 blackman window\n");
   fprintf (stdout, "\t\t6 steeper 30-dB/octave rolloff window\n");
   fprintf (stdout, "PHASE-VOCODER OPTIONS\n");
-  fprintf (stdout, "  -hop       \thop number (default: 256)\n");
+  fprintf (stdout, "  -hop       \thop number (default: 512)\n");
   fprintf (stdout, "  -rate      \tsynthesize rate; larger is faster"
 	   " (default: 1.0)\n");
   fprintf (stdout, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
@@ -82,6 +82,17 @@ void print_pv_usage (char * argv0)
   fprintf (stdout, "\t\t4 : PV with fixed hops by Ellis\n");
   fprintf (stdout, "\t\t5 : PV in freq. domain\n");
   fprintf (stdout, "\t\t6 : interactive PV with curses (default)\n");
+  fprintf (stdout, "KEY BINDINGS IN CURSES MODE\n"
+	   "\tSPACE        : play / stop\n"
+	   "\t< >          : set loop range\n"
+	   "\t[{ }]        : expand the loop range\n"
+	   "\tL l          : phase-lock on / off\n"
+	   "\tW w          : change window\n"
+	   "\tH h          : hop-size up / down\n"
+	   "\tUP / DOWN    : pitch up / down\n"
+	   "\tLEFT / RIGHT : pitch up / down\n"
+	   "\tR r HOME     : reset parameters\n"
+	   "\tQ q          : quit\n");
 }
 
 
