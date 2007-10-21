@@ -1,6 +1,6 @@
 /* real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.3 2007/10/20 20:06:45 kichiki Exp $
+ * $Id: pv-complex-curses.c,v 1.4 2007/10/21 04:04:24 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,7 +29,7 @@
 #include "memory-check.h" // CHECK_MALLOC
 
 
-/* play 1 milisecond and return
+/* play 100 milisecond and return
  * INPUT
  *  pv        : struct pv_complex
  *  play_cur  : current frame
@@ -37,11 +37,11 @@
  * OUTPUT
  */
 int
-play_1msec_curses (struct pv_complex *pv,
-		   long *play_cur,
-		   long frame0, long frame1)
+play_100msec_curses (struct pv_complex *pv,
+		     long *play_cur,
+		     long frame0, long frame1)
 {
-  long len_1msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
+  long len_100msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
 
   if (*play_cur <  frame0) *play_cur = frame0;
   if (*play_cur >= frame1) *play_cur = frame1;
@@ -49,7 +49,7 @@ play_1msec_curses (struct pv_complex *pv,
 
   long len_play;
   long l;
-  for (l = 0; l < len_1msec; l += len_play)
+  for (l = 0; l < len_100msec; l += len_play)
     {
       len_play = pv_complex_play_step (pv, *play_cur);
 
@@ -115,6 +115,67 @@ curses_print_window (int flag_window)
 }
 
 static void
+curses_print_pitch (int pv_pitch)
+{
+  int oct;
+  int key;
+  if (pv_pitch < 0)
+    {
+      oct = (-pv_pitch-1) / 12; // -12 == -2 octaves
+      oct = -oct-1;
+      key = (-pv_pitch-1) % 12;
+      key = 11-key;
+    }
+  else
+    {
+      oct = pv_pitch / 12;
+      key = pv_pitch % 12;
+    }
+
+  switch (key)
+    {
+    case 0: // 1 degree
+      mvprintw (Y_pitch,  1, "pitch      : C  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 1: // 1.5
+      mvprintw (Y_pitch,  1, "pitch      : C# %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 2: // +2nd
+      mvprintw (Y_pitch,  1, "pitch      : D  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 3: // 2.5
+      mvprintw (Y_pitch,  1, "pitch      : Eb %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 4: // +3
+      mvprintw (Y_pitch,  1, "pitch      : E  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 5: // +4th
+      mvprintw (Y_pitch,  1, "pitch      : F  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 6: // 4.5
+      mvprintw (Y_pitch,  1, "pitch      : F# %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 7: // +5th
+      mvprintw (Y_pitch,  1, "pitch      : G  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 8: // 5.5
+      mvprintw (Y_pitch,  1, "pitch      : G# %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 9: // +6th
+      mvprintw (Y_pitch,  1, "pitch      : A  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 10: // m7th
+      mvprintw (Y_pitch,  1, "pitch      : Bb %+2d (%+3d)", oct, pv_pitch);
+      break;
+    case 11: // M7
+      mvprintw (Y_pitch,  1, "pitch      : B  %+2d (%+3d)", oct, pv_pitch);
+      break;
+    default:
+      break;
+    }
+}
+
+static void
 curses_print_pv (const char *file,
 		 struct pv_complex *pv,
 		 int flag_play,
@@ -126,7 +187,8 @@ curses_print_pv (const char *file,
   mvprintw (Y_file,   1, "file       : %s", file);
   mvprintw (Y_frames, 1, "current    : %010ld / %010ld", 0, pv->sfinfo->frames);
   mvprintw (Y_loop,   1, "loop       : %010ld - %010ld", frame0, frame1);
-  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
+  //mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
+  curses_print_pitch (pv_pitch);
   mvprintw (Y_rate,   1, "rate       : %-5.1f", pv_rate);
   mvprintw (Y_len,    1, "fft-len    : %06ld", pv->len);
   mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
@@ -213,8 +275,8 @@ void pv_complex_curses (const char *file,
     {
       if (flag_play != 0)
 	{
-	  status = play_1msec_curses (pv, &play_cur,
-				      frame0, frame1);
+	  status = play_100msec_curses (pv, &play_cur,
+					frame0, frame1);
 	}
       // scan keyboard
       int ch = getch();
@@ -316,7 +378,7 @@ void pv_complex_curses (const char *file,
 	case KEY_UP:
 	  pv_pitch += 1.0;
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-	  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
+	  curses_print_pitch (pv_pitch);
 	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
 	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
 	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
@@ -325,7 +387,7 @@ void pv_complex_curses (const char *file,
 	case KEY_DOWN:
 	  pv_pitch -= 1.0;
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
-	  mvprintw (Y_pitch,  1, "pitch      : %-5.0f", pv_pitch);
+	  curses_print_pitch (pv_pitch);
 	  mvprintw (Y_hop_syn,1, "hop(syn)   : %06ld", pv->hop_syn);
 	  mvprintw (Y_hop_ana,1, "hop(ana)   : %06ld", pv->hop_ana);
 	  mvprintw (Y_hop_res,1, "hop(res)   : %06ld", pv->hop_res);
