@@ -1,6 +1,6 @@
 /* real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.4 2007/10/21 04:04:24 kichiki Exp $
+ * $Id: pv-complex-curses.c,v 1.5 2007/10/22 04:46:54 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,11 +47,17 @@ play_100msec_curses (struct pv_complex *pv,
   if (*play_cur >= frame1) *play_cur = frame1;
 
 
-  long len_play;
-  long l;
-  for (l = 0; l < len_100msec; l += len_play)
+  long l; // counting output frames
+  for (l = 0; l < len_100msec; l += pv->hop_syn)
     {
-      len_play = pv_complex_play_step (pv, *play_cur);
+      long len_play = pv_complex_play_step (pv, *play_cur);
+      if (len_play < pv->hop_res)
+	{
+	  // end of file
+	  // rewind
+	  if (pv->hop_ana >= 0.0) *play_cur = frame0;
+	  else                    *play_cur = frame1;
+	}
 
       // increment play_cur
       *play_cur += pv->hop_ana;
