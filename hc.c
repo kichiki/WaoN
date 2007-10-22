@@ -1,6 +1,6 @@
 /* half-complex format routines
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.c,v 1.6 2007/03/10 20:52:34 kichiki Exp $
+ * $Id: hc.c,v 1.7 2007/10/22 04:26:38 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -347,12 +347,25 @@ HC_complex_phase_vocoder (int len, const double *fs, const double *ft,
 			  const double *f_out_old, 
 			  double *f_out)
 {
-  double *tmp1 = NULL;
-  double *tmp2 = NULL;
-  tmp1 = (double *)malloc (sizeof (double) * len);
-  tmp2 = (double *)malloc (sizeof (double) * len);
-  CHECK_MALLOC (tmp1, "HC_complex_phase_vocoder");
-  CHECK_MALLOC (tmp2, "HC_complex_phase_vocoder");
+  static double *tmp1 = NULL;
+  static double *tmp2 = NULL;
+  static int n0 = 0;
+  if (tmp1 == NULL)
+    {
+      tmp1 = (double *)malloc (sizeof (double) * len);
+      tmp2 = (double *)malloc (sizeof (double) * len);
+      CHECK_MALLOC (tmp1, "HC_complex_phase_vocoder");
+      CHECK_MALLOC (tmp2, "HC_complex_phase_vocoder");
+      n0 = len;
+    }
+  else if (n0 < len)
+    {
+      tmp1 = (double *)realloc (tmp1, sizeof (double) * len);
+      tmp2 = (double *)realloc (tmp2, sizeof (double) * len);
+      CHECK_MALLOC (tmp1, "HC_complex_phase_vocoder");
+      CHECK_MALLOC (tmp2, "HC_complex_phase_vocoder");
+      n0 = len;
+    }
 
   // tmp1 = Y[u_{i-1}]/X[s(i)]
   HC_div (len, f_out_old, fs, tmp1);
@@ -364,7 +377,4 @@ HC_complex_phase_vocoder (int len, const double *fs, const double *ft,
 
   // f_out = X[t_i] (Y[u_{i-1}]/X[s_i]) / |Y[u_{i-1}]/X[s_i]|
   HC_mul (len, ft, tmp1, f_out);
-
-  free (tmp1);
-  free (tmp2);
 }
