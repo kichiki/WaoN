@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.9 2007/10/20 20:01:56 kichiki Exp $
+ * $Id: pv-complex.h,v 1.10 2007/10/22 04:44:20 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -86,8 +86,10 @@ pv_complex_init (long len, long hop_syn, int flag_window);
  *  rate  : rate of speed (1 == same speed, negative == backward)
  *  pitch : pitch-shift (0 == no-shift, +1(-1) = half-note up(down))
  * OUTPUT
- *  pv->hop_res : 
- *  pv->hop_ana : 
+ *  pv->hop_res : hop size in 1 step for the output
+ *                == hop_syn with no pitch-shifting
+ *  pv->hop_ana : hop size in 1 step for the input
+ *                == hop_syn with no time-stretching (rate = 1).
  */
 void
 pv_complex_change_rate_pitch (struct pv_complex *pv,
@@ -108,8 +110,32 @@ void
 pv_complex_free (struct pv_complex *pv);
 
 
-/* play the segment of pv->[lr]_out[] for pv->hop_out
- * pv->pitch_shift is taken into account
+long
+read_and_FFT_stereo (struct pv_complex *pv,
+		     long frame,
+		     double *f_left, double *f_right);
+/* the results are stored in out [i] for i = hop_syn to (hop_syn + len)
+ * INPUT
+ *  scale : for safety (give 0.5, for example)
+ */
+void
+apply_invFFT_mono (struct pv_complex *pv,
+		   const double *f, double scale,
+		   double *out);
+/* resample pv->[rl]_out[i] for i = 0 to pv->hop_syn
+ *       to [left,right][i] for i = 0 to pv->hop_res
+ * INPUT
+ * OUTPUT
+ */
+void
+pv_complex_resample (struct pv_complex *pv,
+		     double *left, double *right);
+
+/* play the segment of pv->[lr]_out[] for pv->hop_syn
+ * pv->pitch_shift is taken into account, so that 
+ * the output frames are pv->hop_res.
+ * OUTPUT
+ *  returned value : output frames (should be hop_res)
  */
 int
 pv_complex_play_resample (struct pv_complex *pv);
@@ -128,10 +154,11 @@ pv_complex_play_resample (struct pv_complex *pv);
  *  pv->flag_lock : 0 == no phase lock
  *                  1 == loose phase lock
  * OUTPUT (returned value)
- *  status : output frame.
+ *  status : output frames (should be hop_res)
  */
-long pv_complex_play_step (struct pv_complex *pv,
-			   long cur);
+long
+pv_complex_play_step (struct pv_complex *pv,
+		      long cur);
 
 
 /** some wrapper routines **/

@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.13 2007/10/20 19:59:19 kichiki Exp $
+ * $Id: pv-complex.c,v 1.14 2007/10/22 04:43:54 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -105,8 +105,10 @@ pv_complex_init (long len, long hop_syn, int flag_window)
  *  rate  : rate of speed (1 == same speed, negative == backward)
  *  pitch : pitch-shift (0 == no-shift, +1(-1) = half-note up(down))
  * OUTPUT
- *  pv->hop_res : 
- *  pv->hop_ana : 
+ *  pv->hop_res : hop size in 1 step for the output
+ *                == hop_syn with no pitch-shifting
+ *  pv->hop_ana : hop size in 1 step for the input
+ *                == hop_syn with no time-stretching (rate = 1).
  */
 void
 pv_complex_change_rate_pitch (struct pv_complex *pv,
@@ -166,7 +168,7 @@ pv_complex_free (struct pv_complex *pv)
 }
 
 
-static long
+long
 read_and_FFT_stereo (struct pv_complex *pv,
 		     long frame,
 		     double *f_left, double *f_right)
@@ -213,7 +215,7 @@ read_and_FFT_stereo (struct pv_complex *pv,
  * INPUT
  *  scale : for safety (give 0.5, for example)
  */
-static void
+void
 apply_invFFT_mono (struct pv_complex *pv,
 		   const double *f, double scale,
 		   double *out)
@@ -254,133 +256,152 @@ check_zero (int n, const double *x)
 }
 
 
-/* play the segment of pv->[lr]_out[] for pv->hop_syn
- * pv->pitch_shift is taken into account
+/* resample pv->[rl]_out[i] for i = 0 to pv->hop_syn
+ *       to [left,right][i] for i = 0 to pv->hop_res
+ * INPUT
+ * OUTPUT
  */
-int
-pv_complex_play_resample (struct pv_complex *pv)
+void
+pv_complex_resample (struct pv_complex *pv,
+		     double *left, double *right)
 {
   // samplerate conversion
   SRC_DATA srdata;
   static float  *fl_in  = NULL;
   static float  *fl_out = NULL;
-  static double *l_out_src = NULL;
-  static double *r_out_src = NULL;
   static int hop_syn0 = 0;
   static int hop_res0 = 0;
   if (fl_in == NULL)
     {
       fl_in  = (float *)malloc (sizeof (float) * 2 * pv->hop_syn);
       fl_out = (float *)malloc (sizeof (float) * 2 * pv->hop_res);
-      CHECK_MALLOC (fl_in,  "pv_complex_play_resample");
-      CHECK_MALLOC (fl_out, "pv_complex_play_resample");
-
-      l_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
-      r_out_src = (double *)malloc (sizeof (double) * pv->hop_res);
-      CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
-      CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
-
+      CHECK_MALLOC (fl_in,  "pv_complex_resample");
+      CHECK_MALLOC (fl_out, "pv_complex_resample");
       hop_syn0 = pv->hop_syn;
       hop_res0 = pv->hop_res;
-    }
-  if (hop_syn0 < pv->hop_syn)
-    {
-      fl_in = (float *)realloc (fl_in, sizeof (float) * 2 * pv->hop_syn);
-      CHECK_MALLOC (fl_in,  "pv_complex_play_resample");
-
-      hop_syn0 = pv->hop_syn;
-    }
-  if (hop_res0 < pv->hop_res)
-    {
-      fl_out    = (float *)realloc (fl_out, sizeof (float) * 2 * pv->hop_res);
-      l_out_src = (double *)realloc (l_out_src, sizeof (double) * pv->hop_res);
-      r_out_src = (double *)realloc (r_out_src, sizeof (double) * pv->hop_res);
-      CHECK_MALLOC (fl_out, "pv_complex_play_resample");
-      CHECK_MALLOC (l_out_src, "pv_complex_play_resample");
-      CHECK_MALLOC (r_out_src, "pv_complex_play_resample");
-
-      hop_res0 = pv->hop_res;
-    }
-
-  int status = 0;
-  int i;
-
-  if (pv->hop_syn != pv->hop_res)
-    {
-      srdata.input_frames  = pv->hop_syn;
-      srdata.output_frames = pv->hop_res;
-      srdata.src_ratio = (double)(pv->hop_res) / (double)(pv->hop_syn);
-      srdata.data_in  = fl_in;
-      srdata.data_out = fl_out;
-
-      // samplerate conversion (time fixed)
-      for (i = 0; i < pv->hop_syn; i ++)
-	{
-	  fl_in [i*2 + 0] = (float)(pv->l_out [i]);
-	  fl_in [i*2 + 1] = (float)(pv->r_out [i]);
-	}
-      //status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
-      status = src_simple (&srdata, SRC_SINC_FASTEST, 2);
-      // this works better
-      if (status != 0)
-	{
-	  fprintf (stderr, "fail to samplerate conversion\n");
-	  exit (1);
-	}
-
-      //for (i = 0; i < hop_in; i ++)
-      for (i = 0; i < pv->hop_res; i ++)
-	{
-	  l_out_src [i] = (double)(fl_out [i*2 + 0]);
-	  r_out_src [i] = (double)(fl_out [i*2 + 1]);
-	}
-
-      // output
-      if (pv->flag_out == 0)
-	{
-	  //status = ao_write (pv->ao, l_out_src, r_out_src, hop_in);
-	  status = ao_write (pv->ao, l_out_src, r_out_src, pv->hop_res);
-	  status /= 4; // 2 bytes for 2 channels
-	}
-      else if (pv->flag_out == 1)
-	{
-	  /*
-	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
-				  l_out_src, r_out_src, hop_in);
-	  */
-	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
-				  l_out_src, r_out_src, pv->hop_res);
-	}
-      else
-	{
-	  fprintf (stderr, "invalid output device\n");
-	}
-
-      // modify status
-      if (status == pv->hop_res) status = pv->hop_syn;
-      else status = (int)((double)status
-			  * (double)(pv->hop_syn) / (double)(pv->hop_res));
     }
   else
     {
-      if (pv->flag_out == 0)
+      if (hop_syn0 < pv->hop_syn)
 	{
-	  status = ao_write (pv->ao, pv->l_out, pv->r_out, pv->hop_syn);
-	  status /= 4; // 2 bytes for 2 channels
+	  fl_in = (float *)realloc (fl_in, sizeof (float) * 2 * pv->hop_syn);
+	  CHECK_MALLOC (fl_in,  "pv_complex_resample");
+	  hop_syn0 = pv->hop_syn;
 	}
-      else if (pv->flag_out == 1)
+      if (hop_res0 < pv->hop_res)
 	{
-	  status = sndfile_write (pv->sfout, *(pv->sfout_info),
-				  pv->l_out, pv->r_out, pv->hop_syn);
+	  fl_out =
+	    (float *)realloc (fl_out, sizeof (float) * 2 * pv->hop_res);
+	  CHECK_MALLOC (fl_out, "pv_complex_resample");
+	  hop_res0 = pv->hop_res;
 	}
-      else
-	{
-	  fprintf (stderr, "invalid output device\n");
-	}
+    }
+
+  srdata.input_frames  = pv->hop_syn;
+  srdata.output_frames = pv->hop_res;
+  srdata.src_ratio = (double)(pv->hop_res) / (double)(pv->hop_syn);
+  srdata.data_in  = fl_in;
+  srdata.data_out = fl_out;
+
+  // samplerate conversion (time fixed)
+  int i;
+  for (i = 0; i < pv->hop_syn; i ++)
+    {
+      fl_in [i*2 + 0] = (float)(pv->l_out [i]);
+      fl_in [i*2 + 1] = (float)(pv->r_out [i]);
+    }
+  int status;
+  //status = src_simple (&srdata, SRC_SINC_BEST_QUALITY, 2);
+  status = src_simple (&srdata, SRC_SINC_FASTEST, 2);
+  // this works better
+  if (status != 0)
+    {
+      fprintf (stderr, "fail to samplerate conversion\n");
+      exit (1);
+    }
+
+  for (i = 0; i < pv->hop_res; i ++)
+    {
+      left [i]  = (double)(fl_out [i*2 + 0]);
+      right [i] = (double)(fl_out [i*2 + 1]);
+    }
+}
+
+/* play l[n] and r[n] into ao or snd devices
+ * INPUT
+ * OUTPUT
+ *  returned value : number of frames (should be equal to n)
+ */
+int
+pv_complex_play (struct pv_complex *pv,
+		 int n, double *l, double *r)
+{
+  int status = 0;
+  if (pv->flag_out == 0)
+    {
+      status = ao_write (pv->ao, l, r, n);
+      status /= 4; // 2 bytes for 2 channels
+    }
+  else if (pv->flag_out == 1)
+    {
+      status = sndfile_write (pv->sfout, *(pv->sfout_info),
+			      l, r, n);
+    }
+  else
+    {
+      fprintf (stderr, "invalid output device\n");
     }
 
   return (status);
 }
+
+/* play the segment of pv->[lr]_out[] for pv->hop_syn
+ * pv->pitch_shift is taken into account, so that 
+ * the output frames are pv->hop_res.
+ * OUTPUT
+ *  returned value : output frames (should be hop_res)
+ */
+int
+pv_complex_play_resample (struct pv_complex *pv)
+{
+  int status;
+
+  if (pv->hop_syn != pv->hop_res)
+    {
+      // samplerate conversion
+      static double *l_resamp = NULL;
+      static double *r_resamp = NULL;
+      static int hop_res0 = 0;
+      if (l_resamp == NULL)
+	{
+	  l_resamp = (double *)malloc (sizeof (double) * pv->hop_res);
+	  r_resamp = (double *)malloc (sizeof (double) * pv->hop_res);
+	  CHECK_MALLOC (l_resamp, "pv_complex_play_resample");
+	  CHECK_MALLOC (r_resamp, "pv_complex_play_resample");
+	  hop_res0 = pv->hop_res;
+	}
+      else if (hop_res0 < pv->hop_res)
+	{
+	  l_resamp =
+	    (double *)realloc (l_resamp, sizeof (double) * pv->hop_res);
+	  r_resamp =
+	    (double *)realloc (r_resamp, sizeof (double) * pv->hop_res);
+	  CHECK_MALLOC (l_resamp, "pv_complex_play_resample");
+	  CHECK_MALLOC (r_resamp, "pv_complex_play_resample");
+	  hop_res0 = pv->hop_res;
+	}
+
+      pv_complex_resample (pv, l_resamp, r_resamp);
+      status = pv_complex_play (pv, pv->hop_res, l_resamp, r_resamp);
+    }
+  else
+    {
+      status = pv_complex_play (pv, pv->hop_syn, pv->l_out, pv->r_out);
+    }
+
+  return (status);
+}
+
 
 /* play one hop_in by the phase vocoder:
  * phase vocoder by complex arithmetics with fixed hops.
@@ -395,10 +416,11 @@ pv_complex_play_resample (struct pv_complex *pv)
  *  pv->flag_lock : 0 == no phase lock
  *                  1 == loose phase lock
  * OUTPUT (returned value)
- *  status : output frame.
+ *  status : output frames (should be hop_res)
  */
-long pv_complex_play_step (struct pv_complex *pv,
-			   long cur)
+long
+pv_complex_play_step (struct pv_complex *pv,
+		      long cur)
 {
   static double *l_fs  = NULL;
   static double *r_fs  = NULL;
@@ -426,20 +448,25 @@ long pv_complex_play_step (struct pv_complex *pv,
     }
 
   long status;
-  // read the starting frame (cur)
+  /* read starting data [cur, cur + len]
+   * ==> FFT ==> fs[len] 
+   */
   status = read_and_FFT_stereo (pv, cur, l_fs, r_fs);
   if (status != pv->len)
     {
       return 0; // no output
     }
 
-  // read the terminal frame (cur + hop_syn)
+  /* read terminal data [cur + hop_syn, cur + hop_syn + len]
+   * ==> FFT ==> ft[len]
+   */
   status = read_and_FFT_stereo (pv, cur + pv->hop_syn, l_ft, r_ft);
   if (status != pv->len)
     {
       return 0; // no output
     }
 
+  // check zero
   int flag_left_cur;
   int flag_right_cur;
   if (check_zero (pv->len, l_fs) == 0 ||
@@ -463,8 +490,10 @@ long pv_complex_play_step (struct pv_complex *pv,
     }
 
 
+  /* phase vocoder process
+   * fs[len] and ft[len] ==> superimposing out[hop_syn, hop_syn + len]
+   */
   int i;
-
   // left channel
   if (flag_left_cur == 1)
     {
@@ -552,11 +581,15 @@ long pv_complex_play_step (struct pv_complex *pv,
     }
 
 
-  // output
+  /* output
+   * out[0, hop_syn] ==> resample into hop_res ==> ao derive or snd file
+   */
   status = pv_complex_play_resample (pv);
 
 
-  /* shift [lr]_out by hop_syn */
+  /* shift
+   * out[hop_syn, hop_syn + len] ==> out[0, len]
+   */
   for (i = 0; i < pv->len; i ++)
     {
       pv->l_out [i] = pv->l_out [i + pv->hop_syn];
@@ -641,9 +674,8 @@ void pv_complex (const char *file, const char *outfile,
   long cur;
   for (cur = 0; cur < (long)sfinfo.frames; cur += pv->hop_ana)
     {
-      long status;
-      status = pv_complex_play_step (pv, cur);
-      if (status < pv->hop_syn)
+      long len_play = pv_complex_play_step (pv, cur);
+      if (len_play < pv->hop_res)
 	{
 	  break;
 	}
