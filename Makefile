@@ -1,6 +1,6 @@
 # Makefile for waon package
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
-# $Id: Makefile,v 1.2 2007/10/20 20:16:42 kichiki Exp $
+# $Id: Makefile,v 1.3 2007/10/29 02:50:48 kichiki Exp $
 
 RM = rm -f
 
@@ -10,6 +10,7 @@ CFLAGS += \
 	`pkg-config --cflags sndfile` \
 	`pkg-config --cflags ao` \
 	`pkg-config --cflags samplerate` \
+	`pkg-config --cflags jack` \
 	`pkg-config --cflags gtk+-2.0`
 
 all:	waon pv gwaon
@@ -45,6 +46,7 @@ pv_LIBS = $(LIBS) \
 	`pkg-config --libs sndfile` \
 	`pkg-config --libs fftw3` \
 	`pkg-config --libs samplerate` \
+	`pkg-config --libs jack` \
 	-lm
 
 pv_OBJ = \
@@ -54,11 +56,13 @@ pv_OBJ = \
 	pv-ellis.o \
 	pv-freq.o \
 	pv-loose-lock.o \
+	pv-nofft.o\
 	pv-complex-curses.o \
 	hc.o \
 	fft.o \
 	snd.o \
-	ao-wrapper.o
+	ao-wrapper.o \
+	jack-pv.o
 
 
 pv:	$(pv_OBJ)

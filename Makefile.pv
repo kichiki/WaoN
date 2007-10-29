@@ -1,6 +1,6 @@
 # Makefile for pv
 # Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.pv,v 1.6 2007/10/20 20:27:31 kichiki Exp $
+# $Id: Makefile.pv,v 1.7 2007/10/29 02:51:19 kichiki Exp $
 
 
 LIBS    =\
@@ -9,6 +9,7 @@ LIBS    =\
 	`pkg-config --libs sndfile` \
 	`pkg-config --libs fftw3` \
 	`pkg-config --libs samplerate` \
+	`pkg-config --libs jack` \
 	-lm
 
 CFLAGS  =\
@@ -16,7 +17,8 @@ CFLAGS  =\
 	`pkg-config --cflags ao` \
 	`pkg-config --cflags sndfile` \
 	`pkg-config --cflags fftw3` \
-	`pkg-config --cflags samplerate`
+	`pkg-config --cflags samplerate` \
+	`pkg-config --cflags jack`
 
 LDFLAGS      = 
 
@@ -34,11 +36,13 @@ OBJ = \
 	pv-ellis.o \
 	pv-freq.o \
 	pv-loose-lock.o \
+	pv-nofft.o\
 	pv-complex-curses.o \
 	hc.o \
 	fft.o \
 	snd.o \
-	ao-wrapper.o
+	ao-wrapper.o \
+	jack-pv.o
 
 
 pv:	$(OBJ)
