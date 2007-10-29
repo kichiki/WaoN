@@ -1,6 +1,6 @@
 /* real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.5 2007/10/22 04:46:54 kichiki Exp $
+ * $Id: pv-complex-curses.c,v 1.6 2007/10/29 02:43:06 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,6 +29,11 @@
 #include "memory-check.h" // CHECK_MALLOC
 
 
+/** global variables **/
+int flag_nofft = 0;
+#include "pv-nofft.h"
+
+
 /* play 100 milisecond and return
  * INPUT
  *  pv        : struct pv_complex
@@ -41,6 +46,8 @@ play_100msec_curses (struct pv_complex *pv,
 		     long *play_cur,
 		     long frame0, long frame1)
 {
+  extern int flag_nofft;
+
   long len_100msec = (long)(0.1 /* sec */ * pv->sfinfo->samplerate /* Hz */);
 
   if (*play_cur <  frame0) *play_cur = frame0;
@@ -50,7 +57,9 @@ play_100msec_curses (struct pv_complex *pv,
   long l; // counting output frames
   for (l = 0; l < len_100msec; l += pv->hop_syn)
     {
-      long len_play = pv_complex_play_step (pv, *play_cur);
+      long len_play;
+      if (flag_nofft == 0) len_play = pv_complex_play_step (pv, *play_cur);
+      else                 len_play = pv_nofft_play_step (pv, *play_cur);
       if (len_play < pv->hop_res)
 	{
 	  // end of file
@@ -206,6 +215,8 @@ curses_print_pv (const char *file,
 
   if (pv->flag_lock == 0) mvprintw(Y_lock, 1, "phase-lock : off");
   else                    mvprintw(Y_lock, 1, "phase-lock : on ");
+  if (flag_nofft == 0)    mvprintw(Y_lock, 21, "      ");
+  else                    mvprintw(Y_lock, 21, "no-FFT");
   curses_print_window (pv->flag_window);
 
   // help message
@@ -214,7 +225,7 @@ curses_print_pv (const char *file,
   mvprintw (Y_rate,    41, "LEFT / RIGHT");
   mvprintw (Y_hop_syn, 41, "H / h");
   mvprintw (Y_status,  41, "SPACE");
-  mvprintw (Y_lock,    41, "L");
+  mvprintw (Y_lock,    41, "L / N");
   mvprintw (Y_window,  41, "W");
 
   mvprintw (Y_comment-1, 0, "----------------------------------------");
@@ -225,6 +236,8 @@ curses_print_pv (const char *file,
 void pv_complex_curses (const char *file,
 			long len, long hop_syn)
 {
+  extern int flag_nofft;
+
   // ncurses initializing
   initscr();             /* Start curses mode */
   raw();                 /* Line buffering disabled */
@@ -435,6 +448,16 @@ void pv_complex_curses (const char *file,
 	case 'q':
 	  status = 0;
 	  mvprintw(Y_comment, 1, "good-bye!");
+	  break;
+
+	case 'N':
+	case 'n':
+	  flag_nofft ++;
+	  if (flag_nofft == 2) flag_nofft = 0;
+
+	  if (flag_nofft == 0)    mvprintw(Y_lock, 21, "      ");
+	  else                    mvprintw(Y_lock, 21, "no-FFT");
+
 	  break;
 
 	  /*
