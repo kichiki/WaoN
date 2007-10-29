@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.15 2007/10/21 04:42:42 kichiki Exp $
+ * $Id: pv.c,v 1.16 2007/10/29 02:46:07 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 
 #include "pv-complex.h"
@@ -29,7 +30,9 @@
 #include "pv-loose-lock.h"
 #include "pv-complex-curses.h"
 
-#include "memory-check.h" // CHECK_MALLOC() macro
+// experimental
+#include "jack-pv.h"
+#include "pv-nofft.h"
 
 #include "VERSION.h"
 
@@ -92,6 +95,7 @@ void print_pv_usage (char * argv0)
 	   "\tUP / DOWN    : pitch up / down\n"
 	   "\tLEFT / RIGHT : pitch up / down\n"
 	   "\tR r HOME     : reset parameters\n"
+	   "\tN n          : toggle for no-FFT mode\n"
 	   "\tQ q          : quit\n");
 }
 
@@ -239,8 +243,16 @@ int main (int argc, char** argv)
       break;
 
     case 6:
-      pv_complex_curses (file_in,
-			 len, hop);
+      pv_complex_curses (file_in, len, hop);
+      break;
+
+    case 7:
+      pv_complex_curses_jack (file_in, len, hop);
+      break;
+
+    case 8:
+      pv_nofft (file_in, file_out, rate, pitch_shift,
+		len, hop, flag_window);
       break;
 
     default:
