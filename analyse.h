@@ -1,7 +1,7 @@
 /* header file for analyse.c --
  * routines to analyse power spectrum and output notes
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: analyse.h,v 1.4 2007/02/11 23:46:41 kichiki Exp $
+ * $Id: analyse.h,v 1.5 2007/11/04 23:46:03 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,20 +20,6 @@
 #ifndef	_ANALYSE_H_
 #define	_ANALYSE_H_
 
-struct note_sig {
-  int	step;		/* present time  */
-  char	sig;		/* 0 - off / 1 - on  */
-  char	note;		/* MIDI note # (0-127)  */
-  char	intensity;	/* intensity of note (for on) (0-127)  */
-};
-
-/*#define BLOCK_SIZE 1024*/
-#define BLOCK_SIZE 8
-
-struct ia_note {
-  struct note_sig note[BLOCK_SIZE];
-  struct ia_note *next;
-};
 
 /* global variables  */
 extern int abs_flg; /* flag for absolute/relative cutoff  */
@@ -42,7 +28,6 @@ extern double *pat; /* work area for patch  */
 extern int npat; /* # of data in pat[]  */
 extern double p0; /* maximum power  */
 extern double if0; /* freq point of maximum  */
-extern int peak_threashold; /* to select peaks in a note  */
 
 
 /** for stage 2 : note selection process **/
@@ -100,32 +85,8 @@ pickup_notes (double *amp2midi,
 	      char *intens);
 
 
-/** for stage 3 : time-difference check for note-on/off **/
-
-/* check note on and off comparing intens[] now and last times
- * INPUT
- *  icnt : counter (present time)
- *  i_lsts[128] : intensity matrix
- *  on_lst[] : on-note list at last step
- *  *notes : ia_note pointer
- * OUTPUT
- *  nmidi : # of midi event
- *  num : current pointer of ia_note within a segment
- * RETURN VALUE
- *  current ia_note pointer
- */
-struct ia_note *
-chk_note_on_off (int icnt, char i_lsts[], char * on_lst[],
-		 struct ia_note *notes, int *num, int *nmidi);
-
-
-
 double patch_power (double freq_ratio);
 void init_patch (char *file_patch, int plen, int nwin);
-
-struct ia_note * init_ia_note (void);
-struct ia_note * append_ia_note (struct ia_note *last);
-struct ia_note * incr_ia_note (struct ia_note *last, int *num);
 
 
 #endif /* !_ANALYSE_H_ */
