@@ -1,6 +1,6 @@
 /* FFT subroutine for WaoN with FFTW library
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.c,v 1.8 2007/03/10 20:52:34 kichiki Exp $
+ * $Id: fft.c,v 1.9 2007/11/04 23:44:44 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -336,9 +336,20 @@ power_subtract_ave (int n, double *p, int m, double factor)
   int k;
   int nave;
 
-  double *ave = NULL;
-  ave = (double *) malloc (sizeof (double) * nlen);
-  CHECK_MALLOC (ave, "power_subtract_ave");
+  static double *ave = NULL;
+  static int n_ave = 0;
+  if (ave == NULL)
+    {
+      ave = (double *)malloc (sizeof (double) * nlen);
+      CHECK_MALLOC (ave, "power_subtract_ave");
+      n_ave = nlen;
+    }
+  else if (n_ave < nlen)
+    {
+      ave = (double *)realloc (ave, sizeof (double) * nlen);
+      CHECK_MALLOC (ave, "power_subtract_ave");
+      n_ave = nlen;
+    }
 
   for (i = 0; i < nlen; i ++) // full span
     {
@@ -361,7 +372,7 @@ power_subtract_ave (int n, double *p, int m, double factor)
       else             p [i] = p [i] * p [i];
     }
 
-  free (ave);
+  //free (ave);
 }
 
 /* octave remover
@@ -382,8 +393,20 @@ power_subtract_octave (int n, double *p, double factor)
   int i;
   int i2;
 
-  double *oct = NULL;
-  oct = (double *)calloc (n/2+1, sizeof (double));
+  static double *oct = NULL;
+  static int n_oct = 0;
+  if (oct == NULL)
+    {
+      oct = (double *)malloc (sizeof (double) * (n/2+1));
+      CHECK_MALLOC (oct, "power_subtract_octave");
+      n_oct = n/2+1;
+    }
+  else if (n_oct < (n/2+1))
+    {
+      oct = (double *)realloc (oct, sizeof (double) * (n/2+1));
+      CHECK_MALLOC (oct, "power_subtract_octave");
+      n_oct = n/2+1;
+    }
 
   oct [0] = p [0];
   for (i = 1; i < nlen/2+1; i ++)
@@ -391,7 +414,7 @@ power_subtract_octave (int n, double *p, double factor)
       i2 = i * 2;
       if (i2 >= n/2+1) break;
 
-      oct [i2]   = factor * p[i];
+      oct [i2] = factor * p[i];
       if (i2-1 > 0)    oct [i2-1] = 0.5 * factor * p[i];
       if (i2+1 < nlen) oct [i2+1] = 0.5 * factor * p[i];
     }
@@ -403,5 +426,5 @@ power_subtract_octave (int n, double *p, double factor)
       else             p [i] = p [i] * p [i];
     }
 
-  free (oct);
+  //free (oct);
 }
