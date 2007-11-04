@@ -1,6 +1,6 @@
 /* the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.c,v 1.14 2007/10/22 04:43:54 kichiki Exp $
+ * $Id: pv-complex.c,v 1.15 2007/11/04 23:57:06 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 // FFTW library
 #include <fftw3.h>
@@ -37,9 +38,8 @@
 // samplerate
 #include <samplerate.h>
 
-#include "memory-check.h" // CHECK_MALLOC() macro
 
-#include "pv-conventional.h" // pv_play_resample() for check
+#include "pv-conventional.h" // get_scale_factor_for_window()
 #include "pv-complex.h"
 
 
@@ -403,7 +403,7 @@ pv_complex_play_resample (struct pv_complex *pv)
 }
 
 
-/* play one hop_in by the phase vocoder:
+/* play one hop_syn by the phase vocoder:
  * phase vocoder by complex arithmetics with fixed hops.
  *   t_i - s_i = u_i - u_{i-1} = hop
  *   where s_i and t_i are the times for two analysis FFT
@@ -422,6 +422,7 @@ long
 pv_complex_play_step (struct pv_complex *pv,
 		      long cur)
 {
+  static int len = 0;
   static double *l_fs  = NULL;
   static double *r_fs  = NULL;
   static double *l_ft  = NULL;
@@ -445,6 +446,27 @@ pv_complex_play_step (struct pv_complex *pv,
       r_tmp = (double *)malloc (pv->len * sizeof (double));
       CHECK_MALLOC (l_tmp, "pv_complex_play_step");
       CHECK_MALLOC (r_tmp, "pv_complex_play_step");
+
+      len = pv->len;
+    }
+  else if (len < pv->len)
+    {
+      l_fs = (double *)realloc (l_fs, pv->len * sizeof (double));
+      r_fs = (double *)realloc (r_fs, pv->len * sizeof (double));
+      CHECK_MALLOC (l_fs, "pv_complex_play_step");
+      CHECK_MALLOC (r_fs, "pv_complex_play_step");
+
+      l_ft = (double *)realloc (l_ft, pv->len * sizeof (double));
+      r_ft = (double *)realloc (r_ft, pv->len * sizeof (double));
+      CHECK_MALLOC (l_ft, "pv_complex_play_step");
+      CHECK_MALLOC (r_ft, "pv_complex_play_step");
+
+      l_tmp = (double *)realloc (l_tmp, pv->len * sizeof (double));
+      r_tmp = (double *)realloc (r_tmp, pv->len * sizeof (double));
+      CHECK_MALLOC (l_tmp, "pv_complex_play_step");
+      CHECK_MALLOC (r_tmp, "pv_complex_play_step");
+
+      len = pv->len;
     }
 
   long status;
@@ -478,7 +500,6 @@ pv_complex_play_step (struct pv_complex *pv,
     {
       flag_left_cur = 1; // active
     }
-
   if (check_zero (pv->len, r_fs) == 0 ||
       check_zero (pv->len, r_ft) == 0)
     {

@@ -1,7 +1,7 @@
 /* header file for pv-complex.c --
  * the core of phase vocoder with complex arithmetics
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex.h,v 1.10 2007/10/22 04:44:20 kichiki Exp $
+ * $Id: pv-complex.h,v 1.11 2007/11/04 23:57:25 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -141,7 +141,7 @@ int
 pv_complex_play_resample (struct pv_complex *pv);
 
 
-/* play one hop_in by the phase vocoder:
+/* play one hop_syn by the phase vocoder:
  * phase vocoder by complex arithmetics with fixed hops.
  *   t_i - s_i = u_i - u_{i-1} = hop
  *   where s_i and t_i are the times for two analysis FFT
