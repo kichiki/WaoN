@@ -1,7 +1,7 @@
 /* header file for midi.c --
  * subroutines to write standard MIDI file
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.h,v 1.4 2007/02/11 23:37:33 kichiki Exp $
+ * $Id: midi.h,v 1.5 2007/11/04 23:48:26 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #ifndef	_MIDI_H_
 #define	_MIDI_H_
 
-#include "analyse.h" // struct ia_note
+#include "notes.h"   // struct WAON_notes
 
 
 /* for estimate pitch shift  */
@@ -62,15 +62,16 @@ int read_var_len (int fd, long *value);
 int wblong (int fd, unsigned long ul);
 int wbshort (int fd, unsigned short us);
 
-/* MIDI output of data note_on_off[]
+
+/* MIDI output for WAON_notes
  * INPUT
- *  num : # of event (on/off)
- *  *note_on_off : struct of note signal
- *  div : divisioin
+ *  notes    : struct WAON_notes
+ *  div      : divisioin
  *  filename : filename of output midi file
  */
 void
-output_midi (int nmidi, struct ia_note *notes, double div, char *filename);
+WAON_notes_output_midi (struct WAON_notes *notes,
+			double div, char *filename);
 
 
 #endif /* !_MIDI_H_ */

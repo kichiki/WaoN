@@ -1,6 +1,6 @@
 /* subroutines to write standard MIDI file
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.c,v 1.5 2007/10/11 02:18:38 kichiki Exp $
+ * $Id: midi.c,v 1.6 2007/11/04 23:48:04 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,13 @@
 #include <fcntl.h> // open(), fcntl()
 #include <sys/stat.h> // S_IRUSR, S_IWUSR
 #include <math.h> // log()
+
+#include "notes.h" // struct WAON_notes
+
 #include "midi.h"
 
 
-/* global variables  */
+/** global variables  **/
 double adj_pitch;
 double pitch_shift;
 int n_pitch;
@@ -314,47 +317,40 @@ wbshort (int fd, unsigned short us)
 }
 
 
-/* MIDI output of data note_on_off[]
+/* MIDI output for WAON_notes
  * INPUT
- *  num : # of event (on/off)
- *  *note_on_off : struct of note signal
- *  div : divisioin
+ *  notes    : struct WAON_notes
+ *  div      : divisioin
  *  filename : filename of output midi file
  */
 void
-output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
+WAON_notes_output_midi (struct WAON_notes *notes,
+			double div, char *filename)
 {
-  int fd; /* file descriptor of output midi file  */
-  char stdout_flg;
-  int i;
-  int idt;
-  int p_midi;
-  int n_midi;
-  int h_midi; /* pointer of track header  */
-  int dh_midi; /* pointer of data head  */
-  int num; /* index of ia_note within a segment  */
-
-  struct ia_note *next;
-  struct note_sig *cur_note;
-  int last_step;
-
+  fprintf (stderr, "WAON_notes : n = %d\n", notes->n);
+  fprintf (stderr, "filename : %s\n", filename);
   /* file open */
+  int fd; /* file descriptor of output midi file  */
+  int flag_stdout;
   if (strncmp (filename, "-", strlen (filename)) == 0)
     {
       fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
-      stdout_flg = 1;
+      flag_stdout = 1;
     }
   else
     {
       fd = open (filename, O_RDWR| O_CREAT| O_TRUNC, S_IRUSR| S_IWUSR);
-      stdout_flg = 0;
+      flag_stdout = 0;
     }
   if (fd < 0)
     {
       fprintf (stderr, "cannot open %s\n", filename);
       exit (1);
     }
+
   /* MIDI header */
+  int p_midi;
+  int n_midi;
   p_midi = 0;
   n_midi = smf_header_fmt (fd, 0, 1, div);
   if (n_midi != 14)
@@ -364,7 +360,9 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
     }
   p_midi += n_midi;
 
+  int h_midi; /* pointer of track header  */
   h_midi = p_midi; /* pointer of track-head  */
+  int nmidi = notes->n; // number of on-off events
   n_midi = smf_track_head (fd, (7+4*nmidi));
   if (n_midi != 8)
     {
@@ -374,6 +372,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
   p_midi += n_midi;
 
   /* head of data  */
+  int dh_midi; /* pointer of data head  */
   dh_midi = p_midi;
 
   /* tempo set  */
@@ -394,40 +393,30 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
     }
   p_midi += n_midi;
 
-  last_step=0; /* delta time  */
-  for (i=0, num=0; i<nmidi; i++, num++)
+  int idt; /* delta time  */
+  int last_step = 0;
+  int i;
+  for (i = 0; i < notes->n; i ++)
     {
-      if (num >= BLOCK_SIZE)
-	{
-	  next = notes->next;
-	  if (next == NULL)
-	    {
-	      fprintf (stderr, "i=%d / %d - %d\n", i, nmidi, num);
-	      fprintf (stderr, "EOF\n");
-	      goto midi_end;
-	    }
-	  notes = next;
-	  num = 0;
-	}
-      cur_note = &(notes->note[num]);
-
       /* calc delta time  */
-      if (i==0)
-	idt = 0;
-      else
-	idt = cur_note->step - last_step;
-      last_step = cur_note->step;
+      if (i==0) idt = 0;
+      else      idt = notes->step[i] - last_step;
+      last_step = notes->step[i];
 
-      if (cur_note->sig == 1) /* start note  */
-	n_midi = smf_note_on (fd, idt,
-			      cur_note->note,
-			      cur_note->intensity,
-			      0);
+      if (notes->event[i] == 1) /* start note  */
+	{
+	  n_midi = smf_note_on (fd, idt,
+				notes->note[i],
+				notes->vel[i],
+				0);
+	}
       else /* stop note */
-	n_midi = smf_note_off (fd, idt,
-			       cur_note->note,
-			       64, /* default  */
-			       0);
+	{
+	  n_midi = smf_note_off (fd, idt,
+				 notes->note[i],
+				 64, /* default  */
+				 0);
+	}
       if (n_midi != 4)
 	{
 	  fprintf (stderr, "Error during writing mid! %d (note)\n",
@@ -437,7 +426,6 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
       p_midi += n_midi;
     }
 
- midi_end:
   n_midi = smf_track_end (fd);
   if (n_midi != 4)
     {
@@ -447,7 +435,7 @@ output_midi (int nmidi, struct ia_note *notes, double div, char *filename)
     }
   p_midi += n_midi;
 
-  if (stdout_flg == 0) /* random-accessible file  */
+  if (flag_stdout == 0) /* random-accessible file  */
     {
       /* re-calculate # of data in track  */
       if (lseek (fd, h_midi, SEEK_SET) < 0)
