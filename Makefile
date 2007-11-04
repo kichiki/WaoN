@@ -1,6 +1,6 @@
 # Makefile for waon package
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
-# $Id: Makefile,v 1.3 2007/10/29 02:50:48 kichiki Exp $
+# $Id: Makefile,v 1.4 2007/11/04 23:58:16 kichiki Exp $
 
 RM = rm -f
 
@@ -27,6 +27,7 @@ waon_LIBS = $(LIBS) \
 
 waon_OBJS = \
 	main.o \
+	notes.o \
 	midi.o \
 	analyse.o \
 	fft.o \
