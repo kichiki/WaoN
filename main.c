@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
  * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.9 2007/10/11 02:17:53 kichiki Exp $
+ * $Id: main.c,v 1.10 2007/11/04 23:51:36 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <sys/errno.h> /* errno  */
 #include <stdlib.h> /* exit()  */
 #include <string.h> /* strcat(), strcpy()  */
+#include "memory-check.h" // CHECK_MALLOC() macro
 
 /* FFTW library  */
 #ifdef FFTW2
@@ -39,7 +40,7 @@
 
 #include "midi.h" /* smf_...(), mid2freq[], get_note()  */
 #include "analyse.h" /* note_intensity(), note_on_off(), output_midi()  */
-#include "memory-check.h" // CHECK_MALLOC() macro
+#include "notes.h" // struct WAON_notes
 
 #include "VERSION.h"
 
@@ -126,7 +127,6 @@ void print_usage (char * argv0)
 int main (int argc, char** argv)
 {
   extern int abs_flg; /* flag for absolute/relative cutoff  */
-  extern int peak_threshold; /* to select peaks in a note  */
   extern double adj_pitch;
   extern double pitch_shift;
   extern int n_pitch;
@@ -136,23 +136,6 @@ int main (int argc, char** argv)
   char *file_patch = NULL;
 
   int i;
-  int icnt; /* counter  */
-  int i0, i1;
-  double den; /* weight of window function for FFT  */
-  double t0; /* time-period for FFT (inverse of smallest frequency)  */
-
-  long div;
-  int num, nmidi;
-
-
-  struct ia_note *note_top; /* top of infinite array of note_sig  */
-  struct ia_note *notes; /* infinite array of note_sig  */
-  int n_notes; /* index within one segment of ia_note  */
-  /* intensity matrix  */
-  /*char i_lsts[384];*/ /* intensity list for 3 steps  */
-  char i_lsts[128]; /* intensity list  */
-  char * on_lst[128]; /* on list point to intensity in ia_note array  */
-
 
   // default value
   double cut_ratio; // log10 of cutoff ratio for scale velocity
@@ -171,7 +154,8 @@ int main (int argc, char** argv)
   int show_help = 0;
   int show_version = 0;
   adj_pitch = 0.0;
-  peak_threshold = 128; /* this means no peak search  */
+  /* to select peaks in a note  */
+  int peak_threshold = 128; /* this means no peak search  */
 
   int flag_phase = 1; // use the phase correction
   int psub_n = 0;
@@ -419,28 +403,20 @@ int main (int argc, char** argv)
   if (psub_n == 0) psub_f = 0.0;
   if (psub_f == 0.0) psub_n = 0;
 
-  /* malloc for note_on_off buffer  */
-  note_top = init_ia_note ();
-  if (note_top == NULL)
-    {
-      fprintf(stderr, "cannot note array\n");
-      exit (1);
-    }
-  notes = note_top;
-  n_notes = 0;
 
-  /* clear intensity matrix  */
-  for (i = 0; i < 128; i++)
+  struct WAON_notes *notes = WAON_notes_init();
+  CHECK_MALLOC (notes, "main");
+  char vel[128];     // velocity at the current step
+  int on_event[128]; // event index of struct WAON_notes.
+  for (i = 0; i < 128; i ++)
     {
-      on_lst[i] = NULL;
-      i_lsts[i] = 0;
+      vel[i]      = 0;
+      on_event[i] = -1;
     }
 
   // allocate buffers
-  double *left = NULL;
-  double *right = NULL;
-  left  = (double *)malloc (sizeof (double) * len);
-  right = (double *)malloc (sizeof (double) * len);
+  double *left  = (double *)malloc (sizeof (double) * len);
+  double *right = (double *)malloc (sizeof (double) * len);
   CHECK_MALLOC (left,  "main");
   CHECK_MALLOC (right, "main");
 
@@ -456,8 +432,8 @@ int main (int argc, char** argv)
   CHECK_MALLOC (x, "main");
   CHECK_MALLOC (y, "main");
 
-  double *p = NULL; /* power spectrum  */
-  p = (double *)malloc (sizeof (double) * (len / 2 + 1));
+  /* power spectrum  */
+  double *p = (double *)malloc (sizeof (double) * (len / 2 + 1));
   CHECK_MALLOC (p, "main");
 
   double *p0 = NULL;
@@ -478,8 +454,7 @@ int main (int argc, char** argv)
       CHECK_MALLOC (ph1, "main");
     }
 
-  double *pmidi = NULL;
-  pmidi = (double *)malloc (sizeof (double) * 128);
+  double *pmidi = (double *)malloc (sizeof (double) * 128);
   CHECK_MALLOC (pmidi, "main");
 
 
@@ -492,15 +467,14 @@ int main (int argc, char** argv)
     }
 
   // open input wav file
-  SNDFILE *sf = NULL;
-  SF_INFO sfinfo;
   if (file_wav == NULL)
     {
       file_wav = (char *) malloc (sizeof (char) * 2);
       CHECK_MALLOC (file_wav, "main");
       file_wav [0] = '-';
     }
-  sf = sf_open (file_wav, SFM_READ, &sfinfo);
+  SF_INFO sfinfo;
+  SNDFILE *sf = sf_open (file_wav, SFM_READ, &sfinfo);
   if (sf == NULL)
     {
       fprintf (stderr, "Can't open input file %s : %s\n",
@@ -518,16 +492,16 @@ int main (int argc, char** argv)
     }
 
 
-  // time period of FFT
-  t0 = (double)len/(double)sfinfo.samplerate;
+  // time-period for FFT (inverse of smallest frequency)
+  double t0 = (double)len/(double)sfinfo.samplerate;
 
-  // window factor for FFT
-  den = init_den (len, flag_window);
+  // weight of window function for FFT
+  double den = init_den (len, flag_window);
 
   /* set range to analyse (search notes) */
   /* -- after 't0' is calculated  */
-  i0 = (int)(mid2freq[notelow]*t0 - 0.5);
-  i1 = (int)(mid2freq[notetop]*t0 - 0.5)+1;
+  int i0 = (int)(mid2freq[notelow]*t0 - 0.5);
+  int i1 = (int)(mid2freq[notetop]*t0 - 0.5)+1;
   if (i0 <= 0)
     {
       i0 = 1; // i0=0 means DC component (frequency = 0)
@@ -565,9 +539,9 @@ int main (int argc, char** argv)
     }
 
   /** main loop (icnt) **/
-  nmidi = 0; /* number of midi data (note star or stop) */
   pitch_shift = 0.0;
   n_pitch = 0;
+  int icnt; /* counter  */
   for (icnt=0; ; icnt++)
     {
       // shift
@@ -607,8 +581,9 @@ int main (int argc, char** argv)
 	    }
 	}
 
-
-      // stage 1: calc power spectrum
+      /**
+       * stage 1: calc power spectrum
+       */
       windowing (len, x, flag_window, 1.0, x);
 
       /* FFTW library  */
@@ -620,10 +595,12 @@ int main (int argc, char** argv)
 
       if (flag_phase == 0)
 	{
+	  // no phase-vocoder correction
 	  HC_to_amp2 (len, y, den, p);
 	}
       else
 	{
+	  // with phase-vocoder correction
 	  HC_to_polar2 (len, y, 0, den, p, ph1);
 
 	  if (icnt == 0) // first step, so no ph0[] yet
@@ -671,15 +648,15 @@ int main (int argc, char** argv)
 	  power_subtract_ave (len, p, psub_n, psub_f);
 	}
 
-
       // octave-removal process
       if (oct_f != 0.0)
 	{
 	  power_subtract_octave (len, p, oct_f);
 	}
 
-
-      // stage 2: pickup notes
+      /**
+       * stage 2: pickup notes
+       */
       /* new code
       if (flag_phase == 0)
 	{
@@ -696,17 +673,19 @@ int main (int argc, char** argv)
       pickup_notes (pmidi,
 		    cut_ratio, rel_cut_ratio,
 		    notelow, notetop,
-		    i_lsts);
+		    vel);
       */
 
       /* old code */
       if (flag_phase == 0)
 	{
+	  // no phase-vocoder correction
 	  note_intensity (p, NULL,
-			  cut_ratio, rel_cut_ratio, i0, i1, t0, i_lsts);
+			  cut_ratio, rel_cut_ratio, i0, i1, t0, vel);
 	}
       else
 	{
+	  // with phase-vocoder correction
 	  // make corrected frequency (i / len + dphi) * samplerate [Hz]
 	  for (i = 0; i < (len/2+1); ++i) // full span
 	    {
@@ -714,14 +693,14 @@ int main (int argc, char** argv)
 		* (double)sfinfo.samplerate;
 	    }
 	  note_intensity (p, dphi,
-			  cut_ratio, rel_cut_ratio, i0, i1, t0, i_lsts);
+			  cut_ratio, rel_cut_ratio, i0, i1, t0, vel);
 	}
 
-
-      // stage 3: check previous time for note-on/off
-      notes = chk_note_on_off (icnt, i_lsts, on_lst,
-			       notes, &n_notes, &num);
-      nmidi += num;
+      /**
+       * stage 3: check previous time for note-on/off
+       */
+      WAON_notes_check (notes, icnt, vel, on_event,
+			8, 0, peak_threshold);
     }
 
   pitch_shift /= (double) n_pitch;
@@ -732,12 +711,12 @@ int main (int argc, char** argv)
   /* div is the divisions for one beat (quater-note).
    * here we assume 120 BPM, that is, 1 beat is 0.5 sec.
    * note: (hop / ft->rate) = duration for 1 step (sec) */
-  //div = (long)(0.5 * (double) (ft->rate) / (double) hop);
-  div = (long)(0.5 * (double)sfinfo.samplerate / (double) hop);
+  long div = (long)(0.5 * (double)sfinfo.samplerate / (double) hop);
   fprintf (stderr, "division = %ld\n", div);
-  fprintf (stderr, "WaoN : # of notes = %d\n",nmidi);
+  fprintf (stderr, "WaoN : # of events = %d\n", notes->n);
 
-  output_midi (nmidi, note_top, div, file_midi);
+  WAON_notes_output_midi (notes, div, file_midi);
+
 
 #ifdef FFTW2
   rfftw_destroy_plan (plan);
@@ -746,6 +725,7 @@ int main (int argc, char** argv)
 #endif /* FFTW2 */
 
 
+  WAON_notes_free (notes);
   free (left);
   free (right);
   free (x);
@@ -753,12 +733,13 @@ int main (int argc, char** argv)
   free (p);
   if (p0 != NULL) free (p0);
   if (dphi != NULL) free (dphi);
-  if (pmidi != NULL) free (pmidi);
   if (ph0 != NULL) free (ph0);
   if (ph1 != NULL) free (ph1);
 
-  if (file_wav != NULL) free (file_wav);
-  free (file_midi);
+  if (pmidi != NULL) free (pmidi);
+
+  if (file_wav  != NULL) free (file_wav);
+  if (file_midi != NULL) free (file_midi);
 
   sf_close (sf);
 
