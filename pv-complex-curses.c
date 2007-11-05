@@ -1,6 +1,6 @@
 /* real-time phase vocoder with curses interface
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.6 2007/10/29 02:43:06 kichiki Exp $
+ * $Id: pv-complex-curses.c,v 1.7 2007/11/05 02:23:46 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -284,7 +284,7 @@ void pv_complex_curses (const char *file,
   long len_1sec  = (long)(pv->sfinfo->samplerate /* Hz */);
   long len_10sec = (long)(10 * pv->sfinfo->samplerate /* Hz */);
 
-  mvprintw (Y_comment, 1, "Welcome WaoN-pv in curses mode.");
+  mvprintw (Y_comment, 1, "Welcome WaoN-pv in curses mode.         ");
   curses_print_pv (file, pv, flag_play, frame0, frame1,
 		   pv_pitch, pv_rate);
 
@@ -441,13 +441,13 @@ void pv_complex_curses (const char *file,
 	  pv_complex_change_rate_pitch (pv, pv_rate, pv_pitch);
 	  curses_print_pv (file, pv, flag_play, frame0, frame1,
 			   pv_pitch, pv_rate);
-	  mvprintw(Y_comment, 1, "reset everything");
+	  mvprintw (Y_comment, 1, "reset everything                        ");
 	  break;
 
 	case 'Q':
 	case 'q':
 	  status = 0;
-	  mvprintw(Y_comment, 1, "good-bye!");
+	  mvprintw (Y_comment, 1, "good-bye!                               ");
 	  break;
 
 	case 'N':
