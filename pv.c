@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.16 2007/10/29 02:46:07 kichiki Exp $
+ * $Id: pv.c,v 1.17 2007/11/05 02:27:00 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,7 +31,7 @@
 #include "pv-complex-curses.h"
 
 // experimental
-#include "jack-pv.h"
+//#include "jack-pv.h"
 #include "pv-nofft.h"
 
 #include "VERSION.h"
@@ -77,15 +77,16 @@ void print_pv_usage (char * argv0)
   fprintf (stdout, "  -pitch\tpitch shift. +1/-1 is half-note up/down"
 	   " (default: 0)\n");
   fprintf (stdout, "  -scheme    \tgive the number for PV scheme\n");
-  fprintf (stdout, "\t\t0 : conventional PV\n");
-  fprintf (stdout, "\t\t1 : PV by complex arithmetics with fixed hops\n");
-  fprintf (stdout, "\t\t2 : Puckette's loose-locking PV\n");
-  fprintf (stdout, "\t\t3 : Puckette's loose-locking PV by complex"
+  fprintf (stdout, "\t\t1 : conventional PV\n");
+  fprintf (stdout, "\t\t2 : PV by complex arithmetics with fixed hops\n");
+  fprintf (stdout, "\t\t3 : Puckette's loose-locking PV\n");
+  fprintf (stdout, "\t\t4 : Puckette's loose-locking PV by complex"
 	   " with fixed hops\n");
-  fprintf (stdout, "\t\t4 : PV with fixed hops by Ellis\n");
-  fprintf (stdout, "\t\t5 : PV in freq. domain\n");
-  fprintf (stdout, "\t\t6 : interactive PV with curses (default)\n");
-  fprintf (stdout, "KEY BINDINGS IN CURSES MODE\n"
+  fprintf (stdout, "\t\t5 : PV with fixed hops by Ellis\n");
+  fprintf (stdout, "\t\t6 : PV in freq. domain\n");
+  fprintf (stdout, "\t\t7 : plain superimpose (no-FFT)\n");
+  fprintf (stdout, "\t\t0 : interactive PV with curses (default)\n");
+  fprintf (stdout, "KEY BINDINGS IN CURSES MODE (with -scheme 0, the default)\n"
 	   "\tSPACE        : play / stop\n"
 	   "\t< >          : set loop range\n"
 	   "\t[{ }]        : expand the loop range\n"
@@ -205,35 +206,39 @@ int main (int argc, char** argv)
   switch (scheme)
     {
     case 0:
+      pv_complex_curses (file_in, len, hop);
+      break;
+
+    case 1:
       pv_conventional (file_in, file_out, rate, pitch_shift,
 		       len, hop, flag_window);
       break;
 
-    case 1:
+    case 2:
       pv_complex (file_in, file_out, rate, pitch_shift,
 		  len, hop, flag_window,
 		  0 /* no phase lock */
 		  );
       break;
 
-    case 2:
+    case 3:
       pv_loose_lock (file_in, file_out, rate, pitch_shift,
 		     len, hop, flag_window);
       break;
 
-    case 3:
+    case 4:
       pv_complex (file_in, file_out, rate, pitch_shift,
 		  len, hop, flag_window,
 		  1 /* loose phase lock */
 		  );
       break;
 
-    case 4:
+    case 5:
       pv_ellis (file_in, file_out, rate, pitch_shift,
 		len, hop, flag_window);
       break;
 
-    case 5:
+    case 6:
       if (pitch_shift != 0.0)
 	{
 	  fprintf (stderr, "pitch-shifting is not implemented yet\n");
@@ -242,18 +247,15 @@ int main (int argc, char** argv)
       pv_freq (file_in, file_out, rate, len, hop, flag_window);
       break;
 
-    case 6:
-      pv_complex_curses (file_in, len, hop);
-      break;
-
     case 7:
-      pv_complex_curses_jack (file_in, len, hop);
-      break;
-
-    case 8:
       pv_nofft (file_in, file_out, rate, pitch_shift,
 		len, hop, flag_window);
       break;
+      /*
+    case 8:
+      pv_complex_curses_jack (file_in, len, hop);
+      break;
+      */
 
     default:
       fprintf (stderr, "invalid scheme number\n");
