@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
  * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.17 2007/11/05 02:27:00 kichiki Exp $
+ * $Id: pv.c,v 1.18 2007/11/05 02:37:10 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -112,7 +112,7 @@ int main (int argc, char** argv)
   long hop = 512;
   double rate = 1.0;
   double pitch_shift = 0.0;
-  int scheme = 6;
+  int scheme = 0;
   int flag_window = 3; // hanning window
 
   int i;
