@@ -1,16 +1,23 @@
 # Makefile for waon package
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
-# $Id: Makefile,v 1.4 2007/11/04 23:58:16 kichiki Exp $
+# $Id: Makefile,v 1.5 2007/11/05 02:31:44 kichiki Exp $
 
 RM = rm -f
 
+#CFLAGS += \
+#	-Wall -O3 \
+#	`pkg-config --cflags fftw3` \
+#	`pkg-config --cflags sndfile` \
+#	`pkg-config --cflags ao` \
+#	`pkg-config --cflags samplerate` \
+#	`pkg-config --cflags jack` \
+#	`pkg-config --cflags gtk+-2.0`
 CFLAGS += \
 	-Wall -O3 \
 	`pkg-config --cflags fftw3` \
 	`pkg-config --cflags sndfile` \
 	`pkg-config --cflags ao` \
 	`pkg-config --cflags samplerate` \
-	`pkg-config --cflags jack` \
 	`pkg-config --cflags gtk+-2.0`
 
 all:	waon pv gwaon
@@ -41,13 +48,37 @@ waon: $(waon_OBJS)
 # pv
 pv_LDFLAGS = $(LDFLAGS)
 
+#pv_LIBS = $(LIBS) \
+#	-lncurses \
+#	`pkg-config --libs ao` \
+#	`pkg-config --libs sndfile` \
+#	`pkg-config --libs fftw3` \
+#	`pkg-config --libs samplerate` \
+#	`pkg-config --libs jack` \
+#	-lm
+
+#pv_OBJ = \
+#	pv.o \
+#	pv-complex.o \
+#	pv-conventional.o \
+#	pv-ellis.o \
+#	pv-freq.o \
+#	pv-loose-lock.o \
+#	pv-nofft.o\
+#	pv-complex-curses.o \
+#	hc.o \
+#	fft.o \
+#	snd.o \
+#	ao-wrapper.o \
+#	jack-pv.o
+
+
 pv_LIBS = $(LIBS) \
 	-lncurses \
 	`pkg-config --libs ao` \
 	`pkg-config --libs sndfile` \
 	`pkg-config --libs fftw3` \
 	`pkg-config --libs samplerate` \
-	`pkg-config --libs jack` \
 	-lm
 
 pv_OBJ = \
@@ -62,9 +93,7 @@ pv_OBJ = \
 	hc.o \
 	fft.o \
 	snd.o \
-	ao-wrapper.o \
-	jack-pv.o
-
+	ao-wrapper.o
 
 pv:	$(pv_OBJ)
 	$(CC) $(pv_LDFLAGS) -o pv $(pv_OBJ) $(pv_LIBS)
