@@ -1,4 +1,227 @@
+2007-11-04  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv.c: 1.18 2007/11/05 02:37:10 kichiki Exp
+	correct the default scheme to 0, the curses mode.
+
+	* Makefile: 1.5 2007/11/05 02:31:44 kichiki Exp
+	comment out the experimental jack stuff.
+
+	* gwaon.1: 1.2 2007/11/05 02:29:54 kichiki Exp
+	* pv.1: 1.3 2007/11/05 02:28:28 kichiki Exp
+	* waon.1: 1.3 2007/11/05 02:25:22 kichiki Exp
+	update the version to 0.9.
+
+	* pv.c: 1.17 2007/11/05 02:27:00 kichiki Exp
+	comment out the experimental jack stuff.
+	re-order -scheme options.
+
+	* pv-complex-curses.c: 1.7 2007/11/05 02:23:46 kichiki Exp
+	widen the comment to clear the message before.
+
+	* Makefile.waon: 1.7 2007/11/04 23:59:41 kichiki Exp
+	* Makefile: 1.4 2007/11/04 23:58:16 kichiki Exp
+	add notes.c for waon.
+
+	* pv-complex.h: 1.11 2007/11/04 23:57:25 kichiki Exp
+	* pv-complex.c: 1.15 2007/11/04 23:57:06 kichiki Exp
+	correct some comments.
+	(pv_complex_play_step): update the handling on static work area.
+
+	* main.c: 1.10 2007/11/04 23:51:36 kichiki Exp
+	use new struct WAON_notes in notes.c.
+
+	* notes.h: 1.1 2007/11/04 23:49:55 kichiki Exp
+	* notes.c: 1.1 2007/11/04 23:49:18 kichiki Exp
+	added.
+
+	* midi.h: 1.5 2007/11/04 23:48:26 kichiki Exp
+	* midi.c: 1.6 2007/11/04 23:48:04 kichiki Exp
+	(output_midi): removed. use WAON_notes_output_midi() instead.
+	(WAON_notes_output_midi): added using struct WAON_notes in notes.c.
+
+	* analyse.h: 1.5 2007/11/04 23:46:03 kichiki Exp
+	* analyse.c: 1.8 2007/11/04 23:45:39 kichiki Exp
+	(chk_note_on_off): removed. now WAON_notes_check() in notes.c is used.
+	global peak_threshold is removoed.
+	(init_ia_note, append_ia_note, incr_ia_note): removed.
+
+	* fft.c: 1.9 2007/11/04 23:44:44 kichiki Exp
+	(power_subtract_ave, power_subtract_octave): make the work area static.
+
+2007-10-28  Kengo Ichiki  <ichiki@tpr60>
+
+	* Makefile.pv: 1.7 2007/10/29 02:51:19 kichiki Exp
+	* Makefile: 1.3 2007/10/29 02:50:48 kichiki Exp
+	add pv-nofft.c and jack-pv.c.
+
+	* jack-pv.h: 1.1 2007/10/29 02:49:09 kichiki Exp
+	* jack-pv.c: 1.1 2007/10/29 02:48:41 kichiki Exp
+	added.
+
+	* pv.c: 1.16 2007/10/29 02:46:07 kichiki Exp
+	add experimental scheme (jack and nofft).
+
+	* pv-complex-curses.c: 1.6 2007/10/29 02:43:06 kichiki Exp
+	add nofft option (just for fun).
+
+	* pv-nofft.h: 1.1 2007/10/29 01:17:40 kichiki Exp
+	* pv-nofft.c: 1.1 2007/10/29 01:17:11 kichiki Exp
+	added.
+
+	* VERSION.h: 1.7
+	increment the version (for the next release).
+
+	* gwaon-about.c: 1.2 2007/10/28 17:24:20 kichiki Exp
+	update using "GTK_TYPE_ABOUT_DIALOG".
+
+2007-10-21  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv-complex-curses.c: 1.5 2007/10/22 04:46:54 kichiki Exp
+	(play_100msec_curses): update for the change in pv-complex.c.
+
+	* gwaon-play.c: 1.8 2007/10/22 04:46:29 kichiki Exp
+	(play_100msec): update for the change in pv-complex.c.
+
+	* pv-complex.h: 1.10 2007/10/22 04:44:20 kichiki Exp
+	* pv-complex.c: 1.14 2007/10/22 04:43:54 kichiki Exp
+	house-keeping the code.
+	(pv_complex_play_resample): change the returned value from hop_syn 
+	to hop_res, the output frames.
+
+	* hc.c: 1.7 2007/10/22 04:26:38 kichiki Exp
+	(HC_complex_phase_vocoder): make the work area (tmp1, tmp2) static.
+
+2007-10-20  Kengo Ichiki  <ichiki@tpr60>
+
+	* gwaon.1: 1.1 2007/10/21 04:46:54 kichiki Exp
+	added.
+
+	* pv.1: 1.2 2007/10/21 04:46:20 kichiki Exp
+	add informations about the key-bindings.
+	add gwaon at see-also section.
+
+	* waon.1: 1.2 2007/10/21 04:45:40 kichiki Exp
+	add gwaon at see-also section.
+
+	* gwaon-wav.c: 1.17 2007/10/21 04:44:52 kichiki Exp
+	add buttons for the same functions with key-bindings.
+
+	* pv.c: 1.15 2007/10/21 04:42:42 kichiki Exp
+	(print_pv_usage): updated.
+
+	* pv-complex-curses.h: 1.4 2007/10/21 04:04:47 kichiki Exp
+	* pv-complex-curses.c: 1.4 2007/10/21 04:04:24 kichiki Exp
+	(play_100msec_curses): correct the name as it is.
+	(curses_print_pitch): added.
+
+	* snd.c: 1.4 2007/10/21 04:03:30 kichiki Exp
+	(sndfile_read): make the work area (buf) static.
+
+	* gwaon-play.h: 1.2 2007/10/21 04:02:23 kichiki Exp
+	* gwaon-play.c: 1.7 2007/10/21 04:01:56 kichiki Exp
+	(play_100msec): correct the name as it is.
+
+	* INSTALL: 1.3 2007/10/21 00:16:26 kichiki Exp
+	updated.
+
+	* gwaon-wav.c: 1.16 2007/10/20 20:25:37 kichiki Exp
+	(create_wav): correct the initial pictch 0.
+
+	* Makefile.pv: 1.6 2007/10/20 20:27:31 kichiki Exp
+	* Makefile: 1.2 2007/10/20 20:16:42 kichiki Exp
+	change the library name from curses to ncurses.
+
+	* gwaon-play.c: 1.6 2007/10/20 20:09:11 kichiki Exp
+	* gwaon-wav.c: 1.15 2007/10/20 20:08:41 kichiki Exp
+	update for the new pv-complex.c.
+
+	* pv-complex-curses.h: 1.3 2007/10/20 20:07:32 kichiki Exp
+	* pv-complex-curses.c: 1.3 2007/10/20 20:06:45 kichiki Exp
+	update for the new pv-complex.c.
+	(pv_complex_curses): change the key-bindings for the loop range setting.
+
+	* pv.c: 1.14 2007/10/20 20:04:19 kichiki Exp
+	make the 'curses' mode default.
+	set the default hop size 512. (this is better for wider ranges of 
+	parameters.)
+
+	* pv-complex.h: 1.9 2007/10/20 20:01:56 kichiki Exp
+	* pv-complex.c: 1.13 2007/10/20 19:59:19 kichiki Exp
+	change the name of struct pv_complex_data by pv_complex.
+	(read_and_FFT_stereo): make the work area (left and right) static.
+	(pv_complex_play_resample): make the work area static.
+
+2007-10-15  Kengo Ichiki  <ichiki@tpr60>
+
+	* gwaon-wav.c: 1.14 2007/10/15 06:20:52 kichiki Exp
+	(wav_key_press_event): adjust struct pv_complex_data *pv 
+	for pitch- and rate-changes, as well as hop-change.
+
+	* gwaon-play.c: 1.5 2007/10/15 06:19:13 kichiki Exp
+	simplify the handling of rate and pitch parameters (similar to 
+	pv-complex-curses.c).
+
+	* pv.c: 1.13 2007/10/15 06:17:56 kichiki Exp
+	update for pv-complex-curses.c.
+
+	* pv-complex-curses.h: 1.2 2007/10/15 06:17:11 kichiki Exp
+	* pv-complex-curses.c: 1.2 2007/10/15 06:16:48 kichiki Exp
+	simplify the handling of rate and pitch parameters.
+	(play_1msec_curses): now rate and pitch are not used here. 
+	those parameters are controled at the higher level routine, 
+	pv_complex_curses().
+	(pv_complex_curses): cut rate and pitch parameters from the argument.
+	those are controled through curses interface in this routine.
+
+	* pv-complex.h: 1.8 2007/10/15 06:12:11 kichiki Exp
+	* pv-complex.c: 1.12 2007/10/15 06:10:57 kichiki Exp
+	(pv_complex_change_rate_pitch): added.
+
+2007-10-14  Kengo Ichiki  <ichiki@tpr60>
+
+	* Makefile: 1.1 2007/10/14 06:33:48 kichiki Exp
+	added. this is for all -- waon, pv, gwaon.
+
+	* pv.c: 1.12 2007/10/14 06:32:24 kichiki Exp
+	add curses mode -- interactive phase vocoder.
+
+	* Makefile.pv: 1.5 2007/10/14 06:31:30 kichiki Exp
+	update for pv-complex-curses.c.
+
+	* pv-complex.c: 1.11 2007/10/14 06:29:07 kichiki Exp
+	* pv-loose-lock.c: 1.9 2007/10/14 06:27:28 kichiki Exp
+	* pv-freq.c: 1.8 2007/10/14 06:26:09 kichiki Exp
+	* pv-ellis.c: 1.8 2007/10/14 06:25:12 kichiki Exp
+	* pv-conventional.c: 1.10 2007/10/14 06:23:36 kichiki Exp
+	* gwaon-wav.c: 1.13 2007/10/14 06:22:11 kichiki Exp
+	update for ao-wrapper.c.
+
+	* ao-wrapper.h: 1.2 2007/10/14 06:20:17 kichiki Exp
+	* ao-wrapper.c: 1.4 2007/10/14 06:19:36 kichiki Exp
+	add 'verbose' in the argument.
+
+	* pv-complex-curses.h: 1.1 2007/10/14 06:18:34 kichiki Exp
+	* pv-complex-curses.c: 1.1 2007/10/14 06:17:43 kichiki Exp
+	added.
+
+2007-10-10  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv.1: 1.1 2007/10/11 03:40:43 kichiki Exp
+	* waon.1: 1.1 2007/10/11 03:40:13 kichiki Exp
+	added.
+
+	* pv.c: 1.11 2007/10/11 02:19:30 kichiki Exp
+	update the help message.
+
+	* midi.c: 1.5 2007/10/11 02:18:38 kichiki Exp
+	correct typo.
+
+	* main.c: 1.9 2007/10/11 02:17:53 kichiki Exp
+	update the help message.
+
 2007-03-10  Kengo Ichiki  <ichiki@tpr60>
+
+	* Release 0.8.
 
 	* gwaon-wav.c: 1.12 2007/03/11 01:35:53 kichiki Exp
 	(create_wav): correct the initial value for pitch-shift to 0.

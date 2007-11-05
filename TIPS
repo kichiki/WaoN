@@ -4,9 +4,11 @@
 
 CONTENTS
 --------
+
 PART I : TIPS
   1) TIPS
   2) Detailed descriptions on some options and comments for usage
+
 PART II : Inside of WaoN
   1) Policy of Selection of On/Off Event
     a) off-event
@@ -86,7 +88,8 @@ READING WAV OPTIONS
 		virtually you get finer resolution in time.
 
 
--------------------------------------------------------------------------------                          PART II : Inside of WaoN
+-------------------------------------------------------------------------------
+                          PART II : Inside of WaoN
 
 1) Policy of Selection of On/Off Event
 --------------------------------------
@@ -195,4 +198,4 @@ b) with patch
 
 
 -------------------------------------------------------------------------------
-Copyright (C) 1998,1999 Kengo ICHIKI (ichiki@geocities.com)
+Copyright (C) 1998,1999 Kengo Ichiki <kichiki@users.sourceforge.net>

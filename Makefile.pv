@@ -1,6 +1,6 @@
 # Makefile for pv
-# Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.pv,v 1.7 2007/10/29 02:51:19 kichiki Exp $
+# Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+# $Id: Makefile.pv,v 1.8 2007/11/05 02:39:38 kichiki Exp $
 
 
 LIBS    =\

@@ -1,6 +1,6 @@
 # Makefile for gWaoN
-# Copyright (C) 2007 Kengo Ichiki <kichiki@uwo.ca>
-# $Id: Makefile.gwaon,v 1.6 2007/02/25 07:05:19 kichiki Exp $
+# Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
+# $Id: Makefile.gwaon,v 1.7 2007/11/05 02:39:38 kichiki Exp $
 
 LIBS    =\
 	`pkg-config --libs gtk+-2.0` \
