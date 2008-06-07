@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
- * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.10 2007/11/04 23:51:36 kichiki Exp $
+ * Copyright (C) 1998-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: main.c,v 1.11 2008/06/07 04:53:16 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -116,7 +116,7 @@ void print_usage (char * argv0)
 	   " where the power is modified as\n"
 	   "\t\tp[i] = (sqrt(p[i]) - f * sqrt(ave[i]))^2\n"
 	   "\t\t(default: 0.0)\n");
-  fprintf (stdout, "OCTAVE-REMOVER OPTIONS\n");
+  fprintf (stdout, "OCTAVE-REMOVAL OPTIONS\n");
   fprintf (stdout, "  -oct\tfactor to the octave removal,"
 	   " where the power is modified as\n"
 	   "\t\tp[i] = (sqrt(p[i]) - f * sqrt(oct[i]))^2\n"

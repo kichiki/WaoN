@@ -1,6 +1,6 @@
 /* PV - phase vocoder : main
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.18 2007/11/05 02:37:10 kichiki Exp $
+ * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: pv.c,v 1.19 2008/06/07 04:54:45 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -52,7 +52,7 @@ void print_pv_usage (char * argv0)
   print_pv_version ();
   fprintf (stdout, "WaoN-pv is yet-another phase vocoder, "
 	   "with which you can do time-strech \n"
-	   "and pitch-shift an sound file.\n\n");
+	   "and pitch-shift a sound file.\n\n");
   fprintf (stdout, "Usage: %s [option ...]\n\n", argv0);
   fprintf (stdout, "Options:\n");
   fprintf (stdout, "  -h, --help\tprint this help.\n");
