@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
  * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.18 2008/11/09 20:59:32 kichiki Exp $
+ * $Id: gwaon-wav.c,v 1.19 2008/12/01 00:47:59 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -242,7 +242,8 @@ draw_wav_frame (GtkWidget *widget,
 static int
 logf_to_display (double logf, int resolution)
 {
-  extern double logf_min, logf_max;
+  extern double logf_min;
+  extern double logf_max;
   int ix;
   ix = (int)((double)resolution * (logf - logf_min) / (logf_max - logf_min));
   return (ix);
@@ -255,9 +256,9 @@ logf_to_display (double logf, int resolution)
 static double
 display_to_logf (int ix, int resolution)
 {
-  extern double logf_min, logf_max;
-  double logf;
-  logf = logf_min
+  extern double logf_min;
+  extern double logf_max;
+  double logf = logf_min
     + ((double)ix + 0.5) * (logf_max - logf_min) / (double)resolution;
   return (logf);
 }
@@ -269,10 +270,10 @@ display_to_logf (int ix, int resolution)
 static int
 midi_to_display_bottom (int midi, int res)
 {
-  extern double logf_min, logf_max;
-  int ix0, ix1;
-  ix0 = logf_to_display (midi_to_logf (midi-1), res);
-  ix1 = logf_to_display (midi_to_logf (midi),   res);
+  extern double logf_min;
+  extern double logf_max;
+  int ix0 = logf_to_display (midi_to_logf (midi-1), res);
+  int ix1 = logf_to_display (midi_to_logf (midi),   res);
   return ((ix1 + ix0) / 2);
 }
 /* return the top position on the display for the midi note
@@ -282,7 +283,6 @@ midi_to_display_bottom (int midi, int res)
 static int
 midi_to_display_top (int midi, int res)
 {
-  extern double logf_min, logf_max;
   return (midi_to_display_bottom (midi+1, res));
 }
 
@@ -295,15 +295,16 @@ draw_keyboard (GtkWidget *widget,
 {
   extern GdkPixmap *wav_pixmap;
 
-  extern int oct_min, oct_max;
-  extern double logf_min, logf_max;
+  extern int oct_min;
+  extern int oct_max;
+  extern double logf_min;
+  extern double logf_max;
 
   int i, j;
   int ix;
   double x;
 
-  int idx;
-  idx = (int)((double)height / (double)(oct_max - oct_min) / 12.0);
+  int idx = (int)((double)height / (double)(oct_max - oct_min) / 12.0);
 
   get_color (widget, 255, 255, 255, gc); // white
   gdk_draw_rectangle (wav_pixmap, gc, TRUE, // fill
@@ -415,8 +416,10 @@ draw_keyboard_hor (GtkWidget *widget,
 {
   extern GdkPixmap *wav_pixmap;
 
-  extern int oct_min, oct_max;
-  extern double logf_min, logf_max;
+  extern int oct_min;
+  extern int oct_max;
+  extern double logf_min;
+  extern double logf_max;
 
   int i, j;
   int ix;
@@ -530,11 +533,11 @@ draw_text (GtkWidget *widget,
 	   gint rd, gint gd, gint bd,
 	   const gchar *font)
 {
-  PangoLayout *layout;
-  layout = gtk_widget_create_pango_layout (widget, text);
+  PangoLayout *layout
+   = gtk_widget_create_pango_layout (widget, text);
 
-  PangoFontDescription *fontdesc;
-  fontdesc = pango_font_description_from_string (font);
+  PangoFontDescription *fontdesc
+   = pango_font_description_from_string (font);
 
   pango_layout_set_font_description (layout, fontdesc); 
   pango_font_description_free (fontdesc);
@@ -563,8 +566,10 @@ void draw_infos (GtkWidget *widget,
   extern int WIN_spec_hop;
   extern int WIN_spec_mode;
   extern int flag_window;
-  extern double amp2_min, amp2_max;
-  extern int oct_min, oct_max;
+  extern double amp2_min;
+  extern double amp2_max;
+  extern int oct_min;
+  extern int oct_max;
   //extern struct pv_complex *pv;
 
   gchar string [256];
@@ -814,7 +819,8 @@ average_PV_FFT (int resolution,
 {
   extern int WIN_spec_n;
   extern SF_INFO sfinfo;
-  extern double logf_min, logf_max;
+  extern double logf_min;
+  extern double logf_max;
 
   int i;
   for (i = 0; i < resolution; i ++)
@@ -823,14 +829,13 @@ average_PV_FFT (int resolution,
     }
 
   int k;
-  double x;
-  int ix;
   for (k = 1; k < (WIN_spec_n+1)/2; k ++)
     {
       // freq -> display position
-      x = log (((double)k / (double)WIN_spec_n + dphi [k])
-	       * sfinfo.samplerate);
-      ix = (int)((double)resolution * (x - logf_min) / (logf_max - logf_min));
+      double x = log (((double)k / (double)WIN_spec_n + dphi [k])
+		      * sfinfo.samplerate);
+      int ix
+	= (int)((double)resolution * (x - logf_min) / (logf_max - logf_min));
       if (ix < 0 || ix >= resolution)
 	continue;
 
@@ -871,7 +876,8 @@ draw_spectrum_frame (GtkWidget *widget,
   extern GdkPixmap *wav_pixmap;
   extern gint WIN_wav_width;
   extern int WIN_spec_mode;
-  extern double amp2_min, amp2_max;
+  extern double amp2_min;
+  extern double amp2_max;
   extern SNDFILE *sf;
   extern SF_INFO sfinfo;
 
@@ -1241,7 +1247,8 @@ draw_spectrogram_frame (GtkWidget *widget,
   extern GdkPixmap *wav_pixmap;
   //extern gint WIN_wav_width;
   extern int WIN_spec_mode;
-  extern double amp2_min, amp2_max;
+  extern double amp2_min;
+  extern double amp2_max;
   extern SNDFILE *sf;
   extern SF_INFO sfinfo;
 
@@ -1286,8 +1293,7 @@ draw_spectrogram_frame (GtkWidget *widget,
       extern gint colormap_power_g[256];
       extern gint colormap_power_b[256];
 
-      int istep;
-      istep = WIN_spec_n / WIN_wav_scale;
+      int istep = WIN_spec_n / WIN_wav_scale;
       if (istep <= 0) istep = 1;
 
       double *ave = NULL;
@@ -2536,9 +2542,6 @@ b_close_press_event (GtkWidget *widget, gpointer data)
 void
 create_wav (void)
 {
-  extern SNDFILE *sf;
-  extern SF_INFO sfinfo;
-
   extern GtkObject * adj_cur;
   extern GtkObject * adj_scale;
 
@@ -2546,13 +2549,16 @@ create_wav (void)
   make_color_map ();
 
   extern int WIN_spec_n;
-  WIN_spec_n = 2048;
   extern int WIN_spec_hop_scale;
   extern int WIN_spec_hop;
+  extern int WIN_spec_mode;
+  WIN_spec_n = 2048;
   WIN_spec_hop_scale = 4;
   WIN_spec_hop = WIN_spec_n / WIN_spec_hop_scale;
-  extern int WIN_spec_mode;
   WIN_spec_mode = 0;
+
+  extern SNDFILE *sf;
+  extern SF_INFO sfinfo;
 
   extern struct pv_complex *pv;
   pv = pv_complex_init (WIN_spec_n, WIN_spec_hop, 3 /* hanning */);
@@ -2561,30 +2567,31 @@ create_wav (void)
 
   extern double *spec_in;
   extern double *spec_out;
-  extern fftw_plan plan;
-  spec_in  = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
+  spec_in = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
   spec_out = (double *)fftw_malloc (sizeof(double) * WIN_spec_n);
   CHECK_MALLOC (spec_in,  "wav_key_press_event");
   CHECK_MALLOC (spec_out, "wav_key_press_event");
+  extern fftw_plan plan;
   plan = fftw_plan_r2r_1d (WIN_spec_n, spec_in, spec_out,
 			   FFTW_R2HC, FFTW_ESTIMATE);
 
   extern int flag_window;
+  extern double amp2_min;
+  extern double amp2_max;
   flag_window = 0; // no window
-  extern double amp2_min, amp2_max;
   amp2_min = -3.0;
   amp2_max = 1.0;
 
   extern double *spec_left;
   extern double *spec_right;
-  spec_left  = (double *)malloc (sizeof(double) * WIN_spec_n);
+  spec_left = (double *)malloc (sizeof(double) * WIN_spec_n);
   spec_right = (double *)malloc (sizeof(double) * WIN_spec_n);
   CHECK_MALLOC (spec_left,  "wav_key_press_event");
   CHECK_MALLOC (spec_right, "wav_key_press_event");
 
   extern int WIN_wav_cur;
-  extern int WIN_wav_scale;
   extern int WIN_wav_mark;
+  extern int WIN_wav_scale;
   WIN_wav_cur = 0;
   WIN_wav_mark = 0;
   if (sfinfo.frames > WIN_spec_n)
@@ -2596,20 +2603,22 @@ create_wav (void)
       WIN_wav_scale = sfinfo.frames;
     }
 
-  extern int oct_min, oct_max;
-  extern double logf_min, logf_max;
+  extern int oct_min;
+  extern int oct_max;
+  extern double logf_min;
+  extern double logf_max;
   oct_min = 2; // C2 is the lowest note
   oct_max = 6; // C6 is the highest note (precisely, B5 is)
   logf_min = midi_to_logf ((oct_min+1)*12);
   logf_max = midi_to_logf ((oct_max+1)*12);
 
-
   // ao device
+  /*
   fprintf (stderr, "# check ao device\n");
   ao_initialize ();
   print_ao_driver_info_list ();
   ao_shutdown ();
-
+  */
   extern ao_device *ao;
   ao = ao_init_16_stereo (sfinfo.samplerate, 0);
   pv_complex_set_output_ao (pv, ao);
@@ -2627,8 +2636,7 @@ create_wav (void)
   WIN_wav_width = 800;
   WIN_wav_height = 600;
 
-  GtkWidget *window;
-  window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+  GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_widget_set_name (window, "gWaoN");
   gtk_widget_set_size_request (GTK_WIDGET (window),
 			       WIN_wav_width, WIN_wav_height);
@@ -2706,8 +2714,7 @@ create_wav (void)
   /* main horizontal box
    *   <main win> <rate scale> <pitch scale>
    */
-  GtkWidget *hbox;
-  hbox = gtk_hbox_new (FALSE, 0);
+  GtkWidget *hbox = gtk_hbox_new (FALSE, 0);
   //gtk_container_set_border_width (GTK_CONTAINER (hbox), 10);
   gtk_container_set_border_width (GTK_CONTAINER (hbox), 2);
   //gtk_container_add (GTK_CONTAINER (window), hbox);
@@ -2720,8 +2727,7 @@ create_wav (void)
    *   <range>
    *   <scale>
    */
-  GtkWidget *vbox;
-  vbox = gtk_vbox_new (FALSE, 0);
+  GtkWidget *vbox = gtk_vbox_new (FALSE, 0);
   gtk_container_set_border_width (GTK_CONTAINER (vbox), 10);
   //gtk_container_add (GTK_CONTAINER (window), vbox);
   gtk_box_pack_start (GTK_BOX (hbox), vbox, TRUE, TRUE, 0);
@@ -2729,8 +2735,7 @@ create_wav (void)
 
 
   // WAV window
-  GtkWidget *wav_win;
-  wav_win = gtk_drawing_area_new ();
+  GtkWidget *wav_win = gtk_drawing_area_new ();
   gtk_widget_set_size_request (GTK_WIDGET (wav_win), -1, -1);
   gtk_box_pack_start (GTK_BOX (vbox), wav_win, TRUE, TRUE, 0);
   gtk_widget_show (wav_win);
@@ -2774,8 +2779,7 @@ create_wav (void)
   g_signal_connect (G_OBJECT (adj_cur), "value_changed",
 		    G_CALLBACK (wav_adj_cur), GTK_OBJECT (wav_win));
 
-  GtkWidget *scrollbar;
-  scrollbar = gtk_hscrollbar_new (GTK_ADJUSTMENT (adj_cur));
+  GtkWidget *scrollbar = gtk_hscrollbar_new (GTK_ADJUSTMENT (adj_cur));
   gtk_range_set_update_policy (GTK_RANGE (scrollbar),
 			       GTK_UPDATE_CONTINUOUS);
   gtk_box_pack_start (GTK_BOX (vbox), scrollbar, FALSE, FALSE, 0);
@@ -2795,8 +2799,7 @@ create_wav (void)
   g_signal_connect (G_OBJECT (adj_scale), "value_changed",
 		    G_CALLBACK (wav_adj_scale), GTK_OBJECT (wav_win));
 
-  GtkWidget *scale;
-  scale = gtk_hscale_new (GTK_ADJUSTMENT (adj_scale));
+  GtkWidget *scale = gtk_hscale_new (GTK_ADJUSTMENT (adj_scale));
   gtk_range_set_update_policy (GTK_RANGE (scale),
 			       GTK_UPDATE_CONTINUOUS);
   gtk_box_pack_start (GTK_BOX (vbox), scale, FALSE, FALSE, 0);
@@ -2815,9 +2818,8 @@ create_wav (void)
   gtk_widget_show (rate_label);
 
   extern double pv_rate;
-  pv_rate  = 1.0; // initial value
-  GtkObject *adj_pv_rate;
-  adj_pv_rate = gtk_adjustment_new
+  pv_rate = 1.0; // initial value
+  GtkObject *adj_pv_rate = gtk_adjustment_new
     (1.0, // value
      -2.5, // lower
      2.5, // upper
@@ -2827,8 +2829,7 @@ create_wav (void)
   g_signal_connect (G_OBJECT (adj_pv_rate), "value_changed",
 		    G_CALLBACK (wav_pv_rate), GTK_OBJECT (wav_win));
 
-  GtkWidget *scale_rate;
-  scale_rate = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_rate));
+  GtkWidget *scale_rate = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_rate));
   gtk_range_set_update_policy (GTK_RANGE (scale_rate),
 			       GTK_UPDATE_CONTINUOUS);
   //gtk_box_pack_start (GTK_BOX (hbox), scale_rate, FALSE, FALSE, 0);
@@ -2850,8 +2851,7 @@ create_wav (void)
 
   extern double pv_pitch;
   pv_pitch = 0.0; // initial value
-  GtkObject *adj_pv_pitch;
-  adj_pv_pitch = gtk_adjustment_new
+  GtkObject *adj_pv_pitch = gtk_adjustment_new
     (0.0, // value
      -12.5, // lower
      12.5, // upper
@@ -2861,8 +2861,7 @@ create_wav (void)
   g_signal_connect (G_OBJECT (adj_pv_pitch), "value_changed",
 		    G_CALLBACK (wav_pv_pitch), GTK_OBJECT (wav_win));
 
-  GtkWidget *scale_pitch;
-  scale_pitch = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_pitch));
+  GtkWidget *scale_pitch = gtk_vscale_new (GTK_ADJUSTMENT (adj_pv_pitch));
   gtk_range_set_update_policy (GTK_RANGE (scale_pitch),
 			       GTK_UPDATE_CONTINUOUS);
   //gtk_box_pack_start (GTK_BOX (hbox), scale_pitch, FALSE, FALSE, 0);
