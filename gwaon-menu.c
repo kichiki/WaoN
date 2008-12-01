@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : menu
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-menu.c,v 1.2 2007/03/10 20:42:17 kichiki Exp $
+ * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: gwaon-menu.c,v 1.3 2008/12/01 00:38:27 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,9 +45,8 @@ on_file_open_wav_sel_ok (GtkWidget *widget, GtkFileSelection *fs)
 {
   extern SNDFILE *sf;
   extern SF_INFO sfinfo;
-  gchar *filename;
 
-  filename =
+  gchar *filename =
     (gchar *) gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
   g_print ("%s\n", filename);
 
@@ -79,10 +78,8 @@ on_file_open_wav_sel_ok (GtkWidget *widget, GtkFileSelection *fs)
 static void
 on_file_open_wav (GtkWidget *widget, gpointer data)
 {
-  GtkWidget *filew;
-
   /* Create a new file selection widget */
-  filew = gtk_file_selection_new ("File selection");
+  GtkWidget *filew = gtk_file_selection_new ("File selection");
 
   gtk_signal_connect (GTK_OBJECT (filew), "destroy",
 		      GTK_SIGNAL_FUNC (gtk_widget_destroy),
@@ -110,8 +107,7 @@ void
 create_menu (void)
 {
   // create a new window
-  GtkWidget *window;
-  window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+  GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 
   /*gtk_widget_set_usize( GTK_WIDGET (window), 200, 100);*/
   gtk_widget_set_uposition (window, 200, 100);
@@ -132,33 +128,26 @@ create_menu (void)
   gtk_window_set_title(GTK_WINDOW (window), "gWaoN");
   gtk_container_border_width (GTK_CONTAINER (window), 0);
 
-  GtkTooltips *tooltips;
-  tooltips = gtk_tooltips_new ();
-  GtkAccelGroup *accel_group;
-  /*accel_group = gtk_accel_group_get_default ();*/
-  accel_group = gtk_accel_group_new (); /* for gtk-2.0 */
+  GtkTooltips *tooltips = gtk_tooltips_new ();
+  GtkAccelGroup *accel_group = gtk_accel_group_new ();
 
 
-  GtkWidget *vbox;
-  vbox = gtk_vbox_new (FALSE, 0);
+  GtkWidget *vbox = gtk_vbox_new (FALSE, 0);
   gtk_container_add (GTK_CONTAINER (window), vbox);
   gtk_widget_show (vbox);
 
 
   /* create menu bar */
-  GtkWidget *menubar;
-  menubar = gtk_menu_bar_new ();
+  GtkWidget *menubar = gtk_menu_bar_new ();
   gtk_box_pack_start (GTK_BOX (vbox), menubar, FALSE, TRUE, 0);
   gtk_widget_show (menubar);
 
   /* create File menu */
-  GtkWidget *menuitem;
-  menuitem = gtk_menu_item_new_with_label ("File");
+  GtkWidget *menuitem = gtk_menu_item_new_with_label ("File");
   gtk_menu_bar_append (GTK_MENU_BAR (menubar), menuitem);
   gtk_widget_show (menuitem);
 
-  GtkWidget *menu;
-  menu = gtk_menu_new ();
+  GtkWidget *menu = gtk_menu_new ();
   gtk_menu_item_set_submenu (GTK_MENU_ITEM (menuitem), menu);
 
   /* File -> Open WAV */
