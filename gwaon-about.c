@@ -1,6 +1,6 @@
 /* gWaoN -- gtk+ Spectra Analyzer : about
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-about.c,v 1.2 2007/10/28 17:24:20 kichiki Exp $
+ * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: gwaon-about.c,v 1.3 2008/12/01 00:48:29 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ create_about (void)
     (GTK_TYPE_ABOUT_DIALOG,
      "name", "gWaoN", 
      "version", WAON_VERSION,
-     "copyright", "(C) 1998-2007 Kengo Ichiki",
+     "copyright", "(C) 1998-2008 Kengo Ichiki",
      "comments", "GUI frontend for waon and pv.",
      "authors", authors,
      //"documenters", documenters,
