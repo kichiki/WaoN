@@ -1,6 +1,6 @@
 /* WaoN - a Wave-to-Notes transcriber : main
- * Copyright (C) 1998-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: main.c,v 1.11 2008/06/07 04:53:16 kichiki Exp $
+ * Copyright (C) 1998-2008,2011 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: main.c,v 1.12 2011/12/27 13:11:00 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -703,10 +703,22 @@ int main (int argc, char** argv)
 			8, 0, peak_threshold);
     }
 
+
+  // clean notes
+  WAON_notes_regulate (notes);
+
+  WAON_notes_remove_shortnotes (notes, 1, 64);
+  WAON_notes_remove_shortnotes (notes, 2, 28);
+
+  WAON_notes_remove_octaves (notes);
+
+
+  /*
   pitch_shift /= (double) n_pitch;
   fprintf (stderr, "WaoN : difference of pitch = %f ( + %f )\n",
 	   -(pitch_shift - 0.5),
 	   adj_pitch);
+  */
 
   /* div is the divisions for one beat (quater-note).
    * here we assume 120 BPM, that is, 1 beat is 0.5 sec.
