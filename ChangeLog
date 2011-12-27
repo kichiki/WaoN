@@ -2,6 +2,16 @@
 
 	* Release 0.10.
 
+	* gwaon-about.c: 1.4 2011/12/27 14:44:46 kichiki Exp
+	update.
+
+	* gwaon-wav.c: 1.20 2011/12/27 14:39:22 kichiki Exp
+	(create_wav): check ao device, and initialize,
+	otherwise we got seg-fault.
+
+	* VERSION.h:
+	increment to 0.10.
+	
 	* main.c: 1.12 2011/12/27 13:11:00 kichiki Exp
 	(main): add cleaning steps for the data.
 
