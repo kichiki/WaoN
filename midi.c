@@ -1,6 +1,6 @@
 /* subroutines to write standard MIDI file
- * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.c,v 1.6 2007/11/04 23:48:04 kichiki Exp $
+ * Copyright (C) 1998-2007,2011 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: midi.c,v 1.7 2011/12/27 13:07:40 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -403,6 +403,7 @@ WAON_notes_output_midi (struct WAON_notes *notes,
       else      idt = notes->step[i] - last_step;
       last_step = notes->step[i];
 
+      // for check
       if (notes->event[i] == 1) /* start note  */
 	{
 	  n_midi = smf_note_on (fd, idt,
@@ -417,10 +418,22 @@ WAON_notes_output_midi (struct WAON_notes *notes,
 				 64, /* default  */
 				 0);
 	}
-      if (n_midi != 4)
+      if (n_midi < 4)
 	{
-	  fprintf (stderr, "Error during writing mid! %d (note)\n",
-		   p_midi);
+	  if (notes->event[i] == 1)
+	    {
+	      fprintf (stderr, "Error during writing mid! %d (note-on)\n"
+		       " idt = %d, note = %d, vel = %d, n_midi = %d\n",
+		       p_midi,
+		       idt, notes->note[i], notes->vel[i], n_midi);
+	    }
+	  else
+	    {
+	      fprintf (stderr, "Error during writing mid! %d (note-off)\n"
+		       " idt = %d, note = %d, vel = %d, n_midi = %d\n",
+		       p_midi,
+		       idt, notes->note[i], 64, n_midi);
+	    }
 	  /*return;*/
 	}
       p_midi += n_midi;
