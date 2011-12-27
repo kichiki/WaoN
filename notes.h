@@ -1,7 +1,7 @@
 /* header file for notes.c --
  * routines for notes handling
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: notes.h,v 1.1 2007/11/04 23:49:55 kichiki Exp $
+ * Copyright (C) 2007,2011 Kengo Ichiki <kichiki@users.sourceforge.net>
+ * $Id: notes.h,v 1.2 2011/12/27 13:00:56 kichiki Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,29 @@ void
 WAON_notes_append (struct WAON_notes *notes,
 		   int step, char event, char note, char vel);
 
+void
+WAON_notes_insert (struct WAON_notes *notes,
+		   int index,
+		   int step, char event, char note, char vel);
+void
+WAON_notes_remove_at (struct WAON_notes *notes,
+		      int index);
+
+void
+WAON_notes_regulate (struct WAON_notes *notes);
+void
+WAON_notes_remove_shortnotes (struct WAON_notes *notes,
+			      int min_duration,
+			      int min_vel);
+void
+WAON_notes_remove_longnotes (struct WAON_notes *notes,
+			     int max_duration,
+			     int min_vel);
+void
+WAON_notes_remove_smallnotes (struct WAON_notes *notes,
+			      int min_vel);
+void
+WAON_notes_remove_octaves (struct WAON_notes *notes);
 
 /** for stage 3 : time-difference check for note-on/off **/
 /* check on and off events for each note comparing vel[] and on_vel[]
@@ -62,5 +85,10 @@ WAON_notes_check (struct WAON_notes *notes,
 		  int off_threshold,
 		  int peak_threshold);
 
+
+void
+WAON_notes_dump (struct WAON_notes *notes);
+void
+WAON_notes_dump2 (struct WAON_notes *notes);
 
 #endif /* !_NOTES_H_ */
