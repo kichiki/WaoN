@@ -1,4 +1,52 @@
+2011-12-27  Kengo Ichiki  <kichiki@users.sourceforge.net>
+
+	* Release 0.10.
+
+	* main.c: 1.12 2011/12/27 13:11:00 kichiki Exp
+	(main): add cleaning steps for the data.
+
+	* midi.c: 1.7 2011/12/27 13:07:40 kichiki Exp
+	(WAON_notes_output_midi): correct checks for smf_note_on/off ().
+
+	* notes.h: 1.2 2011/12/27 13:00:56 kichiki Exp
+	* notes.c: 1.2 2011/12/27 13:00:20 kichiki Exp
+	add basic methods of insert, remove_at.
+	add clean-up methods like regulate, remove_shortnotes,
+	remove_longnotes, remove_smallnotes, remove_octaves.
+	add dump methods for checking.
+
+2008-11-30  Kengo Ichiki  <kichiki@users.sourceforge.net>
+
+	* gwaon-about.c: 1.3 2008/12/01 00:48:29 kichiki Exp
+	update.
+
+	* gwaon-menu.c: 1.3 2008/12/01 00:38:27 kichiki Exp
+	* gwaon-wav.c: 1.19 2008/12/01 00:47:59 kichiki Exp
+	minor style change.
+
+2008-11-09  Kengo Ichiki  <ichiki@tpr60>
+
+	* gwaon-wav.c: 1.18 2008/11/09 20:59:32 kichiki Exp
+	-- the following is done on 2008-06-19 --
+	(draw_keyboard_hor): added.
+	(draw_spectrum_frame): add horizontal keyboard.
+
+2008-06-06  Kengo Ichiki  <ichiki@tpr60>
+
+	* pv.c: 1.19 2008/06/07 04:54:45 kichiki Exp
+	* pv.1: 1.4 2008/06/07 04:54:07 kichiki Exp
+	* main.c: 1.11 2008/06/07 04:53:16 kichiki Exp
+	* waon.1: 1.4 2008/06/07 04:52:47 kichiki Exp
+	some corrections on manual and help documentation.
+
+2007-11-05  Kengo Ichiki  <ichiki@tpr60>
+
+	* waon.spec: 1.1
+	initial revision.
+
 2007-11-04  Kengo Ichiki  <ichiki@tpr60>
+
+	* Release 0.9.
 
 	* pv.c: 1.18 2007/11/05 02:37:10 kichiki Exp
 	correct the default scheme to 0, the curses mode.
