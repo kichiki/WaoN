@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
-                    WaoN - a wave-to-notes transcriber 0.2
+                    WaoN - a wave-to-notes transcriber 0.10
 -------------------------------------------------------------------------------
 
-    Copyright (C) 1998-2006 Kengo Ichiki <kichiki@users.sourceforge.net>
+    Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
                             All Rights Reserved
 
     This program is free software; you can redistribute it and/or modify
@@ -21,28 +21,40 @@
 
 -------------------------------------------------------------------------------
 
+                  Project URL: http://kichiki.github.com/WaoN/
+
+-------------------------------------------------------------------------------
+
                                     WaoN
                                       
                        is a Wave-to-Notes transcriber
-                        (last updated on 1/10/1999)
+                       (last updated on Mar. 3, 2013)
                                       
-   News| WaoN?| Features| Platform| Formats| Screenshot| Tips| Download|
-                     BUGS| TODO| Links| History|| gWaoN
      _________________________________________________________________
    
 What's new?
 
-     * Jan 10, 1999 : start gWaoN page.
+     * Mar. 3, 2013: move the project from sourceforce to github.
+     * Jan. 1, 2012: add "Demo" section.
+     * Dec. 27, 2011: waon-0.10 released. (Release Note)
+         waon: the quality of result is improved by cleaning up useless notes.
+         gwaon: horizontal keyboard is added on the spectrum pane.
        
 What is WaoN?
 
-   WaoN is a Wave-to-Notes transcriber, that is, the inverse of '
-   timidity' (and its descendants timidity++, and timidity with Gtk+).
+   WaoN is a Wave-to-Notes transcriber, that is, the inverse of
+   'timidity' (and its descendants timidity++, and timidity with Gtk+).
    ("WaoN" also has a meaning of harmony of notes or chord in Japanese!)
    My original intention is to pick up voicing of harmony from sound of
    my favorite pianists. (I have no talent to do so, but computer will
    :-) But there is no functional application of this kind on Unix
    platform, as far as I know. So that I start writing WaoN by myself.
+
+   Currently, WaoN contains three programs:
+     * waon: transcriber (wav-to-mid converter)
+     * pv: phase vocoder for time-streching and pitch-shifting
+     * gwaon: GUI for waon and pv
+
    WaoN is released under the GNU General Public License.
    
 Features
@@ -55,8 +67,12 @@ Features
        
 Platform
 
-   I believe that WaoN is generic, but developed on FreeBSD.
-   
+   I believe that WaoN is able to be built on any platforms.
+   I am developing this project currently on Mac OS X (and,
+   before that, on FreeBSD).
+
+   Since version 0.11, Win32 binaries (built on MinGW) are ready.
+
 Formats
 
    WaoN's native format as sound-input is WAV, and that as note-output is
@@ -70,43 +86,64 @@ Screenshot ("WaoN" is not a GUI application but ... :-)
   help
   
 $ ./waon --help
-WaoN - a Wave-to-Notes transcriber, version 0.1a
-Copyright (C) 1998 Kengo ICHIKI
+WaoN - a Wave-to-Notes transcriber, Version 0.10
+
+Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
+Web: http://kichiki.github.com/WaoN/
+
+WaoN is a Wave-to-Notes transcriber,
+that is, a converter from sound file to midi file.
 
 Usage: ./waon [option ...]
-  -h --help     print this help.
-  -v --version  print version info.
+
+Options:
+  -h --help	print this help.
+  -v, --version	print version information.
 OPTIONS FOR FILES
-  -i --input    input wav file (DEFAULT stdin)
-  -o --output   output mid file (DEFAULT 'output.mid')
-        options -i and -o have argument '-' as stdin/stdout
-  -p --patch    patch file (DEFAULT no patch)
-NOTE SELECTION OPTIONS
-  -c --cutoff   log10 of cut-off ratio to scale velocity of note
-                (DEFAULT -5.0)
-  -r --relative log10 of cut-off ratio relative to the average.
-                (DEFAULT no relative cutoff
-                = absolute cutoff with the value in -c option)
-  -k --peak     peak threshold for note-on, which ranges [0,127]
-                (DEFAULT 128 = no peak-search = search only first on-event)
-  -t --top      top note [midi #] (DEFAULT 103 = G8)
-  -b --bottom   bottom note [midi #] (DEFAULT 28 = E2)
-        Here middle C (261 Hz) = C3 = midi 60. Midi # ranges [0,127].
-  -a --adjust   adjust-pitch param, which is suggested by WaoN after analysis.
-                unit is half-note, that is, +1 is half-note up,
-                and -0.5 is quater-note down. (DEFAULT 0)
-READING WAV OPTIONS
-  -n            sampling number from WAV in 1 step (DEFAULT 2048)
-  -s --shift    shift number from WAV in 1 step
-                (DEFAULT same in the value in -n option)
+  -i --input	input wav file (default: stdin)
+  -o --output	output mid file (default: 'output.mid')
+	options -i and -o have argument '-' as stdin/stdout
+  -p --patch	patch file (default: no patch)
 FFT OPTIONS
-  -w --window   0 no window (DEFAULT)
-                1 parzen window
-                2 welch window
-                3 hanning window
-                4 hamming window
-                5 blackman window
-                6 steeper 30-dB/octave rolloff window
+  -n		sampling number from WAV in 1 step (default: 2048)
+  -w --window	0 no window
+		1 parzen window
+		2 welch window
+		3 hanning window (default)
+		4 hamming window
+		5 blackman window
+		6 steeper 30-dB/octave rolloff window
+READING WAV OPTIONS
+  -s --shift	shift number from WAV in 1 step
+		(default: 1/4 of the value in -n option)
+PHASE-VOCODER OPTIONS
+  -nophase	don't use phase diff to improve freq estimation.
+		(default: use the correction)
+NOTE SELECTION OPTIONS
+  -c --cutoff	log10 of cut-off ratio to scale velocity of note
+		(default: -5.0)
+  -r --relative	log10 of cut-off ratio relative to the average.
+		(default: no relative cutoff
+		= absolute cutoff with the value in -c option)
+  -k --peak	peak threshold for note-on, which ranges [0,127]
+		(default: 128 = no peak-search = search only first on-event)
+  -t --top	top note [midi #] (default: 103 = G7)
+  -b --bottom	bottom note [midi #] (default: 28 = E1)
+	Here middle C (261 Hz) = C4 = midi 60. Midi # ranges [0,127].
+  -a --adjust	adjust-pitch param, which is suggested by WaoN after analysis.
+		unit is half-note, that is, +1 is half-note up,
+		and -0.5 is quater-note down. (default: 0)
+DRUM-REMOVAL OPTIONS
+  -psub-n	number of averaging bins in one side.
+		that is, for n, (i-n,...,i,...,i+n) are averaged
+		(default: 0)
+  -psub-f	factor to the average, where the power is modified as
+		p[i] = (sqrt(p[i]) - f * sqrt(ave[i]))^2
+		(default: 0.0)
+OCTAVE-REMOVAL OPTIONS
+  -oct	factor to the octave removal, where the power is modified as
+		p[i] = (sqrt(p[i]) - f * sqrt(oct[i]))^2
+		(default: 0.0)
 
   analyse
   
@@ -144,7 +181,7 @@ Download
 
   source
   
-   WaoN version 0.1 (source waon-0.1.tar.gz) is now available.
+   available at https://github.com/kichiki/WaoN
    
   library
   
@@ -157,46 +194,63 @@ BUGS
        
 TODO
 
-    1. stereo
-    2. improve algorithms
-    3. give some examples and instructions here
-    4. make GUI for WaoN in order to adjust parameters (with Gtk+)
-       
-Links
-
-  Referenced softwares and documents
-  
-     * SoX: Sound eXchange
-          + original site
-          + ver.12.15
-     * standard MIDI Files 0.06
-     * FFTW - C library for FFT used in WaoN.
-     * Gtk+: the GIMP toolkit ; but gWaoN is not yet functional.
-       
-  Similar projects
-  
-     * Timidity - a MIDI to WAVE converter and player
-          + original site (up to 0.2i)
-          + timidity with Gtk+ (0.2j or later).
-          + timidity++
-     * " A Parallel Conversion of WAV files to MID files" by John Markus
-       and William Lee Sims (containing a source code Wav2Mid.c).
-     * Inst2Midi, which converts a monophonic audio source into MIDI
-       Data. (on SGI)
-     * sharewares on Windows... Song Raita, Saihu no Tatsujin.
-       
-  Other useful sites
-  
-     * Some Interesting Sound & MIDI Software For Linux (mirror1,
-       mirror2) : an extensive list of softwares on unix (especially
-       Linux) platform.
-     * The Standards Page : containing documents on various formats (like
-       standard MIDI format).
-     * Wotsit's Format : yet another site on various formats (like MIDI,
-       WAV, etc).
+    1. improve algorithms -- partly done by phase vocoder technique.
+       current focus is on time-domain.
+    2. give some examples and instructions.
        
 History
 
+     * Apr. 21, 2010 : David Millis sent me a patch for waon MinGW port.
+     * Nov. 4, 2007 : waon-0.9 released. (Release Note)
+          + add manual pages (waon.1, pv.1, gwaon.1).
+          + clean the codes.
+          + pv:
+               . add the interactive curses mode with real-time time-strech
+                 and pitch-shift.
+               . add no-fft scheme (just for fun).
+          + gwaon: update about window and the GUI, adding buttons for
+            each function.
+     * Oct 9, 2007 : ports for FreeBSD is now available.
+     * Mar 10, 2007 : waon-0.8 released. (Release Note)
+          + pv: rate and pitch options can work together.
+          + gWaoN: add pitch-shift scale.
+     * Mar 1, 2007 : waon-0.7 released!
+          + WaoN:
+               . bug fixed for the procedure in phase-diff correction.
+               . add two functionalities, drum-removal (by options -psub-n,
+                 -psub-f) and octave removal (by option -oct).
+               . set hanning window as the default window.
+               . set phase-diff correction as the default, and cut --phase
+                 option and add -nophase option, instead.
+          + pv: set hanning window as the default window.
+     * Feb 24, 2007 : waon-0.6 released!
+          + gWaoN: use ao libary, loop-play, play-position indicator,
+            loose phase lock PV.
+          + pv: bug fixed on loose phase lock, use ao libary, pitch-shifting.
+          + WaoN: get rid of my old sox-derived code.
+     * Feb 16, 2007 : waon-0.5 released!
+          + this release is for gWaoN functionality enhancement.
+     * Feb 13, 2007 :
+          + pv is added in the CVS Repository.
+          + waon-0.4 released!
+     * Feb 10, 2007 : gWaoN is in the CVS Repository.
+     * Feb 8, 2007 : waon-0.3 is out!
+          + add "--phase" option to improve freq estimations by phase-vocoder
+            technique.
+          + use libsndfile for input.
+     * Sep 22, 2006 : waon-0.2 is out!
+          + stereo wav can be handled properly.
+          + work with either FFTW version 2 or 3.
+     * Sep 20, 2006 : move to sourceforge.
+     * Feb 2, 2005 : Victor Liu sent me a patch for FFTW3. thanks!
+     * Jan 9, 2004 : LOGO is made.
+     * Dec 21, 2003 : update URLs of source and mirror site.
+     * Mar 15, 2002 :
+          + change URL.
+          + revise and add some links only (again. no update on program, sorry.)
+     * Mar 4, 2000 :
+          + long time no update...
+          + revise and add some links only (no update on program, sorry.)
      * Jan 10, 1999 : start gWaoN page.
      * Jan 6, 1999 : add BUGS section, update TODO list.
      * Dec 29, 1998 : first release of "WaoN" version 0.1. See download
@@ -214,14 +268,7 @@ History
      * Dec 5, 1996 : freeze developing the first generation.
      * Dec 3, 1996 : start original program named 'wav2mid'.
      _________________________________________________________________
-   
-   News| WaoN?| Features| Platform| Formats| Screenshot| Tips| Download|
-                     BUGS| TODO| Links| History|| gWaoN
-   
-                                  [INLINE]
                                       
-                                      
-    e-mail: ichiki@geocities.com
-    
-         Copyright (c) 1998,1999 Kengo ICHIKI. All rights reserved.
+    e-mail: kengoichiki@gmail.com
+         Copyright (C) 1998-2013 Kengo Ichiki. All rights reserved. 
      _________________________________________________________________
