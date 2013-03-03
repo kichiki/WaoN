@@ -2611,11 +2611,6 @@ create_wav (void)
   logf_min = midi_to_logf ((oct_min+1)*12);
   logf_max = midi_to_logf ((oct_max+1)*12);
 
-  // ao device
-  fprintf (stderr, "# check ao device\n");
-  ao_initialize ();
-  print_ao_driver_info_list ();
-  ao_shutdown ();
 
   extern ao_device *ao;
   ao = ao_init_16_stereo (sfinfo.samplerate, 0);

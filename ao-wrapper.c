@@ -17,6 +17,7 @@
  */
 #include <stdlib.h>
 #include <unistd.h> // write()
+#include <string.h> // memset()
 
 #include "memory-check.h" // CHECK_MALLOC() macro
 
@@ -52,6 +53,7 @@ ao_init_16_stereo (int samplerate, int verbose)
 
   default_driver = ao_default_driver_id ();
 
+  memset(&format, 0, sizeof(format));
   format.bits = 16;
   format.channels = 2;
   format.rate = samplerate;
