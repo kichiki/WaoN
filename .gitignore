@@ -1,6 +1,7 @@
 *.o
 *.wav
 *.log
+*.exe
 waon
 gwaon
 pv
