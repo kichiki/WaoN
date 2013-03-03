@@ -1,6 +1,5 @@
 /* PV - phase vocoder : main
- * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv.c,v 1.19 2008/06/07 04:54:45 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,9 +40,9 @@ void print_pv_version (void)
 {
   fprintf (stderr, "WaoN-pv - yet-another phase vocoder, Version %s\n\n",
 	   WAON_VERSION);
-  fprintf (stdout, "Copyright (C) 1998-2007 Kengo Ichiki "
-	   "<kichiki@users.sourceforge.net>\n");
-  fprintf (stdout, "Web: http://waon.sourceforge.net/\n\n");
+  fprintf (stdout, "Copyright (C) 1998-2013 Kengo Ichiki "
+	   "<kengoichiki@gmail.com>\n");
+  fprintf (stdout, "Web: http://kichiki.github.com/WaoN//\n\n");
 }
 
 

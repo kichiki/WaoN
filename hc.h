@@ -1,7 +1,6 @@
 /* header file for hc.c --
  * half-complex format routines
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.h,v 1.3 2007/02/16 06:21:54 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

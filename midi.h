@@ -1,7 +1,6 @@
 /* header file for midi.c --
  * subroutines to write standard MIDI file
- * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.h,v 1.5 2007/11/04 23:48:26 kichiki Exp $
+ * Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

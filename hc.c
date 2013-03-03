@@ -1,6 +1,5 @@
 /* half-complex format routines
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: hc.c,v 1.7 2007/10/22 04:26:38 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

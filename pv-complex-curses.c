@@ -1,6 +1,5 @@
 /* real-time phase vocoder with curses interface
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-complex-curses.c,v 1.7 2007/11/05 02:23:46 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

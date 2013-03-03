@@ -1,6 +1,5 @@
 /* gWaoN -- gtk+ Spectra Analyzer : wav win
- * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-wav.c,v 1.20 2011/12/27 14:39:22 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

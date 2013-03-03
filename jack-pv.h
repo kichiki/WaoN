@@ -1,7 +1,6 @@
 /* header file for jack-pv.c --
  * real-time phase vocoder with curses interface and JACK
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: jack-pv.h,v 1.1 2007/10/29 02:49:09 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

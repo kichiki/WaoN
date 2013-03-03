@@ -1,6 +1,5 @@
 /* the core of phase vocoder without FFT, for fun (this is not phase vocoder)
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-nofft.c,v 1.1 2007/10/29 01:17:11 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

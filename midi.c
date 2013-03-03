@@ -1,6 +1,5 @@
 /* subroutines to write standard MIDI file
- * Copyright (C) 1998-2007,2011 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: midi.c,v 1.7 2011/12/27 13:07:40 kichiki Exp $
+ * Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

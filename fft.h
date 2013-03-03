@@ -1,7 +1,6 @@
 /* header file for fft.c --
  * FFT subroutine for WaoN with FFTW library
- * Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: fft.h,v 1.7 2007/02/28 08:34:23 kichiki Exp $
+ * Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,6 +1,5 @@
 /* PV - phase vocoder : pv-loose-lock.c
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-loose-lock.c,v 1.9 2007/10/14 06:27:28 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

@@ -1,6 +1,5 @@
 /* gWaoN -- gtk+ Spectra Analyzer : menu
- * Copyright (C) 2007-2008 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-menu.c,v 1.3 2008/12/01 00:38:27 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

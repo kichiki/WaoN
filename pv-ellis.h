@@ -1,7 +1,6 @@
 /* header file for pv-ellis.c --
  * PV - phase vocoder : pv-ellis.c
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: pv-ellis.h,v 1.3 2007/03/11 01:04:58 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

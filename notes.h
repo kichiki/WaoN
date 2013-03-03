@@ -1,7 +1,6 @@
 /* header file for notes.c --
  * routines for notes handling
- * Copyright (C) 2007,2011 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: notes.h,v 1.2 2011/12/27 13:00:56 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

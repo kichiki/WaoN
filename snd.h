@@ -1,7 +1,6 @@
 /* header file for snd.c --
  * some wrapper for libsndfile
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: snd.h,v 1.1 2007/02/09 05:58:38 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

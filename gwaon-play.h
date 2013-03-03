@@ -1,7 +1,6 @@
 /* header file for gwaon-play.c --
  * gWaoN -- gtk+ Spectra Analyzer : playback
- * Copyright (C) 2007 Kengo Ichiki <kichiki@users.sourceforge.net>
- * $Id: gwaon-play.h,v 1.2 2007/10/21 04:02:23 kichiki Exp $
+ * Copyright (C) 2007-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

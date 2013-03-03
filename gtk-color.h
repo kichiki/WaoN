@@ -1,7 +1,6 @@
 /* header file for gtk-color.c --
  * gtk-color.c
- * Copyright (C) 1999,2003,2007 Kengo Ichiki <kichiki@kichiki.com>
- * $Id: gtk-color.h,v 1.1 2007/02/09 23:03:59 kichiki Exp $
+ * Copyright (C) 1999-2013 Kengo Ichiki <kengoichiki@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

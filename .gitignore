@@ -1,0 +1,7 @@
+*.o
+*.wav
+*.log
+waon
+gwaon
+pv
+pv-jack
