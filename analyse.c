@@ -20,7 +20,7 @@
 #include <stdlib.h> // malloc()
 #include <string.h> // memset()
 #include <math.h> // log10()
-#include <sys/errno.h> // errno
+#include <errno.h> // errno
 #include "memory-check.h" // CHECK_MALLOC() macro
 
 /* FFTW library  */

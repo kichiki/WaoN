@@ -93,87 +93,87 @@ void sndfile_print_info (SF_INFO *sfinfo)
   switch (sfinfo->format & SF_FORMAT_TYPEMASK)
     {
     case SF_FORMAT_WAV:
-      fprintf (stdout, "Format: Microsoft WAV format (little endian default).\n");
+      fprintf (stderr, "Format: Microsoft WAV format (little endian default).\n");
       break;
 
     case SF_FORMAT_AIFF:
-      fprintf (stdout, "Format: Apple/SGI AIFF format (big endian).\n");
+      fprintf (stderr, "Format: Apple/SGI AIFF format (big endian).\n");
       break;
 
     case SF_FORMAT_AU:
-      fprintf (stdout, "Format: Sun/NeXT AU format (big endian).\n");
+      fprintf (stderr, "Format: Sun/NeXT AU format (big endian).\n");
       break;
 
     case SF_FORMAT_RAW:
-      fprintf (stdout, "Format: RAW PCM data.\n");
+      fprintf (stderr, "Format: RAW PCM data.\n");
       break;
 
     case SF_FORMAT_PAF:
-      fprintf (stdout, "Format: Ensoniq PARIS file format.\n");
+      fprintf (stderr, "Format: Ensoniq PARIS file format.\n");
       break;
 
     case SF_FORMAT_SVX:
-      fprintf (stdout, "Format: Amiga IFF / SVX8 / SV16 format.\n");
+      fprintf (stderr, "Format: Amiga IFF / SVX8 / SV16 format.\n");
       break;
 
     case SF_FORMAT_NIST:
-      fprintf (stdout, "Format: Sphere NIST format.\n");
+      fprintf (stderr, "Format: Sphere NIST format.\n");
       break;
 
     case SF_FORMAT_VOC:
-      fprintf (stdout, "Format: VOC files.\n");
+      fprintf (stderr, "Format: VOC files.\n");
       break;
 
     case SF_FORMAT_IRCAM:
-      fprintf (stdout, "Format: Berkeley/IRCAM/CARL\n");
+      fprintf (stderr, "Format: Berkeley/IRCAM/CARL\n");
       break;
 
     case SF_FORMAT_W64:
-      fprintf (stdout, "Format: Sonic Foundry's 64 bit RIFF/WAV\n");
+      fprintf (stderr, "Format: Sonic Foundry's 64 bit RIFF/WAV\n");
       break;
 
     case SF_FORMAT_MAT4:
-      fprintf (stdout, "Format: Matlab (tm) V4.2 / GNU Octave 2.0\n");
+      fprintf (stderr, "Format: Matlab (tm) V4.2 / GNU Octave 2.0\n");
       break;
 
     case SF_FORMAT_MAT5:
-      fprintf (stdout, "Format: Matlab (tm) V5.0 / GNU Octave 2.1\n");
+      fprintf (stderr, "Format: Matlab (tm) V5.0 / GNU Octave 2.1\n");
       break;
 
     case SF_FORMAT_PVF:
-      fprintf (stdout, "Format: Portable Voice Format\n");
+      fprintf (stderr, "Format: Portable Voice Format\n");
       break;
 
     case SF_FORMAT_XI:
-      fprintf (stdout, "Format: Fasttracker 2 Extended Instrument\n");
+      fprintf (stderr, "Format: Fasttracker 2 Extended Instrument\n");
       break;
 
     case SF_FORMAT_HTK:
-      fprintf (stdout, "Format: HMM Tool Kit format\n");
+      fprintf (stderr, "Format: HMM Tool Kit format\n");
       break;
 
     case SF_FORMAT_SDS:
-      fprintf (stdout, "Format: Midi Sample Dump Standard\n");
+      fprintf (stderr, "Format: Midi Sample Dump Standard\n");
       break;
 
     case SF_FORMAT_AVR:
-      fprintf (stdout, "Format: Audio Visual Research\n");
+      fprintf (stderr, "Format: Audio Visual Research\n");
       break;
 
     case SF_FORMAT_WAVEX:
-      fprintf (stdout, "Format: MS WAVE with WAVEFORMATEX\n");
+      fprintf (stderr, "Format: MS WAVE with WAVEFORMATEX\n");
       break;
 
     case SF_FORMAT_SD2:
-      fprintf (stdout, "Format: Sound Designer 2\n");
+      fprintf (stderr, "Format: Sound Designer 2\n");
       break;
 
     case SF_FORMAT_FLAC:
-      fprintf (stdout, "Format: FLAC lossless file format\n");
+      fprintf (stderr, "Format: FLAC lossless file format\n");
       break;
 
     case SF_FORMAT_CAF:
-      fprintf (stdout, "Format: Core Audio File format\n");
+      fprintf (stderr, "Format: Core Audio File format\n");
       break;
 
     default :
@@ -185,91 +185,91 @@ void sndfile_print_info (SF_INFO *sfinfo)
   switch (sfinfo->format & SF_FORMAT_SUBMASK)
     {
     case SF_FORMAT_PCM_S8:
-      fprintf (stdout, "Subtype: Signed 8 bit data\n");
+      fprintf (stderr, "Subtype: Signed 8 bit data\n");
       break;
 
     case SF_FORMAT_PCM_16:
-      fprintf (stdout, "Subtype: Signed 16 bit data\n");
+      fprintf (stderr, "Subtype: Signed 16 bit data\n");
       break;
 
     case SF_FORMAT_PCM_24:
-      fprintf (stdout, "Subtype: Signed 24 bit data\n");
+      fprintf (stderr, "Subtype: Signed 24 bit data\n");
       break;
 
     case SF_FORMAT_PCM_32:
-      fprintf (stdout, "Subtype: Signed 32 bit data\n");
+      fprintf (stderr, "Subtype: Signed 32 bit data\n");
       break;
 
     case SF_FORMAT_PCM_U8:
-      fprintf (stdout, "Subtype: Unsigned 8 bit data (WAV and RAW only)\n");
+      fprintf (stderr, "Subtype: Unsigned 8 bit data (WAV and RAW only)\n");
       break;
 
     case SF_FORMAT_FLOAT:
-      fprintf (stdout, "Subtype: 32 bit float data\n");
+      fprintf (stderr, "Subtype: 32 bit float data\n");
       break;
 
     case SF_FORMAT_DOUBLE:
-      fprintf (stdout, "Subtype: 64 bit float data\n");
+      fprintf (stderr, "Subtype: 64 bit float data\n");
       break;
 
     case SF_FORMAT_ULAW:
-      fprintf (stdout, "Subtype: U-Law encoded.\n");
+      fprintf (stderr, "Subtype: U-Law encoded.\n");
       break;
 
     case SF_FORMAT_ALAW:
-      fprintf (stdout, "Subtype: A-Law encoded.\n");
+      fprintf (stderr, "Subtype: A-Law encoded.\n");
       break;
 
     case SF_FORMAT_IMA_ADPCM:
-      fprintf (stdout, "Subtype: IMA ADPCM.\n");
+      fprintf (stderr, "Subtype: IMA ADPCM.\n");
       break;
 
     case SF_FORMAT_MS_ADPCM:
-      fprintf (stdout, "Subtype: Microsoft ADPCM.\n");
+      fprintf (stderr, "Subtype: Microsoft ADPCM.\n");
       break;
 
     case SF_FORMAT_GSM610:
-      fprintf (stdout, "Subtype: GSM 6.10 encoding.\n");
+      fprintf (stderr, "Subtype: GSM 6.10 encoding.\n");
       break;
 
     case SF_FORMAT_VOX_ADPCM:
-      fprintf (stdout, "Subtype: Oki Dialogic ADPCM encoding.\n");
+      fprintf (stderr, "Subtype: Oki Dialogic ADPCM encoding.\n");
       break;
 
     case SF_FORMAT_G721_32:
-      fprintf (stdout, "Subtype: 32kbs G721 ADPCM encoding.\n");
+      fprintf (stderr, "Subtype: 32kbs G721 ADPCM encoding.\n");
       break;
 
     case SF_FORMAT_G723_24:
-      fprintf (stdout, "Subtype: 24kbs G723 ADPCM encoding.\n");
+      fprintf (stderr, "Subtype: 24kbs G723 ADPCM encoding.\n");
       break;
 
     case SF_FORMAT_G723_40:
-      fprintf (stdout, "Subtype: 40kbs G723 ADPCM encoding.\n");
+      fprintf (stderr, "Subtype: 40kbs G723 ADPCM encoding.\n");
       break;
 
     case SF_FORMAT_DWVW_12:
-      fprintf (stdout, "Subtype: 12 bit Delta Width Variable Word encoding.\n");
+      fprintf (stderr, "Subtype: 12 bit Delta Width Variable Word encoding.\n");
       break;
 
     case SF_FORMAT_DWVW_16:
-      fprintf (stdout, "Subtype: 16 bit Delta Width Variable Word encoding.\n");
+      fprintf (stderr, "Subtype: 16 bit Delta Width Variable Word encoding.\n");
       break;
 
     case SF_FORMAT_DWVW_24:
-      fprintf (stdout, "Subtype: 24 bit Delta Width Variable Word encoding.\n");
+      fprintf (stderr, "Subtype: 24 bit Delta Width Variable Word encoding.\n");
       break;
 
     case SF_FORMAT_DWVW_N:
-      fprintf (stdout, "Subtype: N bit Delta Width Variable Word encoding.\n");
+      fprintf (stderr, "Subtype: N bit Delta Width Variable Word encoding.\n");
       break;
 
     case SF_FORMAT_DPCM_8:
-      fprintf (stdout, "Subtype: 8 bit differential PCM (XI only)\n");
+      fprintf (stderr, "Subtype: 8 bit differential PCM (XI only)\n");
       break;
 
     case SF_FORMAT_DPCM_16:
-      fprintf (stdout, "Subtype: 16 bit differential PCM (XI only)\n");
+      fprintf (stderr, "Subtype: 16 bit differential PCM (XI only)\n");
       break;
 
     default :
@@ -281,19 +281,19 @@ void sndfile_print_info (SF_INFO *sfinfo)
   switch (sfinfo->format & SF_FORMAT_ENDMASK)
     {
     case SF_ENDIAN_FILE:
-      fprintf (stdout, "Endian type: Default file endian-ness.\n");
+      fprintf (stderr, "Endian type: Default file endian-ness.\n");
       break;
 
     case SF_ENDIAN_LITTLE:
-      fprintf (stdout, "Endian type: Force little endian-ness.\n");
+      fprintf (stderr, "Endian type: Force little endian-ness.\n");
       break;
 
     case SF_ENDIAN_BIG:
-      fprintf (stdout, "Endian type: Force big endian-ness.\n");
+      fprintf (stderr, "Endian type: Force big endian-ness.\n");
       break;
 
     case SF_ENDIAN_CPU:
-      fprintf (stdout, "Endian type: Force CPU endian-ness.\n");
+      fprintf (stderr, "Endian type: Force CPU endian-ness.\n");
       break;
 
     default :
@@ -301,11 +301,11 @@ void sndfile_print_info (SF_INFO *sfinfo)
       exit (1);
     }
 
-  fprintf (stdout, "frames     : %d\n", (int)sfinfo->frames);
-  fprintf (stdout, "samplerate : %d\n", sfinfo->samplerate);
-  fprintf (stdout, "channels   : %d\n", sfinfo->channels);
-  fprintf (stdout, "sections   : %d\n", sfinfo->sections);
-  fprintf (stdout, "seekable   : %d\n", sfinfo->seekable);
+  fprintf (stderr, "frames     : %d\n", (int)sfinfo->frames);
+  fprintf (stderr, "samplerate : %d\n", sfinfo->samplerate);
+  fprintf (stderr, "channels   : %d\n", sfinfo->channels);
+  fprintf (stderr, "sections   : %d\n", sfinfo->sections);
+  fprintf (stderr, "seekable   : %d\n", sfinfo->seekable);
 }
 
 

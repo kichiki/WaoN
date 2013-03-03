@@ -333,12 +333,16 @@ WAON_notes_output_midi (struct WAON_notes *notes,
   int flag_stdout;
   if (strncmp (filename, "-", strlen (filename)) == 0)
     {
-      fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
+      fd = dup(STDOUT_FILENO);
       flag_stdout = 1;
     }
   else
     {
+#ifdef __MINGW32__
+      fd = open (filename, O_RDWR| O_CREAT| O_TRUNC| O_BINARY, S_IRUSR| S_IWUSR);
+#else
       fd = open (filename, O_RDWR| O_CREAT| O_TRUNC, S_IRUSR| S_IWUSR);
+#endif
       flag_stdout = 0;
     }
   if (fd < 0)
@@ -465,7 +469,7 @@ WAON_notes_output_midi (struct WAON_notes *notes,
   else /* stdout  */
     {
       if ((7 + 4 * nmidi) != (p_midi - dh_midi))
-	fprintf(stderr, "WaoN warning : data size seems to be different.\n");
+	fprintf(stderr, "WaoN warning : data size seems to differ from the header prediction, and stdout isn't seekable to correct the header. Midi players may not tolerate this.\n");
     }
 
   close (fd);

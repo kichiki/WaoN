@@ -18,7 +18,7 @@
 
 #include <math.h>
 #include <stdio.h> /* printf(), fprintf(), strerror()  */
-#include <sys/errno.h> /* errno  */
+#include <errno.h> /* errno  */
 #include <stdlib.h> /* exit()  */
 #include <string.h> /* strcat(), strcpy()  */
 #include "memory-check.h" // CHECK_MALLOC() macro
@@ -42,6 +42,10 @@
 #include "notes.h" // struct WAON_notes
 
 #include "VERSION.h"
+
+#ifdef __MINGW32__
+#include <fcntl.h>
+#endif
 
 
 void print_version (void)
@@ -390,6 +394,11 @@ int main (int argc, char** argv)
       print_version ();
       exit (1);
     }
+
+#ifdef __MINGW32__
+      _setmode(_fileno(stdin),_O_BINARY);
+      _setmode(_fileno(stdout),_O_BINARY);
+#endif
 
   if (flag_window < 0 || flag_window > 6)
     {

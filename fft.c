@@ -144,35 +144,35 @@ fprint_window_name (FILE *out, int flag_window)
   switch (flag_window)
     {
     case 0: // square (no window)
-      fprintf (stdout, "no window\n");
+      fprintf (stderr, "no window\n");
       break;
 
     case 1: // parzen window
-      fprintf (stdout, "parzen window\n");
+      fprintf (stderr, "parzen window\n");
       break;
 
     case 2: // welch window
-      fprintf (stdout, "welch window\n");
+      fprintf (stderr, "welch window\n");
       break;
 
     case 3: // hanning window
-      fprintf (stdout, "hanning window\n");
+      fprintf (stderr, "hanning window\n");
       break;
 
     case 4: // hamming window
-      fprintf (stdout, "hamming window\n");
+      fprintf (stderr, "hamming window\n");
       break;
 
     case 5: // blackman window
-      fprintf (stdout, "blackman window\n");
+      fprintf (stderr, "blackman window\n");
       break;
 
     case 6: // steeper 30-dB/octave rolloff window
-      fprintf (stdout, "steeper 30-dB/octave rolloff window\n");
+      fprintf (stderr, "steeper 30-dB/octave rolloff window\n");
       break;
 
     default:
-      fprintf (stdout, "invalid window\n");
+      fprintf (stderr, "invalid window\n");
       break;
     }
 }

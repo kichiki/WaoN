@@ -17,7 +17,7 @@
  */
 #include <stdio.h> // fprintf()
 #include <stdlib.h> // malloc()
-#include <sys/errno.h> // errno
+#include <errno.h> // errno
 #include "memory-check.h" // CHECK_MALLOC() macro
 
 #include "notes.h"
