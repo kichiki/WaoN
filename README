@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
-                    WaoN - a wave-to-notes transcriber 0.10
+                    WaoN - a wave-to-notes transcriber 0.11
 -------------------------------------------------------------------------------
 
-    Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
+    Copyright (C) 1998-2015 Kengo Ichiki <kengoichiki@gmail.com>
                             All Rights Reserved
 
     This program is free software; you can redistribute it and/or modify
@@ -28,12 +28,13 @@
                                     WaoN
                                       
                        is a Wave-to-Notes transcriber
-                       (last updated on Mar. 3, 2013)
+                       (last updated on Aug. 8, 2015)
                                       
      _________________________________________________________________
    
 What's new?
 
+     * Aug. 8, 2015: waon-0.11 released
      * Mar. 3, 2013: move the project from sourceforce to github.
      * Jan. 1, 2012: add "Demo" section.
      * Dec. 27, 2011: waon-0.10 released. (Release Note)
@@ -86,7 +87,7 @@ Screenshot ("WaoN" is not a GUI application but ... :-)
   help
   
 $ ./waon --help
-WaoN - a Wave-to-Notes transcriber, Version 0.10
+WaoN - a Wave-to-Notes transcriber, Version 0.11
 
 Copyright (C) 1998-2013 Kengo Ichiki <kengoichiki@gmail.com>
 Web: http://kichiki.github.com/WaoN/
@@ -200,6 +201,12 @@ TODO
        
 History
 
+     * Aug. 8, 2015 : waon-0.11 released.
+     * Mar. 3, 2013: move the project from sourceforce to github.
+     * Jan. 1, 2012: add "Demo" section.
+     * Dec. 27, 2011: waon-0.10 released. (Release Note)
+         waon: the quality of result is improved by cleaning up useless notes.
+         gwaon: horizontal keyboard is added on the spectrum pane.
      * Apr. 21, 2010 : David Millis sent me a patch for waon MinGW port.
      * Nov. 4, 2007 : waon-0.9 released. (Release Note)
           + add manual pages (waon.1, pv.1, gwaon.1).
@@ -270,5 +277,5 @@ History
      _________________________________________________________________
                                       
     e-mail: kengoichiki@gmail.com
-         Copyright (C) 1998-2013 Kengo Ichiki. All rights reserved. 
+         Copyright (C) 1998-2015 Kengo Ichiki. All rights reserved. 
      _________________________________________________________________
