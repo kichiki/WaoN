@@ -2,22 +2,29 @@
 # Copyright (C) 1998-2007 Kengo Ichiki <kichiki@users.sourceforge.net>
 # $Id: Makefile.waon,v 1.7 2007/11/04 23:59:41 kichiki Exp $
 
+
 CC = gcc
 
 # with FFTW3
 CFLAGS = \
 	-Wall -march=native -O3 -ffast-math \
 	`pkg-config --cflags fftw3` \
-	-I./libs/fftw/api \
 	`pkg-config --cflags sndfile`
-	-I./libs/libsndfile/src \
 LDFLAGS= \
 	-L/usr/local/lib \
 	`pkg-config --libs fftw3` \
-	-I./libs/fftw/api \
 	`pkg-config --libs sndfile` \
-	-I./libs/libsndfile/src \
 	-lm
+
+# with FFTW2
+#CFLAGS = \
+#	-Wall -march=native -O3 -ffast-math \
+#	-I/usr/local/include -DFFTW2
+#LDFLAGS= \
+#	-L/usr/local/lib \
+#	-lfftw -lrfftw \
+#	-lsndfile \
+#	-lm
 
 OBJS =	\
 	main.o \
