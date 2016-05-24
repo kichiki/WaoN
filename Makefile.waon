@@ -7,7 +7,7 @@ CC = gcc
 
 # with FFTW3
 CFLAGS = \
-	-Wall -march=pentium -O3 -ffast-math \
+	-Wall -march=native -O3 -ffast-math \
 	`pkg-config --cflags fftw3` \
 	`pkg-config --cflags sndfile`
 LDFLAGS= \
